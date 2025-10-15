@@ -1,0 +1,6 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="llm-domain-desktop">
+    <output-path>$PROJECT_DIR$/llm-domain/build/libs</output-path>
+    <root id="archive" name="llm-domain-desktop.jar" />
+  </artifact>
+</component>
