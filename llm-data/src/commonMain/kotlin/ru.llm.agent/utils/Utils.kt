@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.serialization.SerializationException
 import ru.llm.agent.NetworkResult
-import ru.llm.agent.data.AdventApiError
+import ru.llm.agent.data.LlmApiError
 
 /**
  * Общий Обработчик запросов, который все ответы превращает во Flow
@@ -28,7 +28,7 @@ public inline fun <reified T> handleApi(crossinline execute: suspend () -> HttpR
 
                 else -> {
                     val errorBody = try {
-                        result.body<AdventApiError>()
+                        result.body<LlmApiError>()
                     } catch (_: Exception) {
                         null
                     } catch (_: SerializationException) {
@@ -37,7 +37,7 @@ public inline fun <reified T> handleApi(crossinline execute: suspend () -> HttpR
 
                     emit(
                         NetworkResult.Error(
-                            message = errorBody?.message ?: "Хуй его знает что это"
+                            message = errorBody?.message ?: "unknown error"
                         )
                     )
                 }

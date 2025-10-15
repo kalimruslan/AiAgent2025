@@ -24,7 +24,8 @@ import org.koin.compose.viewmodel.koinViewModel
 import ru.llm.agent.compose.di.LLM_CHAT_SCOPE_ID
 import ru.llm.agent.compose.di.llmChatScopeQualifier
 import ru.llm.agent.compose.di.llmKoinModule
-import ru.llm.agent.core.uikit.AdventAITheme
+import ru.llm.agent.compose.presenter.model.MessageTypeUI
+import ru.llm.agent.core.uikit.LlmAgentTheme
 import ru.llm.agent.model.MessageModel
 
 @Composable
@@ -37,34 +38,32 @@ fun ChatScreen() {
         val state by viewModel.screeState.collectAsStateWithLifecycle()
 
         Scaffold(
+            modifier = Modifier.fillMaxSize().imePadding(),
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 TopBar(
                     selectedAIType = state.selectedAIType,
                     onAiTypeSelected = { viewModel.setEvent(ChatLlmContract.Event.SelectAIType(it)) },
-                    onProxyModelSelect = {
-                        viewModel.setEvent(
-                            ChatLlmContract.Event.SelectProxyAiModel(
-                                it
-                            )
-                        )
-                    }
                 )
             },
             bottomBar = {
                 BottomBar(
                     isLoading = state.isLoading,
-                    onSendMessage = { viewModel.setEvent(ChatLlmContract.Event.SendMessage(it)) }
-                )
+                    onSendMessage = { viewModel.setEvent(ChatLlmContract.Event.SendMessage(it)) })
             }
         ) { paddingValues ->
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .imePadding() // <- Здесь обрабатываем imePadding
+                    .background(LlmAgentTheme.colors.primary)
+                    .padding(paddingValues),
+                contentAlignment = Alignment.BottomCenter,
             ) {
                 MessagesContent(
-                    modifier = Modifier.padding(paddingValues),
-                    state = state,
+                    modifier = Modifier.padding(top = 8.dp),
+                    messages = state.messages,
+                    error = state.error,
+                    isLoading = state.isLoading
                 )
             }
         }
@@ -73,56 +72,101 @@ fun ChatScreen() {
 
 @Composable
 private fun MessagesContent(
-    modifier: Modifier = Modifier,
-    state: ChatLlmContract.State,
-) = with(state) {
+    modifier: Modifier = Modifier, messages: List<MessageTypeUI>, error: String, isLoading: Boolean
+) {
     val messagesListState = rememberLazyListState()
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
-            // Добавляем небольшую задержку, чтобы убедиться, что список уже отрисован
             delay(100)
-            // Прокручиваем к последнему сообщению
             messagesListState.animateScrollToItem(messages.size - 1)
         }
     }
 
     Column(
         modifier = modifier.then(
-            Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp)
+            Modifier.fillMaxSize().padding(horizontal = 16.dp)
         )
     ) {
-
-        // История сообщений
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = messagesListState,
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(vertical = 8.dp),
         ) {
-            items(
-                items = messages,
-                contentType = { "message" }
-            ) { message ->
-                MessageItem(message = message)
+            items(items = messages) { messageTypeUi ->
+                when (messageTypeUi) {
+                    is MessageTypeUI.MyMessageUI -> {
+                        MyMessageBubble(messageTypeUi.message)
+                    }
+
+                    is MessageTypeUI.TheirMessageUI -> {
+                        AiMessageBubble(messageTypeUi.message)
+                    }
+
+                    is MessageTypeUI.DateSeparatorUI -> Unit
+                }
             }
         }
 
-        // Ошибки
-        error?.let {
+        if (error.isNotEmpty()) {
             Text(
                 modifier = Modifier.padding(bottom = 4.dp),
-                text = "Ошибка: $it",
+                text = "Ошибка: $error",
                 color = MaterialTheme.colorScheme.error
             )
         }
 
-        // Индикатор загрузки
         if (isLoading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            CircularProgressIndicator(modifier = Modifier
+                .align(Alignment.CenterHorizontally))
         }
+    }
+}
+
+@Composable
+private fun AiMessageBubble(message: MessageModel) = Box(
+    modifier = Modifier
+        .border(
+            width = 2.dp,
+            color = Color(0xFFEDEDED),
+            shape = RoundedCornerShape(24.dp)
+        )
+        .background(Color.White, shape = RoundedCornerShape(24.dp))
+        .padding(vertical = 24.dp, horizontal = 20.dp), contentAlignment = Alignment.TopEnd
+) {
+    Text(
+        text = message.content,
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Medium,
+        color = Color(0xFF222222),
+    )
+}
+
+@Composable
+private fun MyMessageBubble(message: MessageModel) = Row(
+    modifier = Modifier
+        .fillMaxWidth()
+        .padding(
+            vertical = 8.dp,
+            horizontal = 12.dp
+        ),
+    horizontalArrangement = Arrangement.End
+) {
+    Box(
+        modifier = Modifier.border(
+            width = 2.dp,
+            color = LlmAgentTheme.colors.outline,
+            shape = RoundedCornerShape(24.dp)
+        ).background(LlmAgentTheme.colors.secondaryContainer, shape = RoundedCornerShape(24.dp))
+            .padding(vertical = 8.dp, horizontal = 12.dp),
+    ) {
+        Text(
+            text = message.content,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF222222),
+        )
     }
 }
 
@@ -130,25 +174,13 @@ private fun MessagesContent(
 private fun TopBar(
     selectedAIType: AiType,
     onAiTypeSelected: (AiType) -> Unit,
-    onProxyModelSelect: (AiType.ProxyAI.ProxyAIModel) -> Unit,
 ) = Row(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-    horizontalArrangement = Arrangement.SpaceBetween
+    horizontalArrangement = Arrangement.Center,
 ) {
     SelectLlmDropDown(selectedAiType = selectedAIType) {
         if (it != selectedAIType) {
             onAiTypeSelected(it)
-        }
-    }
-
-    if (selectedAIType is AiType.ProxyAI) {
-        SelectProxyModelsDropdown(
-            allModels = AiType.ProxyAI.ProxyAIModel.entries,
-            selectedModel = selectedAIType.selectedModel,
-        ) {
-            if (it != selectedAIType.selectedModel) {
-                onProxyModelSelect(it)
-            }
         }
     }
 }
@@ -160,9 +192,7 @@ fun BottomBar(
     onSendMessage: (String) -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .padding(8.dp)
-            .height(48.dp),
+        modifier = Modifier.padding(8.dp).height(48.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         var text by remember { mutableStateOf("") }
@@ -172,31 +202,15 @@ fun BottomBar(
             onValueChange = {
                 text = it
             },
-            label = {
+            placeholder = {
                 Text(
-                    "Ваше сообщение",
-                    color = AdventAITheme.colors.onSecondary,
-                    fontSize = 16.sp
+                    "Ваше сообщение", color = LlmAgentTheme.colors.onSurface, fontSize = 16.sp
                 )
             },
             shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color(0xFFF7F7F7),
-                unfocusedContainerColor = Color(0xFFF7F7F7),
-                focusedBorderColor = Color(0xFFE0E0E0),
-                unfocusedBorderColor = Color(0xFFE0E0E0),
-                cursorColor = Color.Red,
-                focusedTextColor = Color(0xFF333333),
-                unfocusedTextColor = Color(0xFF333333),
+            modifier = Modifier.weight(1f).fillMaxHeight().border(
+                width = 2.dp, color = Color(0xFFE0E0E0), shape = RoundedCornerShape(16.dp)
             ),
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .border(
-                    width = 2.dp,
-                    color = Color(0xFFE0E0E0),
-                    shape = RoundedCornerShape(16.dp)
-                ),
             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp)
         )
         Spacer(Modifier.width(8.dp))
@@ -204,79 +218,28 @@ fun BottomBar(
             onClick = { onSendMessage.invoke(text) },
             modifier = Modifier.size(80.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF222222),
-                contentColor = Color.White
+                containerColor = Color(0xFF222222), contentColor = Color.White
             ),
             shape = RoundedCornerShape(24.dp),
             contentPadding = PaddingValues(0.dp),
             enabled = !isLoading
         ) {
             Text(
-                "-->",
-                fontSize = 24.sp
+                "-->", fontSize = 24.sp
             )
         }
     }
 }
 
 @Composable
-fun SelectProxyModelsDropdown(
-    allModels: List<AiType.ProxyAI.ProxyAIModel>,
-    selectedModel: AiType.ProxyAI.ProxyAIModel,
-    onModelSelect: (AiType.ProxyAI.ProxyAIModel) -> Unit
-) {
-    val expanded = remember { mutableStateOf(false) }
-
-    Box {
-        Text(
-            modifier = Modifier
-                .padding(top = 8.dp)
-                .clickable { expanded.value = true },
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            text = selectedModel.model
-        )
-
-        DropdownMenu(
-            expanded = expanded.value,
-            onDismissRequest = { expanded.value = false },
-            modifier = Modifier
-                .background(Color(0xFF232533), shape = RoundedCornerShape(16.dp))
-                .shadow(8.dp, RoundedCornerShape(20.dp))
-        ) {
-            allModels.forEach { model ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = model.model,
-                            color = Color.Green,
-                            modifier = Modifier.padding(4.dp)
-                        )
-                    },
-                    onClick = {
-                        onModelSelect(model)
-                        expanded.value = false
-                    },
-                    modifier = Modifier
-                        .padding(vertical = 4.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun SelectLlmDropDown(
-    selectedAiType: AiType,
-    onApiSelected: (AiType) -> Unit
+    selectedAiType: AiType, onApiSelected: (AiType) -> Unit
 ) {
     val expanded = remember { mutableStateOf(false) }
 
     Box {
         Text(
-            modifier = Modifier
-                .padding(top = 8.dp)
-                .clickable { expanded.value = true },
+            modifier = Modifier.padding(top = 8.dp).clickable { expanded.value = true },
             fontWeight = FontWeight.Bold,
             fontSize = 18.sp,
             text = selectedAiType.displayName
@@ -285,8 +248,7 @@ fun SelectLlmDropDown(
         DropdownMenu(
             expanded = expanded.value,
             onDismissRequest = { expanded.value = false },
-            modifier = Modifier
-                .background(Color(0xFF232533), shape = RoundedCornerShape(16.dp))
+            modifier = Modifier.background(Color(0xFF232533), shape = RoundedCornerShape(16.dp))
                 .shadow(8.dp, RoundedCornerShape(20.dp))
         ) {
             AiType.values().forEach { aiType ->
@@ -297,52 +259,12 @@ fun SelectLlmDropDown(
                             color = Color.Green,
                             modifier = Modifier.padding(4.dp)
                         )
-                    },
-                    onClick = {
+                    }, onClick = {
                         onApiSelected(aiType)
                         expanded.value = false
-                    },
-                    modifier = Modifier
-                        .padding(vertical = 4.dp)
+                    }, modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
-        }
-    }
-}
-
-@Composable
-fun MessageItem(message: MessageModel) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = when (message.role) {
-                "user" -> MaterialTheme.colorScheme.primaryContainer
-                else -> MaterialTheme.colorScheme.secondaryContainer
-            }
-        )
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Заголовок с переключателем
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = message.role.uppercase(),
-                    style = MaterialTheme.typography.titleSmall
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            val displayText = message.content
-            Text(
-                text = displayText,
-                style = MaterialTheme.typography.bodyLarge
-            )
         }
     }
 }
@@ -350,25 +272,32 @@ fun MessageItem(message: MessageModel) {
 @Preview()
 @Composable
 private fun PreviewScreen() {
-    val state = ChatLlmContract.State.empty().copy(workMode = WorkMode.SINGLE)
-    Scaffold(
-        topBar = {
-            TopBar(
-                selectedAIType = state.selectedAIType,
-                onAiTypeSelected = { },
-                onProxyModelSelect = {}
-            )
-        },
-        bottomBar = {
-            BottomBar(
-                isLoading = state.isLoading,
-                onSendMessage = {}
-            )
-        }
-    ) { paddingValues ->
+    val state = ChatLlmContract.State.empty().copy(
+        workMode = WorkMode.SINGLE, messages = listOf(
+            MessageTypeUI.MyMessageUI(MessageModel("Hello", "Привет", "12:00")),
+            MessageTypeUI.TheirMessageUI(
+                MessageModel(
+                    "Hello",
+                    "Я ассистент, Чем могу помочьfghfghjfgjfgjfghjfghjfghjfghbjdghjyghjkrtuy7k6uyk?",
+                    "12:00"
+                )
+            ),
+        )
+    )
+    Scaffold(topBar = {
+        TopBar(
+            selectedAIType = state.selectedAIType,
+            onAiTypeSelected = { },
+        )
+    }, bottomBar = {
+        BottomBar(
+            isLoading = state.isLoading, onSendMessage = {})
+    }) { paddingValues ->
         MessagesContent(
             modifier = Modifier.padding(paddingValues),
-            state = state,
+            messages = state.messages,
+            error = state.error,
+            isLoading = state.isLoading
         )
     }
 }

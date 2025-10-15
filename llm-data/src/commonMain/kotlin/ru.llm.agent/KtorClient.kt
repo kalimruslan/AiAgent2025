@@ -14,11 +14,9 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.ClassDiscriminatorMode
 import kotlinx.serialization.json.Json
 
-public const val API_BASE_URL: String = "https://openrouter.ai/api/v1/"
-
 public fun createHttpClient(
     developerToken: String,
-    baseUrl: String = API_BASE_URL,
+    baseUrl: String,
     json: Json = DefaultJson,
 ): HttpClient {
     val httpClient = frameHttpClient(baseUrl, developerToken, json)
@@ -55,8 +53,6 @@ private fun frameHttpClient(
             }
             contentType(ContentType.Application.Json)
             header("Authorization", "Bearer $developerToken")
-//            header("HTTP-Referer", "https://advent2025.com")
-//            header("X-Title", "LLM Chat App")
             if(baseUrl.contains("yandex.net")){
                 header("x-folder-id", "b1gonedr4v7ke927m32n")
             }

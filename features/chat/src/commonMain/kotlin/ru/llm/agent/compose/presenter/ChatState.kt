@@ -1,23 +1,23 @@
 package ru.llm.agent.compose.presenter
 
-import ru.llm.agent.model.MessageModel
+import ru.llm.agent.compose.presenter.model.MessageTypeUI
 
 internal class ChatLlmContract {
     data class State(
-        val messages: List<MessageModel>,
+        val historicalMessages: List<MessageTypeUI>,
+        val messages: List<MessageTypeUI>,
         val isLoading: Boolean,
-        val error: String?,
-        val userMessage: String,
+        val error: String,
         val selectedAIType: AiType,
         val workMode: WorkMode
     ) {
         companion object {
             fun empty() = State(
+                historicalMessages = emptyList(),
                 messages = emptyList(),
                 isLoading = false,
                 error = "",
-                userMessage = "",
-                selectedAIType = AiType.ProxyAI(),
+                selectedAIType = AiType.YaGptAI(),
                 workMode = WorkMode.SINGLE
             )
         }
@@ -26,7 +26,6 @@ internal class ChatLlmContract {
     sealed interface Event {
         data class SendMessage(val message: String) : Event
         data class SelectAIType(val aiType: AiType) : Event
-        data class SelectProxyAiModel(val model: AiType.ProxyAI.ProxyAIModel) : Event
     }
 }
 

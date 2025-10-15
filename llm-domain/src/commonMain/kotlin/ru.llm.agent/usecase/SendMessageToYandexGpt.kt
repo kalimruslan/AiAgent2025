@@ -11,14 +11,12 @@ public class SendMessageToYandexGpt (
     private val repository: LlmRepository
 ){
     public suspend operator fun invoke(
-        message: String,
-        roleSender: RoleSender,
+        messageModel: MessageModel,
         outputFormat: OutputFormat,
         model: String
     ) : Flow<NetworkResult<MessageModel?>>{
         return repository.sendMessageToYandexGPT(
-            roleSender = roleSender.type,
-            text = message,
+            messageModel = messageModel,
             model = model
         )
     }

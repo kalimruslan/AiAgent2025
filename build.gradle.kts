@@ -11,8 +11,8 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android) apply false
     alias(libs.plugins.jetbrains.kotlin.jvm) apply false
     alias(libs.plugins.manifestGuard) apply false
-    alias(libs.plugins.frameio.detekt) apply true
-    alias(libs.plugins.frameio.ktlint) apply true
+//    alias(libs.plugins.frameio.detekt) apply true
+//    alias(libs.plugins.frameio.ktlint) apply true
     alias(libs.plugins.androidx.room) apply true
     alias(libs.plugins.jetbrains.compose.hotreload) apply false
 }

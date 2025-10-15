@@ -6,16 +6,8 @@ import ru.llm.agent.RoleSender
 import ru.llm.agent.model.MessageModel
 
 public interface LlmRepository {
-
-    public suspend fun sendMessageToProxyApi(
-        roleSender: String = RoleSender.USER.type,
-        text: String,
-        model: String
-    ): Flow<NetworkResult<MessageModel?>>
-
     public suspend fun sendMessageToYandexGPT(
-        roleSender: String = RoleSender.USER.type,
-        text: String,
+        messageModel: MessageModel,
         model: String
     ): Flow<NetworkResult<MessageModel?>>
 }

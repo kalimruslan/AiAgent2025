@@ -5,7 +5,7 @@ import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpMethod
-import ru.llm.agent.data.request.yandexGPT.YaRequest
+import ru.llm.agent.data.request.YaRequest
 
 public class YandexApi internal constructor(
     private val httpClient: HttpClient,
