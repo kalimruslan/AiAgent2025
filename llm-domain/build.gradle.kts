@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.ExplicitApiMode
 
 plugins {
     alias(libs.plugins.frameio.kmplib)
+    alias(libs.plugins.jetbrains.kotlin.serialization)
     alias(libs.plugins.google.ksp)
 }
 
@@ -12,6 +13,7 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
+                implementation(libs.ktor.serialization.kotlinx.json)
             }
         }
     }
