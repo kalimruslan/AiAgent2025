@@ -1,8 +1,0 @@
-<component name="ArtifactManager">
-  <artifact type="jar" name="llm-data-desktop">
-    <output-path>$PROJECT_DIR$/llm-data/build/libs</output-path>
-    <root id="archive" name="llm-data-desktop.jar">
-      <element id="module-output" name="AiAgent2025.llm-data.desktopMain" />
-    </root>
-  </artifact>
-</component>

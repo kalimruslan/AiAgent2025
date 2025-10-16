@@ -1,8 +1,0 @@
-<component name="ArtifactManager">
-  <artifact type="jar" name="uikit-desktop">
-    <output-path>$PROJECT_DIR$/core/uikit/build/libs</output-path>
-    <root id="archive" name="uikit-desktop.jar">
-      <element id="module-output" name="AiAgent2025.core.uikit.desktopMain" />
-    </root>
-  </artifact>
-</component>
