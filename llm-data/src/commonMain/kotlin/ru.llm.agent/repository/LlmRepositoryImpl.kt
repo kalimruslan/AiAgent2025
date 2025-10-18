@@ -10,6 +10,7 @@ import ru.llm.agent.data.response.YandexGPTResponse
 import ru.llm.agent.mapNetworkResult
 import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.PromtFormat
+import ru.llm.agent.model.conversation.ConversationState
 import ru.llm.agent.toModel
 import ru.llm.agent.utils.handleApi
 
@@ -45,11 +46,20 @@ public class LlmRepositoryImpl(
         return result.mapNetworkResult { response: YandexGPTResponse ->
             with(response) {
                 this.result.alternatives.firstOrNull()?.message?.toModel(
-                    this.result.usage.completionTokens,
+                    this.result.usage?.completionTokens,
                     outputFormat
-
                 )
             }
+        }
+    }
+
+    private fun parseConversationState(text: String): ConversationState {
+        return when {
+            text.contains("[STATUS:COMPLETE]", ignoreCase = true) -> ConversationState(
+                isComplete = true,
+                finalResult = text.replace(Regex("\\[STATUS:COMPLETE]", RegexOption.IGNORE_CASE), "").trim()
+            )
+            else -> ConversationState(isComplete = false)
         }
     }
 }

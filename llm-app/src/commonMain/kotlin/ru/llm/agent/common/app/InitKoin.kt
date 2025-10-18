@@ -5,6 +5,7 @@ import org.koin.core.KoinApplication
 import org.koin.core.logger.Level
 import org.koin.core.logger.Logger
 import org.koin.core.module.Module
+import ru.llm.agent.di.databaseModule
 import ru.llm.agent.di.networkModule
 import ru.llm.agent.di.repositoriesModule
 import ru.llm.agent.di.useCasesModule
@@ -25,7 +26,7 @@ fun KoinApplication.initKoinApp(
         platformKoinModule(platformContext),
         networkModule,
         repositoriesModule,
-        useCasesModule
+        useCasesModule,
     )
 }
 

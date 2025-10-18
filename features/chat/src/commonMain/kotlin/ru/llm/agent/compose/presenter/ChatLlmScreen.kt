@@ -122,8 +122,6 @@ private fun MessagesContent(
                             onParseClick = onParseClick
                         )
                     }
-
-                    is MessageTypeUI.DateSeparatorUI -> Unit
                 }
             }
         }

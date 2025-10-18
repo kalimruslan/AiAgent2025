@@ -5,6 +5,7 @@ import ru.llm.agent.NetworkResult
 import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.PromtFormat
 import ru.llm.agent.model.Role
+import ru.llm.agent.model.conversation.ConversationState
 import ru.llm.agent.repository.LlmRepository
 
 public class SendMessageToYandexGptUseCase(
@@ -45,6 +46,7 @@ public class SendMessageToYandexGptUseCase(
             role = Role.SYSTEM,
             text = systemPromptText
         )
+
 
         return repository.sendMessageToYandexGPT(
             promptMessage = promptMessage,

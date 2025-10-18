@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import ru.llm.agent.compose.presenter.ChatScreen
+import ru.llm.agent.compose.presenter.ConversationScreen
 import ru.llm.agent.core.uikit.AgentAiTheme
 
 class MainActivity : ComponentActivity() {
@@ -28,7 +29,7 @@ class MainActivity : ComponentActivity() {
                             .padding(contentPadding)
                             .fillMaxSize(),
                     ) {
-                        ChatScreen()
+                        ConversationScreen()
                     }
                 }
             }

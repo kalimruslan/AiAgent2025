@@ -10,6 +10,7 @@ import androidx.compose.ui.window.application
 import ru.llm.agent.common.app.initKoinApp
 import org.koin.core.context.startKoin
 import ru.llm.agent.compose.presenter.ChatScreen
+import ru.llm.agent.compose.presenter.ConversationScreen
 import ru.llm.agent.core.uikit.AgentAiTheme
 import ru.llm.agent.core.utils.PlatformContext
 
@@ -35,7 +36,7 @@ fun main() = application {
                         .padding(contentPadding)
                         .fillMaxSize(),
                 ) {
-                    ChatScreen()
+                    ConversationScreen()
                 }
             }
         }

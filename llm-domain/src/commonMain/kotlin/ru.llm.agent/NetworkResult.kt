@@ -22,7 +22,7 @@ public sealed interface NetworkResult<out T> {
  * Трансформирует текущий NetworkResult в выходной NetworkResult
  * @param transform - функция трансформации данных, например маппинг в домейн модельки
  */
-public inline fun <T, R> Flow<NetworkResult<T>>.mapNetworkResult(crossinline transform: (T) -> R): Flow<NetworkResult<R>> =
+public inline fun <T, R> Flow<NetworkResult<T>>.mapNetworkResult(crossinline transform: suspend (T) -> R): Flow<NetworkResult<R>> =
     map { result ->
         when (result) {
             is NetworkResult.Success -> NetworkResult.Success(transform(result.data))
