@@ -5,13 +5,15 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import ru.llm.agent.compose.presenter.ChatLlmViewModel
-import ru.llm.agent.usecase.SendMessageToYandexGpt
+import ru.llm.agent.usecase.ParseJsonFormatUseCase
+import ru.llm.agent.usecase.SendMessageToYandexGptUseCase
 
 internal fun llmKoinModule(): Module {
     return module {
         viewModel {
             ChatLlmViewModel(
-                sendMessageToYaGPT = get<SendMessageToYandexGpt>()
+                sendMessageToYaGPT = get<SendMessageToYandexGptUseCase>(),
+                parseJsonFormatUseCase = get<ParseJsonFormatUseCase>()
             )
         }
 

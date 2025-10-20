@@ -24,6 +24,7 @@ kotlin {
             implementation(projects.core.utils)
             implementation(projects.llmData)
             implementation(projects.llmDomain)
+            implementation(projects.features.conversation)
             implementation(compose.components.resources)
         }
 

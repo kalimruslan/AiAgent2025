@@ -1,24 +1,24 @@
 package ru.llm.agent.compose.presenter
 
 import ru.llm.agent.compose.presenter.model.MessageTypeUI
+import ru.llm.agent.model.MessageModel
+import ru.llm.agent.model.PromtFormat
 
 internal class ChatLlmContract {
     data class State(
-        val historicalMessages: List<MessageTypeUI>,
         val messages: List<MessageTypeUI>,
         val isLoading: Boolean,
         val error: String,
         val selectedAIType: AiType,
-        val workMode: WorkMode
+        val outputFormat: PromtFormat
     ) {
         companion object {
             fun empty() = State(
-                historicalMessages = emptyList(),
                 messages = emptyList(),
                 isLoading = false,
                 error = "",
                 selectedAIType = AiType.YaGptAI(),
-                workMode = WorkMode.SINGLE
+                outputFormat = PromtFormat.TEXT
             )
         }
     }
@@ -26,9 +26,9 @@ internal class ChatLlmContract {
     sealed interface Event {
         data class SendMessage(val message: String) : Event
         data class SelectAIType(val aiType: AiType) : Event
+        data class SelectOutputFormat(val outputFormat: PromtFormat) : Event
+
+        data class OnParseClick(val message: MessageModel.ResponseMessage) : Event
     }
 }
 
-enum class WorkMode {
-    SINGLE, MULTI
-}

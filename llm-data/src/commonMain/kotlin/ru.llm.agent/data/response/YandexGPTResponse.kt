@@ -9,21 +9,21 @@ public data class YandexGPTResponse(
     @Serializable
     public data class Result(
         val alternatives: List<Alternative>,
-        val usage: Usage,
-        val modelVersion: String
+        val usage: Usage? = null,
+        val modelVersion: String? = null
     )
 
     @Serializable
     public data class Alternative(
         val message: YaMessageResponse,
-        val status: String
+        val status: String? = null
     )
 
     @Serializable
     public data class Usage(
-        val inputTextTokens: Int,
-        val completionTokens: Int,
-        val totalTokens: Int
+        val inputTextTokens: String? = null,
+        val completionTokens: String? = null,
+        val totalTokens: String? = null
     )
 }
 

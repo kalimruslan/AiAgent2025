@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.frameio.kmplib)
     alias(libs.plugins.jetbrains.kotlin.serialization)
     alias(libs.plugins.google.ksp)
+    alias(libs.plugins.androidx.room)
 }
 
 kotlin {
@@ -21,11 +22,15 @@ kotlin {
             implementation(libs.ktor.client.contentNegotiation)
             implementation(libs.ktor.client.auth)
             implementation(libs.ktor.client.logging)
+
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
         }
 
         androidMain.dependencies {
             implementation(libs.ktor.client.engine.okhttp)
             implementation(libs.ktor.client.android)
+            implementation(libs.androidx.room.ktx)
         }
     }
 }
@@ -59,11 +64,14 @@ android {
     }
 }
 
-afterEvaluate {
-    tasks.withType<KspAATask>().configureEach {
-        if (name != "kspCommonMainKotlinMetadata") {
-            dependsOn(tasks.named("kspCommonMainKotlinMetadata"))
-        }
-    }
+dependencies{
+    add("kspCommonMainMetadata", "androidx.room:room-compiler:2.7.2")
+    add("kspAndroid", "androidx.room:room-compiler:2.7.2")
+    add("kspDesktop", "androidx.room:room-compiler:2.7.2")
 }
+
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
 

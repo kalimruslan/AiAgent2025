@@ -24,9 +24,13 @@ import org.koin.compose.viewmodel.koinViewModel
 import ru.llm.agent.compose.di.LLM_CHAT_SCOPE_ID
 import ru.llm.agent.compose.di.llmChatScopeQualifier
 import ru.llm.agent.compose.di.llmKoinModule
+import ru.llm.agent.compose.presenter.components.SelectLlmDropDown
+import ru.llm.agent.compose.presenter.components.SelectOutputFormatDropDown
 import ru.llm.agent.compose.presenter.model.MessageTypeUI
 import ru.llm.agent.core.uikit.LlmAgentTheme
 import ru.llm.agent.model.MessageModel
+import ru.llm.agent.model.PromtFormat
+import ru.llm.agent.model.Role
 
 @Composable
 fun ChatScreen() {
@@ -49,7 +53,12 @@ fun ChatScreen() {
             bottomBar = {
                 BottomBar(
                     isLoading = state.isLoading,
-                    onSendMessage = { viewModel.setEvent(ChatLlmContract.Event.SendMessage(it)) })
+                    onSendMessage = { viewModel.setEvent(ChatLlmContract.Event.SendMessage(it)) },
+                    selectedOutputFormat = state.outputFormat,
+                    onSelectOutputFormat = {
+                        viewModel.setEvent(ChatLlmContract.Event.SelectOutputFormat(it))
+                    }
+                )
             }
         ) { paddingValues ->
             Box(
@@ -62,6 +71,9 @@ fun ChatScreen() {
                 MessagesContent(
                     modifier = Modifier.padding(top = 8.dp),
                     messages = state.messages,
+                    onParseClick = { message ->
+                        viewModel.setEvent(ChatLlmContract.Event.OnParseClick(message))
+                    },
                     error = state.error,
                     isLoading = state.isLoading
                 )
@@ -72,7 +84,11 @@ fun ChatScreen() {
 
 @Composable
 private fun MessagesContent(
-    modifier: Modifier = Modifier, messages: List<MessageTypeUI>, error: String, isLoading: Boolean
+    modifier: Modifier = Modifier,
+    messages: List<MessageTypeUI>,
+    onParseClick: (MessageModel.ResponseMessage) -> Unit,
+    error: String,
+    isLoading: Boolean
 ) {
     val messagesListState = rememberLazyListState()
 
@@ -101,10 +117,11 @@ private fun MessagesContent(
                     }
 
                     is MessageTypeUI.TheirMessageUI -> {
-                        AiMessageBubble(messageTypeUi.message)
+                        AiMessageBubble(
+                            message = messageTypeUi.message,
+                            onParseClick = onParseClick
+                        )
                     }
-
-                    is MessageTypeUI.DateSeparatorUI -> Unit
                 }
             }
         }
@@ -118,14 +135,19 @@ private fun MessagesContent(
         }
 
         if (isLoading) {
-            CircularProgressIndicator(modifier = Modifier
-                .align(Alignment.CenterHorizontally))
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+            )
         }
     }
 }
 
 @Composable
-private fun AiMessageBubble(message: MessageModel) = Box(
+private fun AiMessageBubble(
+    message: MessageModel.ResponseMessage,
+    onParseClick: (MessageModel.ResponseMessage) -> Unit = {}
+) = Column(
     modifier = Modifier
         .border(
             width = 2.dp,
@@ -133,7 +155,7 @@ private fun AiMessageBubble(message: MessageModel) = Box(
             shape = RoundedCornerShape(24.dp)
         )
         .background(Color.White, shape = RoundedCornerShape(24.dp))
-        .padding(vertical = 24.dp, horizontal = 20.dp), contentAlignment = Alignment.TopEnd
+        .padding(vertical = 12.dp, horizontal = 20.dp)
 ) {
     Text(
         text = message.content,
@@ -141,10 +163,62 @@ private fun AiMessageBubble(message: MessageModel) = Box(
         fontWeight = FontWeight.Medium,
         color = Color(0xFF222222),
     )
+
+    if (message.textFormat == PromtFormat.JSON && message.parsedContent == null) {
+        Text(
+            modifier = Modifier.clickable {
+                onParseClick(message)
+            },
+            text = "распарсить",
+            color = Color(0xFF222222),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+
+    message.parsedContent?.let {
+        HorizontalDivider()
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+        ) {
+            Text(
+                text = "Ответ: ",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF222222),
+            )
+
+            Text(
+                text = message.parsedContent?.answer.orEmpty(),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF222222),
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+        ) {
+            Text(
+                text = "Использовано токенов: ",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF222222),
+            )
+
+            Text(
+                text = message.parsedContent?.tokens.orEmpty(),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF222222),
+            )
+        }
+
+    }
 }
 
 @Composable
-private fun MyMessageBubble(message: MessageModel) = Row(
+private fun MyMessageBubble(message: MessageModel.UserMessage) = Row(
     modifier = Modifier
         .fillMaxWidth()
         .padding(
@@ -190,6 +264,8 @@ private fun TopBar(
 fun BottomBar(
     isLoading: Boolean,
     onSendMessage: (String) -> Unit,
+    selectedOutputFormat: PromtFormat,
+    onSelectOutputFormat: (PromtFormat) -> Unit
 ) {
     Row(
         modifier = Modifier.padding(8.dp).height(48.dp),
@@ -197,6 +273,12 @@ fun BottomBar(
     ) {
         var text by remember { mutableStateOf("") }
 
+        SelectOutputFormatDropDown(selectedOutputFormat = selectedOutputFormat) {
+            if (it != selectedOutputFormat) {
+                onSelectOutputFormat(it)
+            }
+        }
+        Spacer(Modifier.width(8.dp))
         TextField(
             value = text,
             onValueChange = {
@@ -216,7 +298,7 @@ fun BottomBar(
         Spacer(Modifier.width(8.dp))
         Button(
             onClick = { onSendMessage.invoke(text) },
-            modifier = Modifier.size(80.dp),
+            modifier = Modifier,
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF222222), contentColor = Color.White
             ),
@@ -231,58 +313,22 @@ fun BottomBar(
     }
 }
 
-@Composable
-fun SelectLlmDropDown(
-    selectedAiType: AiType, onApiSelected: (AiType) -> Unit
-) {
-    val expanded = remember { mutableStateOf(false) }
-
-    Box {
-        Text(
-            modifier = Modifier.padding(top = 8.dp).clickable { expanded.value = true },
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            text = selectedAiType.displayName
-        )
-
-        DropdownMenu(
-            expanded = expanded.value,
-            onDismissRequest = { expanded.value = false },
-            modifier = Modifier.background(Color(0xFF232533), shape = RoundedCornerShape(16.dp))
-                .shadow(8.dp, RoundedCornerShape(20.dp))
-        ) {
-            AiType.values().forEach { aiType ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = aiType.displayName,
-                            color = Color.Green,
-                            modifier = Modifier.padding(4.dp)
-                        )
-                    }, onClick = {
-                        onApiSelected(aiType)
-                        expanded.value = false
-                    }, modifier = Modifier.padding(vertical = 4.dp)
-                )
-            }
-        }
-    }
-}
-
 @Preview()
 @Composable
 private fun PreviewScreen() {
     val state = ChatLlmContract.State.empty().copy(
-        workMode = WorkMode.SINGLE, messages = listOf(
-            MessageTypeUI.MyMessageUI(MessageModel("Hello", "Привет", "12:00")),
+        messages = listOf(
+            MessageTypeUI.MyMessageUI(MessageModel.UserMessage(Role.USER, "Привет")),
             MessageTypeUI.TheirMessageUI(
-                MessageModel(
+                MessageModel.ResponseMessage(
                     "Hello",
                     "Я ассистент, Чем могу помочьfghfghjfgjfgjfghjfghjfghjfghbjdghjyghjkrtuy7k6uyk?",
-                    "12:00"
+                    textFormat = PromtFormat.JSON,
+                    parsedContent = null
                 )
             ),
-        )
+        ),
+        outputFormat = PromtFormat.JSON
     )
     Scaffold(topBar = {
         TopBar(
@@ -291,13 +337,17 @@ private fun PreviewScreen() {
         )
     }, bottomBar = {
         BottomBar(
-            isLoading = state.isLoading, onSendMessage = {})
+            isLoading = state.isLoading,
+            onSendMessage = {},
+            selectedOutputFormat = state.outputFormat,
+            onSelectOutputFormat = {})
     }) { paddingValues ->
         MessagesContent(
             modifier = Modifier.padding(paddingValues),
             messages = state.messages,
             error = state.error,
-            isLoading = state.isLoading
+            isLoading = state.isLoading,
+            onParseClick = {}
         )
     }
 }

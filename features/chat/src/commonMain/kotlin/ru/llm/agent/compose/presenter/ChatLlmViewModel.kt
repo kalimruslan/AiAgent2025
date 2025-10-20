@@ -5,20 +5,21 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ru.llm.agent.OutputFormat
-import ru.llm.agent.RoleSender
 import ru.llm.agent.compose.presenter.model.MessageTypeUI
 import ru.llm.agent.handleResult
 import ru.llm.agent.model.MessageModel
-import ru.llm.agent.usecase.SendMessageToYandexGpt
-import java.lang.Error
+import ru.llm.agent.model.PromtFormat
+import ru.llm.agent.model.Role
+import ru.llm.agent.usecase.ParseJsonFormatUseCase
+import ru.llm.agent.usecase.SendMessageToYandexGptUseCase
 import java.util.logging.Logger
+import kotlin.text.set
 
 class ChatLlmViewModel(
-    private val sendMessageToYaGPT: SendMessageToYandexGpt
+    private val sendMessageToYaGPT: SendMessageToYandexGptUseCase,
+    private val parseJsonFormatUseCase: ParseJsonFormatUseCase
 ) : ViewModel() {
 
     private val _screeState = MutableStateFlow(ChatLlmContract.State.empty())
@@ -51,7 +52,36 @@ class ChatLlmViewModel(
         when (event) {
             is ChatLlmContract.Event.SendMessage -> sendMessageToAi(event.message)
             is ChatLlmContract.Event.SelectAIType -> selectAIType(event.aiType)
+            is ChatLlmContract.Event.SelectOutputFormat -> selectOutputFormat(event.outputFormat)
+            is ChatLlmContract.Event.OnParseClick -> doParsing(event.message)
         }
+    }
+
+    private fun doParsing(message: MessageModel.ResponseMessage) {
+        val parsed = parseJsonFormatUseCase.invoke(message.content, message.textFormat)
+        Logger.getLogger("ChatLlmViewModel").info("parsed: $parsed")
+
+        val currentMessages = _screeState.value.messages
+        val index = currentMessages.indexOfFirst { it is MessageTypeUI.TheirMessageUI && it.message.content == message.content }
+
+        val updatedMessage = message.copy(
+            parsedContent = parsed
+        )
+
+        if (index != -1) {
+            val updatedMessages = currentMessages.toMutableList()
+            updatedMessages[index] = MessageTypeUI.TheirMessageUI(updatedMessage)
+            updateState(messages = updatedMessages)
+        }
+    }
+
+    /**
+     * Выбор формата вывода
+     * @param outputFormat - формат вывода @see OutputFormat
+     */
+    private fun selectOutputFormat(outputFormat: PromtFormat) {
+        updateState(outputFormat = outputFormat)
+        Logger.getLogger("ChatLlmViewModel").info("outputFormat: ${_screeState.value.outputFormat}")
     }
 
     /**
@@ -60,13 +90,17 @@ class ChatLlmViewModel(
     private fun sendMessageToAi(message: String) = viewModelScope.launch {
         Logger.getLogger("ChatLlmViewModel")
             .info("sendMessageToSingleLlm apiModel: ${_screeState.value.selectedAIType}")
-        val userMessageModel = MessageModel("user", message)
+
+        val userMessageModel = MessageModel.UserMessage(
+            role = Role.USER,
+            content = message
+        )
         userMessageModel.addMessage(myMessage = true)
         val resultFlow = when (_screeState.value.selectedAIType) {
             is AiType.YaGptAI -> {
                 sendMessageToYaGPT.invoke(
-                    messageModel = userMessageModel,
-                    outputFormat = OutputFormat.TEXT,
+                    userMessage = userMessageModel,
+                    outputFormat = _screeState.value.outputFormat,
                     model = (_screeState.value.selectedAIType as AiType.YaGptAI).selectedModel
                 )
             }
@@ -90,13 +124,15 @@ class ChatLlmViewModel(
     private fun updateState(
         messages: List<MessageTypeUI>? = null,
         isLoading: Boolean? = null,
-        error: String? = null
+        error: String? = null,
+        outputFormat: PromtFormat? = null
     ) {
         _screeState.update {
             it.copy(
                 messages = messages ?: it.messages,
                 isLoading = isLoading ?: it.isLoading,
-                error = error ?: it.error
+                error = error ?: it.error,
+                outputFormat = outputFormat ?: it.outputFormat
             )
         }
     }
@@ -109,11 +145,15 @@ class ChatLlmViewModel(
         Logger.getLogger("ChatLlmViewModel").info("aiType: ${_screeState.value.selectedAIType}")
     }
 
+    /**
+     * Добавление сообщения в список для отображения на экране
+     * @param myMessage - флаг, что сообщение отправлено мной
+     */
     private fun MessageModel.addMessage(myMessage: Boolean) {
         val messageTypeUI = if (myMessage) {
-            MessageTypeUI.MyMessageUI(this)
+            MessageTypeUI.MyMessageUI(this as MessageModel.UserMessage)
         } else {
-            MessageTypeUI.TheirMessageUI(this)
+            MessageTypeUI.TheirMessageUI(this as MessageModel.ResponseMessage)
         }
         _newMessages.value += messageTypeUI
     }
