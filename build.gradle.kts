@@ -15,4 +15,5 @@ plugins {
 //    alias(libs.plugins.frameio.ktlint) apply true
     alias(libs.plugins.androidx.room) apply true
     alias(libs.plugins.jetbrains.compose.hotreload) apply false
+    alias(libs.plugins.ktor) apply false
 }
