@@ -11,6 +11,7 @@ import ru.llm.agent.data.request.YaRequest
 import ru.llm.agent.data.response.YandexGPTResponse
 import ru.llm.agent.database.MessageDao
 import ru.llm.agent.database.MessageEntity
+import ru.llm.agent.database.settings.SettingsDao
 import ru.llm.agent.mapNetworkResult
 import ru.llm.agent.model.AssistantJsonAnswer
 import ru.llm.agent.model.Role
@@ -18,34 +19,35 @@ import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.model.conversation.ConversationState
 import ru.llm.agent.toModel
 import ru.llm.agent.utils.handleApi
+import java.util.logging.Logger
 
 public class ConversationRepositoryImpl(
     private val messageDao: MessageDao,
-    private val yandexApi: YandexApi
+    private val yandexApi: YandexApi,
+    private val settingsDao: SettingsDao
 ) : ConversationRepository {
     override suspend fun initializeConversation(conversationId: String) {
         val existing = messageDao.getMessagesByConversationSync(conversationId)
+        val settings = settingsDao.getLastSettings()
         if (existing.isEmpty()) {
             val systemMessage = MessageEntity(
                 conversationId = conversationId,
                 role = "system",
-                text = """
+                text = settings?.systemprompt
+                    ?: """
                     Ты — консультант по Андроид разработке.
-                    
+
                     ПРАВИЛА ДИАЛОГА:
                     1. Задавай уточняющие вопросы, чтобы понять идею пользователя
                     2. Когда соберешь достаточно информации (не более 3 вопроса), дай финальный совет
-                    
+
                     Отвечай строго в JSON формате по следующей схеме:
                     {
                       "answer": "текст ответа",
                       "is_continue": "флаг, если нужно продолжить диалог, например true или false",
                       "is_complete": "флаг, если готов дать финальный ответ, например true или false",
-                    }     
+                    }
                     Не добавляй никакого текста до или после JSON.
-                    
-                    
-                    
                 """.trimIndent(),
                 timestamp = System.currentTimeMillis()
             )
@@ -64,6 +66,7 @@ public class ConversationRepositoryImpl(
         message: String,
         model: String,
     ): Flow<NetworkResult<ConversationMessage>> {
+        val settings = settingsDao.getLastSettings()
         // Сохраняем сообщение пользователя
         val userEntity = MessageEntity(
             conversationId = conversationId,
@@ -81,8 +84,8 @@ public class ConversationRepositoryImpl(
         val request = YaRequest(
             modelUri = model,
             completionOptions = CompletionOptions(
-                temperature = 0.6,
-                maxTokens = 2000
+                temperature = settings?.temperature ?: 0.1,
+                maxTokens = settings?.maxTokens ?: 500
             ),
             messages = allMessages.map {
                 YaMessageRequest(role = it.role.title, text = it.text)
@@ -103,9 +106,6 @@ public class ConversationRepositoryImpl(
 
                 // Парсим статус
                 val parsed = Json.decodeFromString<AssistantJsonAnswer>(messageText)
-//                val cleanText = messageText
-//                    .replace(Regex("\\[STATUS:(CONTINUE|COMPLETE)]"), "")
-//                    .trim()
 
                 // Сохраняем ответ ассистента
                 val assistantEntity = MessageEntity(
@@ -132,9 +132,13 @@ public class ConversationRepositoryImpl(
 
     }
 
-    override suspend fun clearConversation(conversationId: String) {
+    override suspend fun clearConversation(conversationId: String, initNew: Boolean) {
         messageDao.clearConversation(conversationId)
-        initializeConversation(conversationId)
+        if(initNew) initializeConversation(conversationId)
+    }
+
+    override suspend fun deleteConversation(conversationId: String) {
+        messageDao.deleteConversation(conversationId)
     }
 
     override fun getAllConversations(): Flow<List<String>> {

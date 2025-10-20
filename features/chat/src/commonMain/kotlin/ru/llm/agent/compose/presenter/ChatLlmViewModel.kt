@@ -12,10 +12,9 @@ import ru.llm.agent.handleResult
 import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.PromtFormat
 import ru.llm.agent.model.Role
-import ru.llm.agent.usecase.ParseJsonFormatUseCase
-import ru.llm.agent.usecase.SendMessageToYandexGptUseCase
+import ru.llm.agent.usecase.old.ParseJsonFormatUseCase
+import ru.llm.agent.usecase.old.SendMessageToYandexGptUseCase
 import java.util.logging.Logger
-import kotlin.text.set
 
 class ChatLlmViewModel(
     private val sendMessageToYaGPT: SendMessageToYandexGptUseCase,

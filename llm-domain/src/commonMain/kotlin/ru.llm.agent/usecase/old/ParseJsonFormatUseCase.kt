@@ -1,4 +1,4 @@
-package ru.llm.agent.usecase
+package ru.llm.agent.usecase.old
 
 import kotlinx.serialization.json.Json
 import ru.llm.agent.model.ParseFromJsonModel

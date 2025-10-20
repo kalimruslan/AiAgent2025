@@ -25,13 +25,16 @@ kotlin {
             implementation(projects.llmData)
             implementation(projects.llmDomain)
             implementation(projects.features.conversation)
+            implementation(projects.features.addoptions)
             implementation(compose.components.resources)
+            implementation(libs.navigation.compose)
         }
 
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.appcompat)
             implementation(libs.androidx.material)
+            implementation(libs.android.navigation.compose)
         }
 
         desktopMain.dependencies {

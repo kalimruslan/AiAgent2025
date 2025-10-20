@@ -32,6 +32,10 @@ class ConversationViewModel(
             }
         }
 
+
+    }
+
+    fun start(){
         viewModelScope.launch {
             conversationUseCase.invoke(conversationId).collect { messages ->
                 _screeState.update {
@@ -52,6 +56,7 @@ class ConversationViewModel(
             is ConversationUIState.Event.SendMessage -> sendMessageToAi(event.message)
             ConversationUIState.Event.ResetConversation -> resetConversation()
             ConversationUIState.Event.ClearError -> clearError()
+            ConversationUIState.Event.OpenSettings -> {}
         }
     }
 

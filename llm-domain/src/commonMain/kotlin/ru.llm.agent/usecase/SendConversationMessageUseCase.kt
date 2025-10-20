@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import ru.llm.agent.NetworkResult
 import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.repository.ConversationRepository
+import ru.llm.agent.repository.LocalDbRepository
 
 public class SendConversationMessageUseCase(
     private val repository: ConversationRepository
@@ -19,5 +20,4 @@ public class SendConversationMessageUseCase(
             model = model
         )
     }
-
 }

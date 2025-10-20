@@ -23,6 +23,8 @@ internal class ConversationUIState {
         data class SendMessage(val message: String) : Event
         data object ResetConversation : Event
         data object ClearError : Event
+
+        data object OpenSettings : Event
     }
 }
 

@@ -52,14 +52,4 @@ public class LlmRepositoryImpl(
             }
         }
     }
-
-    private fun parseConversationState(text: String): ConversationState {
-        return when {
-            text.contains("[STATUS:COMPLETE]", ignoreCase = true) -> ConversationState(
-                isComplete = true,
-                finalResult = text.replace(Regex("\\[STATUS:COMPLETE]", RegexOption.IGNORE_CASE), "").trim()
-            )
-            else -> ConversationState(isComplete = false)
-        }
-    }
 }
