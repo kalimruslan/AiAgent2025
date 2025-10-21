@@ -12,6 +12,8 @@ import ru.llm.agent.repository.ConversationRepository
 import ru.llm.agent.repository.ConversationRepositoryImpl
 import ru.llm.agent.repository.LlmRepository
 import ru.llm.agent.repository.LlmRepositoryImpl
+import ru.llm.agent.repository.LocalDbRepository
+import ru.llm.agent.repository.LocalDbRepositoryImpl
 
 public expect val yandexDeveloperToken: String
 public val repositoriesModule: Module = module {
@@ -23,7 +25,13 @@ public val repositoriesModule: Module = module {
     single<ConversationRepository> {
         ConversationRepositoryImpl(
             yandexApi = get(),
-            messageDao = get<MessageDatabase>().messageDao()
+            messageDao = get<MessageDatabase>().messageDao(),
+            settingsDao = get<MessageDatabase>().settingsDao()
+        )
+    }
+    single<LocalDbRepository>{
+        LocalDbRepositoryImpl(
+            settingsDao = get<MessageDatabase>().settingsDao()
         )
     }
 }

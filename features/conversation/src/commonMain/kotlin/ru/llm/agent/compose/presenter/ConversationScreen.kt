@@ -30,12 +30,15 @@ import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConversationScreen() {
+fun ConversationScreen(
+    onNavigateToOptions: () -> Unit
+) {
     KoinScope(CONVERSATION_CHAT_SCOPE_ID, conversationChatScopeQualifier) {
         rememberKoinModules {
             listOf(conversationKoinModule())
         }
         val viewModel = koinViewModel() as ConversationViewModel
+        viewModel.start()
         val state by viewModel.screeState.collectAsStateWithLifecycle()
 
         Scaffold(
@@ -99,6 +102,7 @@ fun ConversationScreen() {
                                 )
                             )
                         },
+                        onSettingsClick = onNavigateToOptions
                     )
                 }
 
@@ -282,12 +286,27 @@ fun MessageItem(message: ConversationMessage) {
 fun BottomBar(
     isLoading: Boolean,
     onSendMessage: (String) -> Unit,
+    onSettingsClick: () -> Unit
 ) {
     Row(
         modifier = Modifier.padding(8.dp).height(48.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         var text by remember { mutableStateOf("") }
+        Button(
+            onClick = { onSettingsClick.invoke() },
+            modifier = Modifier,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF222222), contentColor = Color.White
+            ),
+            shape = RoundedCornerShape(24.dp),
+            contentPadding = PaddingValues(0.dp),
+            enabled = !isLoading
+        ) {
+            Text(
+                "Settings", fontSize = 24.sp
+            )
+        }
         TextField(
             value = text,
             onValueChange = {

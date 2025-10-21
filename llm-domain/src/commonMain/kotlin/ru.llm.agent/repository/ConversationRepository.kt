@@ -16,7 +16,9 @@ public interface ConversationRepository {
         model: String
     ): Flow<NetworkResult<ConversationMessage>>
 
-    public suspend fun clearConversation(conversationId: String)
+    public suspend fun clearConversation(conversationId: String, initNew: Boolean)
+
+    public suspend fun deleteConversation(conversationId: String)
 
     public fun getAllConversations(): Flow<List<String>>
 }

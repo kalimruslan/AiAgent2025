@@ -2,9 +2,11 @@ package ru.llm.agent
 
 import ru.llm.agent.data.response.YaMessageResponse
 import ru.llm.agent.database.MessageEntity
+import ru.llm.agent.database.settings.SettingsEntity
 import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.PromtFormat
 import ru.llm.agent.model.Role
+import ru.llm.agent.model.Settings
 import ru.llm.agent.model.conversation.ConversationMessage
 
 public fun YaMessageResponse.toModel(usedTokens: String?, outputFormat: PromtFormat): MessageModel =
@@ -30,4 +32,19 @@ public fun MessageEntity.toModel(): ConversationMessage = ConversationMessage(
     timestamp = timestamp,
     isContinue = false,
     isComplete = false
+)
+
+public fun Settings.toEntity(): SettingsEntity = SettingsEntity(
+    temperature = temperature,
+    systemprompt = systemPrompt,
+    maxTokens = maxTokens,
+    timestamp = timestamp
+
+)
+
+public fun SettingsEntity.toModel(): Settings = Settings(
+    temperature = temperature,
+    systemPrompt = systemprompt,
+    maxTokens = maxTokens,
+    timestamp = timestamp
 )
