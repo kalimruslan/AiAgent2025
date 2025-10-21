@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import org.koin.core.module.Module
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
+import ru.llm.agent.api.ProxyApi
 import ru.llm.agent.createHttpClient
 import ru.llm.agent.api.YandexApi
 import ru.llm.agent.database.DatabaseDriverFactory
@@ -16,10 +17,14 @@ import ru.llm.agent.repository.LocalDbRepository
 import ru.llm.agent.repository.LocalDbRepositoryImpl
 
 public expect val yandexDeveloperToken: String
+
+public expect val proxyApiToken: String
+
 public val repositoriesModule: Module = module {
     single<LlmRepository> {
         LlmRepositoryImpl(
             yandexApi = get(),
+            proxyApi = get()
         )
     }
     single<ConversationRepository> {
@@ -44,7 +49,15 @@ public val networkModule: Module = module {
         )
     }
 
+    single<HttpClient>(named("ProxyApi")) {
+        createHttpClient(
+            developerToken = proxyApiToken,
+            baseUrl = "https://api.proxyapi.ru/openai/v1/"
+        )
+    }
+
     single<YandexApi> { YandexApi(httpClient = get(named("Yandex"))) }
+    single<ProxyApi> { ProxyApi(httpClient = get(named("ProxyApi"))) }
 }
 
 public val databaseModule: Module = module {

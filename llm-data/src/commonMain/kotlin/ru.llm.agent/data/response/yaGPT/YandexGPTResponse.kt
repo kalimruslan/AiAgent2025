@@ -1,4 +1,4 @@
-package ru.llm.agent.data.response
+package ru.llm.agent.data.response.yaGPT
 
 import kotlinx.serialization.Serializable
 

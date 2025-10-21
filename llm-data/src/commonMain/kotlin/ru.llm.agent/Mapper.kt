@@ -1,6 +1,7 @@
 package ru.llm.agent
 
-import ru.llm.agent.data.response.YaMessageResponse
+import ru.ai.agent.data.response.proxyapi.ProxyMessageResponse
+import ru.llm.agent.data.response.yaGPT.YaMessageResponse
 import ru.llm.agent.database.MessageEntity
 import ru.llm.agent.database.settings.SettingsEntity
 import ru.llm.agent.model.MessageModel
@@ -21,6 +22,14 @@ public fun YaMessageResponse.toModel(usedTokens: String?, outputFormat: PromtFor
         textFormat = outputFormat,
         parsedContent = null
     )
+
+public fun ProxyMessageResponse.toModel(usedTokens: String?): MessageModel = MessageModel.ResponseMessage(
+    role = this.role,
+    content = this.content,
+    tokenUsed = usedTokens.orEmpty(),
+    textFormat = PromtFormat.TEXT,
+    parsedContent = null
+)
 
 public fun MessageEntity.toModel(): ConversationMessage = ConversationMessage(
     id = id,
