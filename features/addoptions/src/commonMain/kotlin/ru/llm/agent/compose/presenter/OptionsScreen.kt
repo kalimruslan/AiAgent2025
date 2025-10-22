@@ -35,7 +35,8 @@ import kotlin.time.Instant
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OptionsScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    conversationId: String
 ) {
     KoinScope(OPTIONS_SCOPE_ID, optionsScopeQualifier) {
         rememberKoinModules {
@@ -43,18 +44,27 @@ fun OptionsScreen(
         }
         val viewModel = koinViewModel() as OptionsViewModel
         val state by viewModel.screeState.collectAsStateWithLifecycle()
-        viewModel.start()
+        viewModel.start("default_conversation")
 
         Scaffold(
             modifier = Modifier.fillMaxSize().imePadding(),
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 TopAppBar(
-                    title = { Text("Настройки") },
+                    title = { Text("Настройки параметров") },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    ),
+                    actions = {
+                        Button(
+                            onClick = {
+                                viewModel.setEvent(OptionsUIState.Event.ResetOptions)
+                            }
+                        ) {
+                            Text("Очистить")
+                        }
+                    }
                 )
             },
         ) { paddingValues ->

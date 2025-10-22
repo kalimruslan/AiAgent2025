@@ -23,7 +23,7 @@ class ConversationViewModel(
     internal val screeState = _screeState.asStateFlow()
 
     private val _events = MutableSharedFlow<ConversationUIState.Event>()
-    private val conversationId = "default_conversation"
+    val conversationId = "default_conversation"
 
     init {
         viewModelScope.launch {

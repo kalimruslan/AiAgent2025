@@ -1,4 +1,4 @@
-package ru.llm.agent.database
+package ru.llm.agent.database.messages
 
 import androidx.room.Dao
 import androidx.room.Insert

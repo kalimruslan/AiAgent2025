@@ -1,8 +1,11 @@
 package ru.llm.agent.repository
 
-import ru.llm.agent.model.Settings
+import ru.llm.agent.model.ConversationContext
 
 public interface LocalDbRepository{
-    public suspend fun saveSettings(settings: Settings)
-    public suspend fun getSettings(): Settings?
+    public suspend fun saveContextByConversation(conversationId: String, conversationContext: ConversationContext)
+    public suspend fun getContextByConversation(conversationId: String): ConversationContext?
+
+    public suspend fun removeContextByConversation(conversationId: String)
+    public suspend fun deleteAllContexts()
 }

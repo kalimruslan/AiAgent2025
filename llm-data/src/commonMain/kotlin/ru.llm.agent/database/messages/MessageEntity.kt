@@ -1,4 +1,4 @@
-package ru.llm.agent.database
+package ru.llm.agent.database.messages
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

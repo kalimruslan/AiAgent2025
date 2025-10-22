@@ -1,15 +1,15 @@
 package ru.llm.agent.compose.presenter
 
-import ru.llm.agent.model.Settings
-
 internal class OptionsUIState {
     data class State(
+        val conversationId: String,
         val systemPrompt: String? = null,
         val temperature: Double,
         val maxTokens: Int,
     ) {
         companion object Companion {
-            fun empty() = State(
+            fun default(conversationId: String) = State(
+                conversationId = conversationId,
                 systemPrompt = """
                     Ты — консультант по Андроид разработке.
                     
@@ -38,6 +38,8 @@ internal class OptionsUIState {
             val temperature: String,
             val maxTokens: String
         ) : Event
+
+        data object ResetOptions : Event
     }
 }
 
