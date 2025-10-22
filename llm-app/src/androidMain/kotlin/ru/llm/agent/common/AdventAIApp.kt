@@ -1,7 +1,7 @@
 package ru.llm.agent
 
 import android.app.Application
-import ru.llm.agent.common.app.initKoinApp
+import ru.llm.agent.common.initKoinApp
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 

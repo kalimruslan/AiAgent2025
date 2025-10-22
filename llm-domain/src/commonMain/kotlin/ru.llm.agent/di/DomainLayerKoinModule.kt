@@ -11,6 +11,7 @@ import ru.llm.agent.usecase.old.ParseJsonFormatUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 import ru.llm.agent.usecase.old.SendMessageToYandexGptUseCase
 import ru.llm.agent.usecase.SendOptionsToLocalDbUseCase
+import ru.llm.agent.usecase.old.SendMessageToProxyUseCase
 
 public val useCasesModule: Module = module {
     single<SendMessageToYandexGptUseCase> {
@@ -44,6 +45,12 @@ public val useCasesModule: Module = module {
         SendOptionsToLocalDbUseCase(
             repository = get<LocalDbRepository>(),
             conversationRepository = get<ConversationRepository>()
+        )
+    }
+
+    single<SendMessageToProxyUseCase> {
+        SendMessageToProxyUseCase(
+            repository = get<LlmRepository>()
         )
     }
 }

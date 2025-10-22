@@ -5,10 +5,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import ru.llm.agent.NetworkResult
 import ru.llm.agent.api.YandexApi
-import ru.llm.agent.data.request.CompletionOptions
-import ru.llm.agent.data.request.YaMessageRequest
-import ru.llm.agent.data.request.YaRequest
-import ru.llm.agent.data.response.YandexGPTResponse
+import ru.llm.agent.data.request.yaGPT.CompletionOptions
+import ru.llm.agent.data.request.yaGPT.YaMessageRequest
+import ru.llm.agent.data.request.yaGPT.YaRequest
+import ru.llm.agent.data.response.yaGPT.YandexGPTResponse
 import ru.llm.agent.database.MessageDao
 import ru.llm.agent.database.MessageEntity
 import ru.llm.agent.database.settings.SettingsDao
@@ -19,7 +19,6 @@ import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.model.conversation.ConversationState
 import ru.llm.agent.toModel
 import ru.llm.agent.utils.handleApi
-import java.util.logging.Logger
 
 public class ConversationRepositoryImpl(
     private val messageDao: MessageDao,

@@ -19,6 +19,7 @@ public sealed interface MessageModel {
         val parsedContent: ParseFromJsonModel?,
         val timestamp: Long = 0L,
         val tokenUsed: String = "",
+        val duration: String = ""
     ) : MessageModel
 }
 

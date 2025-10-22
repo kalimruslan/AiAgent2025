@@ -21,6 +21,17 @@ import ru.llm.agent.compose.di.optionsScopeQualifier
 import ru.llm.agent.core.uikit.LlmAgentTheme
 import kotlin.time.Instant
 
+/**
+ * День 4. Температура
+ *
+ * Запустите один и тот же запрос с температурой = 0, 0.7 и 1.2
+ *
+ * - Сравните результаты (точность, креативность, разнообразие)
+ * - Сформулируйте, для каких задач лучше подходит каждая настройка
+ *
+ * Результат: Текст или код с примерами разных ответов
+ * Формат: Видео + Код
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OptionsScreen(
