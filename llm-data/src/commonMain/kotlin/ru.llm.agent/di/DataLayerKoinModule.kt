@@ -31,12 +31,12 @@ public val repositoriesModule: Module = module {
         ConversationRepositoryImpl(
             yandexApi = get(),
             messageDao = get<MessageDatabase>().messageDao(),
-            settingsDao = get<MessageDatabase>().settingsDao()
+            contextDao = get<MessageDatabase>().settingsDao()
         )
     }
     single<LocalDbRepository>{
         LocalDbRepositoryImpl(
-            settingsDao = get<MessageDatabase>().settingsDao()
+            contextDao = get<MessageDatabase>().settingsDao()
         )
     }
 }

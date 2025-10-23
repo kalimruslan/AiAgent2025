@@ -31,7 +31,7 @@ import kotlin.time.Instant
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationScreen(
-    onNavigateToOptions: () -> Unit
+    onNavigateToOptions: (String) -> Unit
 ) {
     KoinScope(CONVERSATION_CHAT_SCOPE_ID, conversationChatScopeQualifier) {
         rememberKoinModules {
@@ -102,7 +102,7 @@ fun ConversationScreen(
                                 )
                             )
                         },
-                        onSettingsClick = onNavigateToOptions
+                        onSettingsClick = { onNavigateToOptions.invoke(viewModel.conversationId) }
                     )
                 }
 

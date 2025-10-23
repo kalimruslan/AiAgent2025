@@ -9,9 +9,9 @@ import ru.llm.agent.data.request.yaGPT.CompletionOptions
 import ru.llm.agent.data.request.yaGPT.YaMessageRequest
 import ru.llm.agent.data.request.yaGPT.YaRequest
 import ru.llm.agent.data.response.yaGPT.YandexGPTResponse
-import ru.llm.agent.database.MessageDao
-import ru.llm.agent.database.MessageEntity
-import ru.llm.agent.database.settings.SettingsDao
+import ru.llm.agent.database.messages.MessageDao
+import ru.llm.agent.database.messages.MessageEntity
+import ru.llm.agent.database.context.ContextDao
 import ru.llm.agent.mapNetworkResult
 import ru.llm.agent.model.AssistantJsonAnswer
 import ru.llm.agent.model.Role
@@ -19,20 +19,22 @@ import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.model.conversation.ConversationState
 import ru.llm.agent.toModel
 import ru.llm.agent.utils.handleApi
+import java.util.logging.Logger
 
 public class ConversationRepositoryImpl(
     private val messageDao: MessageDao,
     private val yandexApi: YandexApi,
-    private val settingsDao: SettingsDao
+    private val contextDao: ContextDao
 ) : ConversationRepository {
     override suspend fun initializeConversation(conversationId: String) {
         val existing = messageDao.getMessagesByConversationSync(conversationId)
-        val settings = settingsDao.getLastSettings()
-        if (existing.isEmpty()) {
+        val context = contextDao.getContextByConversationId(conversationId)
+
+        if (existing.isEmpty() || context?.systemprompt?.isNotEmpty() == true) {
             val systemMessage = MessageEntity(
                 conversationId = conversationId,
                 role = "system",
-                text = settings?.systemprompt
+                text = context?.systemprompt
                     ?: """
                     Ты — консультант по Андроид разработке.
 
@@ -65,7 +67,7 @@ public class ConversationRepositoryImpl(
         message: String,
         model: String,
     ): Flow<NetworkResult<ConversationMessage>> {
-        val settings = settingsDao.getLastSettings()
+        val context = contextDao.getContextByConversationId(conversationId)
         // Сохраняем сообщение пользователя
         val userEntity = MessageEntity(
             conversationId = conversationId,
@@ -83,8 +85,8 @@ public class ConversationRepositoryImpl(
         val request = YaRequest(
             modelUri = model,
             completionOptions = CompletionOptions(
-                temperature = settings?.temperature ?: 0.1,
-                maxTokens = settings?.maxTokens ?: 500
+                temperature = context?.temperature ?: 0.1,
+                maxTokens = context?.maxTokens ?: 500
             ),
             messages = allMessages.map {
                 YaMessageRequest(role = it.role.title, text = it.text)

@@ -5,17 +5,17 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import ru.llm.agent.compose.presenter.OptionsViewModel
-import ru.llm.agent.usecase.ConversationUseCase
-import ru.llm.agent.usecase.GetOptionsFromDbUseCase
-import ru.llm.agent.usecase.SendConversationMessageUseCase
-import ru.llm.agent.usecase.SendOptionsToLocalDbUseCase
+import ru.llm.agent.usecase.context.GetLocalContextUseCase
+import ru.llm.agent.usecase.context.RemoveLocalContextUseCase
+import ru.llm.agent.usecase.context.SaveLocalContextUseCase
 
 internal fun optionsKoinModule(): Module {
     return module {
         viewModel {
             OptionsViewModel(
-                getOptionsFromDbUseCase = get<GetOptionsFromDbUseCase>(),
-                sendOptionsToLocalDbUseCase = get<SendOptionsToLocalDbUseCase>()
+                getLocalContextUseCase = get<GetLocalContextUseCase>(),
+                saveLocalContextUseCase = get<SaveLocalContextUseCase>(),
+                removeLocalContextUseCase = get<RemoveLocalContextUseCase>()
             )
         }
 

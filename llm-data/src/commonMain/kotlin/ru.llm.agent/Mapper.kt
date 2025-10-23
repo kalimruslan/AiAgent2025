@@ -2,12 +2,12 @@ package ru.llm.agent
 
 import ru.ai.agent.data.response.proxyapi.ProxyMessageResponse
 import ru.llm.agent.data.response.yaGPT.YaMessageResponse
-import ru.llm.agent.database.MessageEntity
-import ru.llm.agent.database.settings.SettingsEntity
+import ru.llm.agent.database.messages.MessageEntity
+import ru.llm.agent.database.context.ContextEntity
 import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.PromtFormat
 import ru.llm.agent.model.Role
-import ru.llm.agent.model.Settings
+import ru.llm.agent.model.ConversationContext
 import ru.llm.agent.model.conversation.ConversationMessage
 
 public fun YaMessageResponse.toModel(usedTokens: String?, outputFormat: PromtFormat): MessageModel =
@@ -43,15 +43,15 @@ public fun MessageEntity.toModel(): ConversationMessage = ConversationMessage(
     isComplete = false
 )
 
-public fun Settings.toEntity(): SettingsEntity = SettingsEntity(
+public fun ConversationContext.toEntity(conversationId: String): ContextEntity = ContextEntity(
     temperature = temperature,
     systemprompt = systemPrompt,
     maxTokens = maxTokens,
-    timestamp = timestamp
-
+    timestamp = timestamp,
+    conversationId = conversationId
 )
 
-public fun SettingsEntity.toModel(): Settings = Settings(
+public fun ContextEntity.toModel(): ConversationContext = ConversationContext(
     temperature = temperature,
     systemPrompt = systemprompt,
     maxTokens = maxTokens,

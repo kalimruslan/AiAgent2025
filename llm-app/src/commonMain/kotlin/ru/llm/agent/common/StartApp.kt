@@ -5,10 +5,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.flow.flowOf
 import ru.llm.agent.compose.presenter.ConversationScreen
 import ru.llm.agent.compose.presenter.DiffTwoModelsScreen
 import ru.llm.agent.compose.presenter.OptionsScreen
@@ -34,24 +37,31 @@ fun StartApp() {
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
+    val currentBackStackEntry = navController.currentBackStackEntry
+    val conversationId = currentBackStackEntry?.savedStateHandle?.getStateFlow("conversationId", "")
+        ?.collectAsStateWithLifecycle("")
 
     NavHost(
         navController = navController,
-        startDestination = Screen.DiffTwoModels.route
+        startDestination = Screen.Conversations.route
     ) {
         composable(Screen.Conversations.route) {
             ConversationScreen(
-                onNavigateToOptions = {
+                onNavigateToOptions = { converationId ->
+                    navController.previousBackStackEntry?.savedStateHandle?.set("conversationId", conversationId)
                     navController.navigate(Screen.Options.route)
                 }
             )
         }
 
-        composable(Screen.Options.route) {
+        composable(
+            route = Screen.Options.route,
+        ) {
             OptionsScreen(
                 onNavigateBack = {
                     navController.popBackStack()
-                }
+                },
+                conversationId = conversationId?.value.orEmpty()
             )
         }
 
@@ -59,11 +69,12 @@ fun AppNavigation() {
             DiffTwoModelsScreen()
         }
     }
+
 }
 
 sealed class Screen(val route: String) {
     object Conversations : Screen("conversations")
-    object Options : Screen("options")
+    object Options : Screen("options/{conversationId}")
 
     object DiffTwoModels : Screen("diff_two_models")
 }
