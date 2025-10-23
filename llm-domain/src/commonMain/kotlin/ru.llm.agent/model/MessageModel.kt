@@ -16,7 +16,7 @@ public sealed interface MessageModel {
         val role: String,
         val content: String,
         val textFormat: PromtFormat,
-        val parsedContent: ParseFromJsonModel?,
+        val parsedContent: ParseFromJsonModel? = null,
         val timestamp: Long = 0L,
         val tokenUsed: String = "",
         val duration: String = ""

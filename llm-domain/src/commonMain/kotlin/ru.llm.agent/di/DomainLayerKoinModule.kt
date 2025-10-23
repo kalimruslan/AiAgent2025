@@ -6,6 +6,7 @@ import ru.llm.agent.repository.ConversationRepository
 import ru.llm.agent.repository.LlmRepository
 import ru.llm.agent.repository.LocalDbRepository
 import ru.llm.agent.usecase.ConversationUseCase
+import ru.llm.agent.usecase.ExecuteChainTwoAgentsUseCase
 import ru.llm.agent.usecase.context.GetLocalContextUseCase
 import ru.llm.agent.usecase.old.ParseJsonFormatUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
@@ -58,6 +59,12 @@ public val useCasesModule: Module = module {
     single<SendMessageToProxyUseCase> {
         SendMessageToProxyUseCase(
             repository = get<LlmRepository>()
+        )
+    }
+
+    single<ExecuteChainTwoAgentsUseCase> {
+        ExecuteChainTwoAgentsUseCase(
+            llmRepository = get<LlmRepository>()
         )
     }
 }
