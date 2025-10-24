@@ -12,10 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.flowOf
-import ru.llm.agent.compose.presenter.ConversationScreen
-import ru.llm.agent.compose.presenter.DiffTwoModelsScreen
-import ru.llm.agent.compose.presenter.InteractionTwoAgentsScreen
-import ru.llm.agent.compose.presenter.OptionsScreen
+import ru.llm.agent.compose.presenter.TokensScreen
 import ru.llm.agent.core.uikit.AgentAiTheme
 
 @Composable
@@ -44,34 +41,38 @@ fun AppNavigation() {
 
     NavHost(
         navController = navController,
-        startDestination = Screen.TwoAgentsInteraction.route
+        startDestination = Screen.WorkingWithTokens.route
     ) {
-        composable(Screen.Conversations.route) {
-            ConversationScreen(
-                onNavigateToOptions = { converationId ->
-                    navController.previousBackStackEntry?.savedStateHandle?.set("conversationId", conversationId)
-                    navController.navigate(Screen.Options.route)
-                }
-            )
-        }
+//        composable(Screen.Conversations.route) {
+//            ConversationScreen(
+//                onNavigateToOptions = { converationId ->
+//                    navController.previousBackStackEntry?.savedStateHandle?.set("conversationId", conversationId)
+//                    navController.navigate(Screen.Options.route)
+//                }
+//            )
+//        }
+//
+//        composable(
+//            route = Screen.Options.route,
+//        ) {
+//            OptionsScreen(
+//                onNavigateBack = {
+//                    navController.popBackStack()
+//                },
+//                conversationId = conversationId?.value.orEmpty()
+//            )
+//        }
+//
+//        composable(Screen.DiffTwoModels.route) {
+//            DiffTwoModelsScreen()
+//        }
+//
+//        composable(Screen.TwoAgentsInteraction.route) {
+//            InteractionTwoAgentsScreen()
+//        }
 
-        composable(
-            route = Screen.Options.route,
-        ) {
-            OptionsScreen(
-                onNavigateBack = {
-                    navController.popBackStack()
-                },
-                conversationId = conversationId?.value.orEmpty()
-            )
-        }
-
-        composable(Screen.DiffTwoModels.route) {
-            DiffTwoModelsScreen()
-        }
-
-        composable(Screen.TwoAgentsInteraction.route) {
-            InteractionTwoAgentsScreen()
+        composable(Screen.WorkingWithTokens.route) {
+            TokensScreen()
         }
     }
 
@@ -83,4 +84,6 @@ sealed class Screen(val route: String) {
 
     object DiffTwoModels : Screen("diff_two_models")
     object TwoAgentsInteraction : Screen("two_agents_interaction")
+    // 8 день. Работа с токенами
+    object WorkingWithTokens : Screen("working_with_tokens")
 }

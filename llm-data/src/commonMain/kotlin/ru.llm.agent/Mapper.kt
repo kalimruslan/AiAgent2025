@@ -10,7 +10,7 @@ import ru.llm.agent.model.Role
 import ru.llm.agent.model.ConversationContext
 import ru.llm.agent.model.conversation.ConversationMessage
 
-public fun YaMessageResponse.toModel(usedTokens: String?, outputFormat: PromtFormat): MessageModel =
+public fun YaMessageResponse.toModel(usedTokens: String?, outputFormat: PromtFormat = PromtFormat.TEXT): MessageModel =
     MessageModel.ResponseMessage(
         role = this.role,
         content = if (outputFormat == PromtFormat.JSON) {

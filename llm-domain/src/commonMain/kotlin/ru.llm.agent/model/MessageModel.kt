@@ -1,16 +1,19 @@
 package ru.llm.agent.model
 
-public sealed interface MessageModel {
+public sealed class MessageModel(public open val text: String) {
     public data class PromtMessage(
         val role: Role,
-        val text: String
-    ) : MessageModel
+        override val text: String
+    ) : MessageModel(text)
 
     public data class UserMessage(
         val role: Role,
         val content: String,
+        val inputTokens: Int = 0,
+        val isCompressed: Boolean = false,
+        val notCompressedTokens: Int = 0,
         val parsedFormats: Map<String, String> = emptyMap(),
-    ) : MessageModel
+    ) : MessageModel(content)
 
     public data class ResponseMessage(
         val role: String,
@@ -20,7 +23,7 @@ public sealed interface MessageModel {
         val timestamp: Long = 0L,
         val tokenUsed: String = "",
         val duration: String = ""
-    ) : MessageModel
+    ) : MessageModel(content)
 }
 
 public enum class PromtFormat {

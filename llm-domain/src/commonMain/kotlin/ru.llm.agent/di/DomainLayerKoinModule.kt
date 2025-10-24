@@ -67,4 +67,5 @@ public val useCasesModule: Module = module {
             llmRepository = get<LlmRepository>()
         )
     }
+
 }

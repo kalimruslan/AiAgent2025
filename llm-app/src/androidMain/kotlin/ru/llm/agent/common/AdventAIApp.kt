@@ -1,9 +1,10 @@
-package ru.llm.agent
+package ru.llm.agent.common
 
 import android.app.Application
-import ru.llm.agent.common.initKoinApp
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
+import ru.llm.agent.BuildConfig
+import ru.llm.agent.common.app.initKoinApp
 
 class AdventAIApp : Application() {
     override fun onCreate() {
