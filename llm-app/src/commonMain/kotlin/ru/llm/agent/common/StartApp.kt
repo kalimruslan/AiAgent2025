@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.flowOf
 import ru.llm.agent.compose.presenter.ConversationScreen
 import ru.llm.agent.compose.presenter.DiffTwoModelsScreen
+import ru.llm.agent.compose.presenter.InteractionTwoAgentsScreen
 import ru.llm.agent.compose.presenter.OptionsScreen
 import ru.llm.agent.core.uikit.AgentAiTheme
 
@@ -43,7 +44,7 @@ fun AppNavigation() {
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Conversations.route
+        startDestination = Screen.TwoAgentsInteraction.route
     ) {
         composable(Screen.Conversations.route) {
             ConversationScreen(
@@ -68,6 +69,10 @@ fun AppNavigation() {
         composable(Screen.DiffTwoModels.route) {
             DiffTwoModelsScreen()
         }
+
+        composable(Screen.TwoAgentsInteraction.route) {
+            InteractionTwoAgentsScreen()
+        }
     }
 
 }
@@ -77,4 +82,5 @@ sealed class Screen(val route: String) {
     object Options : Screen("options/{conversationId}")
 
     object DiffTwoModels : Screen("diff_two_models")
+    object TwoAgentsInteraction : Screen("two_agents_interaction")
 }

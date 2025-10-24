@@ -15,7 +15,7 @@ public interface LlmRepository {
     ): Flow<NetworkResult<MessageModel?>>
 
     public suspend fun sendMessageToYandexGPT(
-        promptMessage: MessageModel.PromtMessage,
+        promptMessage: MessageModel.PromtMessage?,
         userMessage: MessageModel.UserMessage,
         model: String,
         outputFormat: PromtFormat

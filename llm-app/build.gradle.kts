@@ -27,6 +27,7 @@ kotlin {
             implementation(projects.features.conversation)
             implementation(projects.features.addoptions)
             implementation(projects.features.difftwomodels)
+            implementation(projects.features.interactiontwoagents)
             implementation(compose.components.resources)
             implementation(libs.navigation.compose)
         }

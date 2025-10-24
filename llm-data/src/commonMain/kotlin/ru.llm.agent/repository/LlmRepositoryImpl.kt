@@ -33,9 +33,11 @@ public class LlmRepositoryImpl(
                 ProxyMessageRequest(
                     "system",
                     """
-                Отвечай кратко, только текстом, без форматирования.
-                Не используй markdown, списки или специальные символы.
-                Максимум 2-3 предложения.
+                        Отвечай строго в JSON формате по следующей схеме:
+                            {
+                              "answer": "текст ответа"
+                            }
+                        Не добавляй никакого текста до или после JSON.
                 """.trimIndent()
                 ),
                 ProxyMessageRequest("user", text)
@@ -55,7 +57,7 @@ public class LlmRepositoryImpl(
     }
 
     override suspend fun sendMessageToYandexGPT(
-        promptMessage: MessageModel.PromtMessage,
+        promptMessage: MessageModel.PromtMessage?,
         userMessage: MessageModel.UserMessage,
         model: String,
         outputFormat: PromtFormat
@@ -66,13 +68,19 @@ public class LlmRepositoryImpl(
                 temperature = 0.6,
                 maxTokens = 2000
             ),
-            messages = listOf(
-                YaMessageRequest(
-                    promptMessage.role.title,
-                    promptMessage.text
-                ),
-                YaMessageRequest(userMessage.role.title, userMessage.content)
-            )
+            messages = if(promptMessage == null){
+                listOf(
+                    YaMessageRequest(userMessage.role.title, userMessage.content)
+                )
+            } else {
+                listOf(
+                    YaMessageRequest(
+                        promptMessage.role.title,
+                        promptMessage.text
+                    ),
+                    YaMessageRequest(userMessage.role.title, userMessage.content)
+                )
+            }
         )
 
         val result = handleApi<YandexGPTResponse> {
