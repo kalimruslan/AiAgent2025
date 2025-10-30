@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import java.util.logging.Logger
 
 /**
  * NetworkResult представляет собой запрос обновлениях данных,
@@ -25,9 +26,18 @@ public sealed interface NetworkResult<out T> {
 public inline fun <T, R> Flow<NetworkResult<T>>.mapNetworkResult(crossinline transform: suspend (T) -> R): Flow<NetworkResult<R>> =
     map { result ->
         when (result) {
-            is NetworkResult.Success -> NetworkResult.Success(transform(result.data))
-            is NetworkResult.Error -> NetworkResult.Error(result.message)
-            is NetworkResult.Loading -> NetworkResult.Loading()
+            is NetworkResult.Success -> {
+                Logger.getLogger("TOKENIZER").info("Success - ${result.data}")
+                NetworkResult.Success(transform(result.data))
+            }
+            is NetworkResult.Error -> {
+                Logger.getLogger("TOKENIZER").info("Error - ${result.message}")
+                NetworkResult.Error(result.message)
+            }
+            is NetworkResult.Loading -> {
+                Logger.getLogger("TOKENIZER").info("Loading...")
+                NetworkResult.Loading()
+            }
         }
     }
 
