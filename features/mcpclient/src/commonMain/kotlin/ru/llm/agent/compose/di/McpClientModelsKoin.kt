@@ -4,12 +4,15 @@ import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
+import ru.llm.agent.InteractYaGptWithMcpService
 import ru.llm.agent.compose.presenter.McpViewModel
 
 internal fun mcpClientKoinModule(): Module {
     return module {
         viewModel {
-            McpViewModel()
+            McpViewModel(
+                interactYaGptWithMcpService = get<InteractYaGptWithMcpService>()
+            )
         }
 
         scope(mcpClientScopeQualifier) {

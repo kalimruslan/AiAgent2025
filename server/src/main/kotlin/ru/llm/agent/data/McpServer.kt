@@ -5,7 +5,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.double
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -19,13 +18,14 @@ import ru.llm.agent.mcpmodels.Capabilities
 import ru.llm.agent.mcpmodels.Content
 import ru.llm.agent.mcpmodels.InitializeResult
 import ru.llm.agent.mcpmodels.ServerInfo
-import ru.llm.agent.mcpmodels.Tool
+import ru.llm.agent.mcpmodels.McpServerTool
 import ru.llm.agent.mcpmodels.ToolsCapability
-import ru.llm.agent.mcpmodels.ToolsList
+import ru.llm.agent.mcpmodels.McpServerToolsList
+import kotlin.text.get
 
 class McpServer {
-    private val tools = listOf(
-        Tool(
+    private val mcpServerTools = listOf(
+        McpServerTool(
             name = "echo",
             description = "Возвращает введенный текст",
             inputSchema = buildJsonObject {
@@ -41,28 +41,23 @@ class McpServer {
                 }
             }
         ),
-        Tool(
+        McpServerTool(
             name = "add",
             description = "Складывает два числа",
             inputSchema = buildJsonObject {
                 put("type", "object")
                 putJsonObject("properties") {
-                    putJsonObject("a") {
-                        put("type", "number")
-                        put("description", "Первое число")
-                    }
-                    putJsonObject("b") {
-                        put("type", "number")
-                        put("description", "Второе число")
+                    putJsonObject("text") {
+                        put("type", "string")
+                        put("description", "Введите выражение")
                     }
                 }
                 putJsonArray("required") {
-                    add("a")
-                    add("b")
+                    add("text")
                 }
             }
         ),
-        Tool(
+        McpServerTool(
             name = "getCurrentTime",
             description = "Возвращает текущее время",
             inputSchema = buildJsonObject {
@@ -104,7 +99,7 @@ class McpServer {
     }
 
     private fun handleToolsList(): JsonElement {
-        val result = ToolsList(tools = tools)
+        val result = McpServerToolsList(tools = mcpServerTools)
         return Json.encodeToJsonElement(result)
     }
 
@@ -125,8 +120,23 @@ class McpServer {
                 "Echo: $text"
             }
             "add" -> {
-                val a = arguments["a"]?.jsonPrimitive?.double ?: 0.0
-                val b = arguments["b"]?.jsonPrimitive?.double ?: 0.0
+                val text = arguments["text"]?.jsonPrimitive?.content
+                    ?: throw IllegalArgumentException("Missing 'text' in arguments")
+
+                val cleanText = text.replace(" ", "")
+                val parts = cleanText.split("+")
+
+                if (parts.size != 2) {
+                    throw IllegalArgumentException("Invalid format. Expected 'a + b', got: $text")
+                }
+
+                val a = parts[0].toDoubleOrNull()
+                val b = parts[1].toDoubleOrNull()
+
+                if (a == null || b == null) {
+                    throw IllegalArgumentException("Invalid numbers: $text")
+                }
+
                 "Result: ${a + b}"
             }
             "getCurrentTime" -> {

@@ -73,11 +73,13 @@ fun AppNavigation() {
 
         composable(Screen.WorkingWithTokens.route) {
             TokensScreen()
-        }*/
+        }
 
         composable(Screen.McpClient.route) {
             McpClientScreen()
         }
+        */
+
     }
 
 }

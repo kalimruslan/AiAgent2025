@@ -4,8 +4,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
 @Serializable
-public data class Tool(
-    val name: String,
-    val description: String,
-    val inputSchema: JsonObject
+public data class McpCallToolResponse (
+    val jsonrpc: String,
+    val result: McpToolResult,
+    val id: Int
 )

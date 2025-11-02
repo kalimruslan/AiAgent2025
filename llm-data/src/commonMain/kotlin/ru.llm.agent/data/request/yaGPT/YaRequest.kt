@@ -1,12 +1,14 @@
 package ru.llm.agent.data.request.yaGPT
 
 import kotlinx.serialization.Serializable
+import ru.llm.agent.model.mcp.YaGptTool
 
 @Serializable
 public data class YaRequest(
     val modelUri: String,
     val completionOptions: CompletionOptions,
-    val messages: List<YaMessageRequest>
+    val messages: List<YaMessageRequest>,
+    val tools: List<YaGptTool>? = null
 )
 
 @Serializable

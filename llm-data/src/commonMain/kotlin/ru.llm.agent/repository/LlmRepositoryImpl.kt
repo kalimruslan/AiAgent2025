@@ -1,8 +1,6 @@
 package ru.llm.agent.repository
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.serialization.json.Json
 import ru.ai.agent.data.request.proxyapi.ProxyApiRequest
 import ru.ai.agent.data.request.proxyapi.ProxyMessageRequest
 import ru.ai.agent.data.response.proxyapi.ProxyApiResponse
@@ -15,13 +13,12 @@ import ru.llm.agent.data.request.yaGPT.YaRequest
 import ru.llm.agent.data.request.yaGPT.YaTokensRequest
 import ru.llm.agent.data.response.yaGPT.YaTokenizerResponse
 import ru.llm.agent.data.response.yaGPT.YandexGPTResponse
-import ru.llm.agent.database.messages.MessageEntity
 import ru.llm.agent.mapNetworkResult
-import ru.llm.agent.model.AssistantJsonAnswer
 import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.PromtFormat
 import ru.llm.agent.model.Role
 import ru.llm.agent.model.conversation.MessageWithTokensModels
+import ru.llm.agent.model.mcp.YaGptTool
 import ru.llm.agent.toModel
 import ru.llm.agent.utils.handleApi
 import java.util.logging.Logger
@@ -29,12 +26,12 @@ import kotlin.collections.map
 
 public class LlmRepositoryImpl(
     private val proxyApi: ProxyApi,
-    private val yandexApi: YandexApi
+    private val yandexApi: YandexApi,
 ) : LlmRepository {
 
     override suspend fun countYandexGPTTokens(
         text: String,
-        modelUri: String?
+        modelUri: String?,
     ): Flow<NetworkResult<Int>> {
         val request = YaTokensRequest(
             modelUri = modelUri.orEmpty(),
@@ -48,7 +45,7 @@ public class LlmRepositoryImpl(
         return handleApi<YaTokenizerResponse> {
             yandexApi.countTokens(request)
         }.mapNetworkResult { it: YaTokenizerResponse ->
-            it.tokens?.size?:0
+            it.tokens?.size ?: 0
         }
     }
 
@@ -56,7 +53,7 @@ public class LlmRepositoryImpl(
     override suspend fun summarizeYandexGPTText(
         text: String,
         model: String,
-        maxTokens: Int
+        maxTokens: Int,
     ): String {
         var summarizedText = ""
         val request = YaRequest(
@@ -94,7 +91,7 @@ public class LlmRepositoryImpl(
     override suspend fun sendMessageToProxyApi(
         roleSender: String,
         text: String,
-        model: String
+        model: String,
     ): Flow<NetworkResult<MessageModel?>> {
         val request = ProxyApiRequest(
             model = model,
@@ -129,7 +126,7 @@ public class LlmRepositoryImpl(
         promptMessage: MessageModel.PromtMessage?,
         userMessage: MessageModel.UserMessage,
         model: String,
-        outputFormat: PromtFormat
+        outputFormat: PromtFormat,
     ): Flow<NetworkResult<MessageModel?>> {
         val request = YaRequest(
             modelUri = model,
@@ -198,5 +195,31 @@ public class LlmRepositoryImpl(
             }
         }
 
+    }
+
+    override suspend fun sendMessagesToYandexGptWithMcp(
+        messages: List<MessageModel>,
+        availableTools: List<YaGptTool>,
+    ): Flow<NetworkResult<MessageModel?>> {
+        val request = YaRequest(
+            modelUri = "gpt://b1gonedr4v7ke927m32n/yandexgpt-lite",
+            completionOptions = CompletionOptions(
+                temperature = 0.6,
+                maxTokens = 2000
+            ),
+            messages = messages.map {
+                YaMessageRequest(role = it.role.title, text = it.text)
+            },
+            tools = availableTools.ifEmpty { null }
+        )
+
+        val result = handleApi<YandexGPTResponse> {
+            yandexApi.sendMessage(request)
+        }
+
+        return result.mapNetworkResult { response: YandexGPTResponse ->
+            Logger.getLogger("McpClient").info("Response sendMessagesToYandexGptWithMcp: ${response}")
+            response.result.alternatives.firstOrNull()?.message?.toModel()
+        }
     }
 }

@@ -10,21 +10,23 @@ import ru.llm.agent.model.Role
 import ru.llm.agent.model.ConversationContext
 import ru.llm.agent.model.conversation.ConversationMessage
 
-public fun YaMessageResponse.toModel(usedTokens: String?, outputFormat: PromtFormat = PromtFormat.TEXT): MessageModel =
+public fun YaMessageResponse.toModel(usedTokens: String? = null, outputFormat: PromtFormat = PromtFormat.TEXT): MessageModel =
     MessageModel.ResponseMessage(
-        role = this.role,
+        role = Role.valueOf(role.uppercase()),
         content = if (outputFormat == PromtFormat.JSON) {
             this.text
-                .replace(Regex("^`+"), "")
-                .replace(Regex("`+$"), "")
-        } else this.text,
+                ?.replace(Regex("^`+"), "")
+                ?.replace(Regex("`+$"), "").orEmpty()
+        } else this.text.orEmpty(),
         tokenUsed = usedTokens.orEmpty(),
         textFormat = outputFormat,
-        parsedContent = null
+        parsedContent = null,
+        toolCallList = this.toolCallList,
+        toolResultList = this.toolResultList
     )
 
 public fun ProxyMessageResponse.toModel(usedTokens: String?): MessageModel = MessageModel.ResponseMessage(
-    role = this.role,
+    role = Role.valueOf(role.uppercase()),
     content = this.content,
     tokenUsed = usedTokens.orEmpty(),
     textFormat = PromtFormat.TEXT,

@@ -1,11 +1,10 @@
-package ru.llm.agent.mcpmodels
+package ru.llm.agent.data.mcp
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
 @Serializable
-data class Tool(
+public data class McpCallToolParams (
     val name: String,
-    val description: String,
-    val inputSchema: JsonObject
+    val arguments: JsonObject
 )

@@ -11,7 +11,7 @@ kotlin {
             implementation(libs.jetbrains.lifecycle.viewmodel.compose)
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.jetbrains.compose.ui.backhandler)
-            implementation(projects.llmData)
+            implementation(projects.llmDomain)
         }
     }
 }
