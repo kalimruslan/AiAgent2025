@@ -31,7 +31,7 @@ public inline fun <T, R> Flow<NetworkResult<T>>.mapNetworkResult(crossinline tra
                 NetworkResult.Success(transform(result.data))
             }
             is NetworkResult.Error -> {
-                Logger.getLogger("TOKENIZER").info("Error - ${result.message}")
+                Logger.getLogger("McpClient").info("Error - ${result.message}")
                 NetworkResult.Error(result.message)
             }
             is NetworkResult.Loading -> {

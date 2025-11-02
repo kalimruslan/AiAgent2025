@@ -6,6 +6,7 @@ import ru.llm.agent.RoleSender
 import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.PromtFormat
 import ru.llm.agent.model.conversation.MessageWithTokensModels
+import ru.llm.agent.model.mcp.YaGptTool
 
 public interface LlmRepository {
 
@@ -29,4 +30,8 @@ public interface LlmRepository {
     public suspend fun sendMessagesToYandexGpt(
         messages: List<Map<String, String>>
     ): Flow<NetworkResult<MessageWithTokensModels?>>
+
+    public suspend fun sendMessagesToYandexGptWithMcp(
+        messages: List<MessageModel>, availableTools: List<YaGptTool>
+    ): Flow<NetworkResult<MessageModel?>>
 }

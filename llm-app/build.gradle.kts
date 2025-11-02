@@ -20,17 +20,19 @@ val localProperties = Properties().apply {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation(projects.features.chat)
+//            implementation(projects.features.chat)
             implementation(projects.core.utils)
             implementation(projects.llmData)
             implementation(projects.llmDomain)
+            implementation(compose.components.resources)
+            implementation(libs.navigation.compose)
 //            implementation(projects.features.conversation)
 //            implementation(projects.features.addoptions)
 //            implementation(projects.features.difftwomodels)
 //            implementation(projects.features.interactiontwoagents)
-            implementation(projects.features.tokens)
-            implementation(compose.components.resources)
-            implementation(libs.navigation.compose)
+//            implementation(projects.features.tokens)
+            implementation(projects.features.mcpclient)
+
         }
 
         androidMain.dependencies {

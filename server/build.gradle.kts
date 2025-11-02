@@ -1,11 +1,14 @@
+import kotlin.text.set
+
 plugins {
     kotlin("jvm")
     alias(libs.plugins.ktor)
+    alias(libs.plugins.jetbrains.kotlin.serialization)
     application
 }
 
 application {
-    mainClass.set("ru.llm.agent.ApplicationKt")
+    mainClass.set("ru.llm.agent.KtorServerKt")
 }
 
 dependencies {
@@ -14,6 +17,7 @@ dependencies {
     implementation(libs.ktor.server.netty)
     implementation(libs.ktor.server.contentNegotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.server.websockets)
 
     // Логирование
     implementation(libs.server.logback)
@@ -22,10 +26,13 @@ dependencies {
 tasks {
     shadowJar {
         manifest {
-            attributes["Main-Class"] = "ru.llm.agent.ApplicationKt"
+            attributes["Main-Class"] = "ru.llm.agent.KtorServerKt"
         }
-        archiveBaseName.set("agentAi")
-        archiveClassifier.set("")
-        archiveVersion.set("")
+        archiveFileName.set("mcp-server.jar")
+        mergeServiceFiles()
     }
+}
+
+tasks.build {
+    dependsOn(tasks.shadowJar)
 }

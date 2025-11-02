@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import org.koin.core.module.Module
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
+import ru.llm.agent.McpClient
 import ru.llm.agent.api.ProxyApi
 import ru.llm.agent.createHttpClient
 import ru.llm.agent.api.YandexApi
@@ -15,6 +16,8 @@ import ru.llm.agent.repository.LlmRepository
 import ru.llm.agent.repository.LlmRepositoryImpl
 import ru.llm.agent.repository.LocalDbRepository
 import ru.llm.agent.repository.LocalDbRepositoryImpl
+import ru.llm.agent.repository.McpRepository
+import ru.llm.agent.repository.McpRepositoryImpl
 
 public expect val yandexDeveloperToken: String
 
@@ -39,6 +42,12 @@ public val repositoriesModule: Module = module {
             contextDao = get<MessageDatabase>().settingsDao()
         )
     }
+
+    single<McpRepository>{
+        McpRepositoryImpl(
+            mcpClient = get()
+        )
+    }
 }
 
 public val networkModule: Module = module {
@@ -58,6 +67,14 @@ public val networkModule: Module = module {
 
     single<YandexApi> { YandexApi(httpClient = get(named("Yandex"))) }
     single<ProxyApi> { ProxyApi(httpClient = get(named("ProxyApi"))) }
+
+    single<McpClient> {
+        McpClient(
+            //serverUrl = "http://193.42.124.133/mcp",
+            serverUrl = "http://10.0.2.2:8080/mcp",
+            client = get(named("Yandex"))
+        )
+    }
 }
 
 public val databaseModule: Module = module {

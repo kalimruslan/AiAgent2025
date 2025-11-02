@@ -12,7 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.flowOf
-import ru.llm.agent.compose.presenter.TokensScreen
+import ru.llm.agent.compose.presenter.McpClientScreen
 import ru.llm.agent.core.uikit.AgentAiTheme
 
 @Composable
@@ -41,39 +41,45 @@ fun AppNavigation() {
 
     NavHost(
         navController = navController,
-        startDestination = Screen.WorkingWithTokens.route
+        startDestination = Screen.McpClient.route
     ) {
-//        composable(Screen.Conversations.route) {
-//            ConversationScreen(
-//                onNavigateToOptions = { converationId ->
-//                    navController.previousBackStackEntry?.savedStateHandle?.set("conversationId", conversationId)
-//                    navController.navigate(Screen.Options.route)
-//                }
-//            )
-//        }
-//
-//        composable(
-//            route = Screen.Options.route,
-//        ) {
-//            OptionsScreen(
-//                onNavigateBack = {
-//                    navController.popBackStack()
-//                },
-//                conversationId = conversationId?.value.orEmpty()
-//            )
-//        }
-//
-//        composable(Screen.DiffTwoModels.route) {
-//            DiffTwoModelsScreen()
-//        }
-//
-//        composable(Screen.TwoAgentsInteraction.route) {
-//            InteractionTwoAgentsScreen()
-//        }
+        /*composable(Screen.Conversations.route) {
+            ConversationScreen(
+                onNavigateToOptions = { converationId ->
+                    navController.previousBackStackEntry?.savedStateHandle?.set("conversationId", conversationId)
+                    navController.navigate(Screen.Options.route)
+                }
+            )
+        }
+
+        composable(
+            route = Screen.Options.route,
+        ) {
+            OptionsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                conversationId = conversationId?.value.orEmpty()
+            )
+        }
+
+        composable(Screen.DiffTwoModels.route) {
+            DiffTwoModelsScreen()
+        }
+
+        composable(Screen.TwoAgentsInteraction.route) {
+            InteractionTwoAgentsScreen()
+        }
 
         composable(Screen.WorkingWithTokens.route) {
             TokensScreen()
         }
+
+        composable(Screen.McpClient.route) {
+            McpClientScreen()
+        }
+        */
+
     }
 
 }
@@ -86,4 +92,5 @@ sealed class Screen(val route: String) {
     object TwoAgentsInteraction : Screen("two_agents_interaction")
     // 8 день. Работа с токенами
     object WorkingWithTokens : Screen("working_with_tokens")
+    object McpClient : Screen("mcp_client")
 }
