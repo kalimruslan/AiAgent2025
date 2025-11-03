@@ -5,6 +5,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,7 +34,7 @@ import kotlin.time.Instant
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationScreen(
-    onNavigateToOptions: (String) -> Unit
+    onNavigateToOptions: (String) -> Unit,
 ) {
     KoinScope(CONVERSATION_CHAT_SCOPE_ID, conversationChatScopeQualifier) {
         rememberKoinModules {
@@ -52,11 +55,13 @@ fun ConversationScreen(
                         titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     ),
                     actions = {
-                            TextButton(onClick = { viewModel.setEvent(
+                        TextButton(onClick = {
+                            viewModel.setEvent(
                                 ConversationUIState.Event.ResetConversation
-                            )}) {
-                                Text("Начать заново")
-                            }
+                            )
+                        }) {
+                            Text("Начать заново")
+                        }
                     }
                 )
             },
@@ -111,7 +116,7 @@ fun ConversationScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(LlmAgentTheme.colors.primary)
+                    .background(LlmAgentTheme.colors.background)
                     .padding(paddingValues),
                 contentAlignment = Alignment.BottomCenter,
             ) {
@@ -137,7 +142,7 @@ private fun BoxScope.MessagesContent(
     messages: List<ConversationMessage>,
     onClearError: () -> Unit,
     error: String,
-    isLoading: Boolean
+    isLoading: Boolean,
 ) {
     val messagesListState = rememberLazyListState()
 
@@ -154,32 +159,6 @@ private fun BoxScope.MessagesContent(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(vertical = 8.dp),
     ) {
-        if (messages.isEmpty() && !isLoading) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "👋 Привет!",
-                            style = MaterialTheme.typography.headlineMedium
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Я консультант и готов помочь тебе. Расскажи что тебя интересует!",
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-        }
 
         items(items = messages, key = { it.id }) { message ->
             MessageItem(message)
@@ -286,26 +265,18 @@ fun MessageItem(message: ConversationMessage) {
 fun BottomBar(
     isLoading: Boolean,
     onSendMessage: (String) -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier.padding(8.dp).height(48.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         var text by remember { mutableStateOf("") }
-        Button(
-            onClick = { onSettingsClick.invoke() },
-            modifier = Modifier,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF222222), contentColor = Color.White
-            ),
-            shape = RoundedCornerShape(24.dp),
-            contentPadding = PaddingValues(0.dp),
+        IconButton(
+            onClick = onSettingsClick,
             enabled = !isLoading
         ) {
-            Text(
-                "Settings", fontSize = 24.sp
-            )
+            Icon(Icons.Default.Settings, contentDescription = null, tint = LlmAgentTheme.colors.onBackground)
         }
         TextField(
             value = text,
@@ -324,19 +295,14 @@ fun BottomBar(
             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp)
         )
         Spacer(Modifier.width(8.dp))
-        Button(
-            onClick = { onSendMessage.invoke(text) },
-            modifier = Modifier,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF222222), contentColor = Color.White
-            ),
-            shape = RoundedCornerShape(24.dp),
-            contentPadding = PaddingValues(0.dp),
+
+        IconButton(
+            onClick = {
+                onSendMessage.invoke(text)
+            },
             enabled = !isLoading
         ) {
-            Text(
-                "-->", fontSize = 24.sp
-            )
+            Icon(modifier = Modifier.size(48.dp), imageVector = Icons.Filled.Send, contentDescription = null, tint = LlmAgentTheme.colors.onBackground)
         }
     }
 }

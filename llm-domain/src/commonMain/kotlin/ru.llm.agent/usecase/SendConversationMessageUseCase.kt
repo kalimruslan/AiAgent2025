@@ -6,6 +6,9 @@ import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.repository.ConversationRepository
 import ru.llm.agent.repository.LocalDbRepository
 
+/**
+ * Юзкейс для отправки сообщения в диалог
+ */
 public class SendConversationMessageUseCase(
     private val repository: ConversationRepository
 ){

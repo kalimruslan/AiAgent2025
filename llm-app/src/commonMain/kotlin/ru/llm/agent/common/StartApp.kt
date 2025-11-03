@@ -5,14 +5,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import kotlinx.coroutines.flow.flowOf
-import ru.llm.agent.compose.presenter.McpClientScreen
+import ru.llm.agent.compose.presenter.ConversationScreen
+import ru.llm.agent.compose.presenter.OptionsScreen
 import ru.llm.agent.core.uikit.AgentAiTheme
 
 @Composable
@@ -41,9 +40,9 @@ fun AppNavigation() {
 
     NavHost(
         navController = navController,
-        startDestination = Screen.McpClient.route
+        startDestination = Screen.Conversations.route
     ) {
-        /*composable(Screen.Conversations.route) {
+        composable(Screen.Conversations.route) {
             ConversationScreen(
                 onNavigateToOptions = { converationId ->
                     navController.previousBackStackEntry?.savedStateHandle?.set("conversationId", conversationId)
@@ -63,7 +62,9 @@ fun AppNavigation() {
             )
         }
 
-        composable(Screen.DiffTwoModels.route) {
+
+
+        /*composable(Screen.DiffTwoModels.route) {
             DiffTwoModelsScreen()
         }
 

@@ -1,3 +1,4 @@
+
 plugins {
     alias(libs.plugins.frameio.kmplib)
     alias(libs.plugins.frameio.compose)
@@ -12,6 +13,9 @@ kotlin {
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.jetbrains.compose.ui.backhandler)
             implementation(projects.llmDomain)
+
+            implementation(libs.compose.material.icons.extended)
+
         }
     }
 }

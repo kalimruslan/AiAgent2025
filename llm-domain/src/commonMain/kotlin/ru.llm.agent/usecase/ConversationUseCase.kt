@@ -4,6 +4,9 @@ import kotlinx.coroutines.flow.Flow
 import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.repository.ConversationRepository
 
+/**
+ *  Юзкейс для работы с диалогами
+ */
 public class ConversationUseCase(
     private val repository: ConversationRepository
 ){

@@ -21,11 +21,20 @@ import ru.llm.agent.toModel
 import ru.llm.agent.utils.handleApi
 import java.util.logging.Logger
 
+/**
+ * Репа для работы с диалогами
+ * @param messageDao Dao для работы с сообщениями
+ * @param yandexApi Api для работы с Yandex API
+ * @param contextDao Dao для работы с контекстом
+ */
 public class ConversationRepositoryImpl(
     private val messageDao: MessageDao,
     private val yandexApi: YandexApi,
-    private val contextDao: ContextDao
+    private val contextDao: ContextDao,
 ) : ConversationRepository {
+    /**
+     * Инициализируем диалог, смотрим пустой ли он, если да, то добавляем системное сообщение
+     */
     override suspend fun initializeConversation(conversationId: String) {
         val existing = messageDao.getMessagesByConversationSync(conversationId)
         val context = contextDao.getContextByConversationId(conversationId)
@@ -56,12 +65,18 @@ public class ConversationRepositoryImpl(
         }
     }
 
+    /**
+     * Получаем все сообщения по диалогу
+     */
     override suspend fun getMessages(conversationId: String): Flow<List<ConversationMessage>> {
         return messageDao.getMessagesByConversation(conversationId).map { entities ->
             entities.map { it.toModel() }
         }
     }
 
+    /**
+     * Отправляем сообщение в диалог
+     */
     override suspend fun sendMessage(
         conversationId: String,
         message: String,
@@ -133,30 +148,25 @@ public class ConversationRepositoryImpl(
 
     }
 
+    /**
+     * Очищаем диалог
+     */
     override suspend fun clearConversation(conversationId: String, initNew: Boolean) {
         messageDao.clearConversation(conversationId)
         if(initNew) initializeConversation(conversationId)
     }
 
+    /**
+     * Удаляем диалог
+     */
     override suspend fun deleteConversation(conversationId: String) {
         messageDao.deleteConversation(conversationId)
     }
 
+    /**
+     * Получаем все диалоги
+     */
     override fun getAllConversations(): Flow<List<String>> {
         return messageDao.getAllConversations()
-    }
-
-    private fun parseConversationState(text: String): ConversationState {
-        return when {
-            text.contains("[STATUS:COMPLETE]", ignoreCase = true) -> ConversationState(
-                isComplete = true,
-                finalResult = text.replace(
-                    Regex("\\[STATUS:COMPLETE]", RegexOption.IGNORE_CASE),
-                    ""
-                ).trim()
-            )
-
-            else -> ConversationState(isComplete = false)
-        }
     }
 }

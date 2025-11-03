@@ -26,12 +26,12 @@ kotlin {
             implementation(projects.llmDomain)
             implementation(compose.components.resources)
             implementation(libs.navigation.compose)
-//            implementation(projects.features.conversation)
-//            implementation(projects.features.addoptions)
+            implementation(projects.features.conversation)
+            implementation(projects.features.addoptions)
 //            implementation(projects.features.difftwomodels)
 //            implementation(projects.features.interactiontwoagents)
 //            implementation(projects.features.tokens)
-            implementation(projects.features.mcpclient)
+//            implementation(projects.features.mcpclient)
 
         }
 
