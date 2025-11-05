@@ -128,7 +128,8 @@ public class ConversationRepositoryImpl(
                     conversationId = conversationId,
                     role = "assistant",
                     text = parsed.answer.orEmpty(),
-                    timestamp = System.currentTimeMillis()
+                    timestamp = System.currentTimeMillis(),
+                    originalResponse = messageText
                 )
 
                 val assistantId = messageDao.insertMessage(assistantEntity)
@@ -140,7 +141,8 @@ public class ConversationRepositoryImpl(
                     text = parsed.answer.orEmpty(),
                     timestamp = assistantEntity.timestamp,
                     isContinue = parsed.isCOntinue == true,
-                    isComplete = parsed.isComplete == true
+                    isComplete = parsed.isComplete == true,
+                    originalResponse = messageText
                 )
 
             }

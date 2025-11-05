@@ -42,7 +42,8 @@ public fun MessageEntity.toModel(): ConversationMessage = ConversationMessage(
         .replace(Regex("`+$"), ""),
     timestamp = timestamp,
     isContinue = false,
-    isComplete = false
+    isComplete = false,
+    originalResponse = originalResponse
 )
 
 public fun ConversationContext.toEntity(conversationId: String): ContextEntity = ContextEntity(

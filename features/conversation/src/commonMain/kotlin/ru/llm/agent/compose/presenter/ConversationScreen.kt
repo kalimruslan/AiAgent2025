@@ -215,6 +215,7 @@ private fun BoxScope.MessagesContent(
 @Composable
 fun MessageItem(message: ConversationMessage) {
     val isUser = message.role == Role.USER
+    var showOriginalJson by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -245,6 +246,39 @@ fun MessageItem(message: ConversationMessage) {
                     else
                         MaterialTheme.colorScheme.onSecondaryContainer
                 )
+
+                // Show original JSON response if available (for assistant messages)
+                if (!isUser && message.originalResponse != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    TextButton(
+                        onClick = { showOriginalJson = !showOriginalJson },
+                        modifier = Modifier.padding(0.dp)
+                    ) {
+                        Text(
+                            text = if (showOriginalJson) "Скрыть JSON" else "Показать оригинальный JSON",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                        )
+                    }
+
+                    if (showOriginalJson) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            )
+                        ) {
+                            Text(
+                                text = message.originalResponse.orEmpty(),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(8.dp),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
 

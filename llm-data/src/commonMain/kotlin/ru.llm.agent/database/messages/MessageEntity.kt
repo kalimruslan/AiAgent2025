@@ -10,5 +10,6 @@ public data class MessageEntity (
     val conversationId: String,
     val role: String, // "system", "user", "assistant"
     val text: String,
-    val timestamp: Long
+    val timestamp: Long,
+    val originalResponse: String? = null
 )

@@ -10,7 +10,6 @@ import ru.llm.agent.repository.McpRepository
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteChainTwoAgentsUseCase
 import ru.llm.agent.usecase.context.GetLocalContextUseCase
-import ru.llm.agent.usecase.old.ParseJsonFormatUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 import ru.llm.agent.usecase.context.RemoveLocalContextUseCase
 import ru.llm.agent.usecase.old.SendMessageToYandexGptUseCase
@@ -22,9 +21,6 @@ public val useCasesModule: Module = module {
         SendMessageToYandexGptUseCase(
             repository = get<LlmRepository>()
         )
-    }
-    single<ParseJsonFormatUseCase> {
-        ParseJsonFormatUseCase()
     }
 
     single<ConversationUseCase>{
