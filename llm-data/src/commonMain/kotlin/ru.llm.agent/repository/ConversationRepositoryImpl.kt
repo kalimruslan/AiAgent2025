@@ -16,10 +16,8 @@ import ru.llm.agent.mapNetworkResult
 import ru.llm.agent.model.AssistantJsonAnswer
 import ru.llm.agent.model.Role
 import ru.llm.agent.model.conversation.ConversationMessage
-import ru.llm.agent.model.conversation.ConversationState
 import ru.llm.agent.toModel
 import ru.llm.agent.utils.handleApi
-import java.util.logging.Logger
 
 /**
  * Репа для работы с диалогами
@@ -61,7 +59,7 @@ public class ConversationRepositoryImpl(
                 """.trimIndent(),
                 timestamp = System.currentTimeMillis()
             )
-            messageDao.insertMessage(systemMessage)
+            messageDao.upsertSystemMessage(systemMessage)
         }
     }
 
@@ -155,14 +153,14 @@ public class ConversationRepositoryImpl(
      */
     override suspend fun clearConversation(conversationId: String, initNew: Boolean) {
         messageDao.clearConversation(conversationId)
-        if(initNew) initializeConversation(conversationId)
     }
 
     /**
      * Удаляем диалог
      */
-    override suspend fun deleteConversation(conversationId: String) {
+    override suspend fun deleteConversation(conversationId: String, initNew: Boolean) {
         messageDao.deleteConversation(conversationId)
+        if(initNew) initializeConversation(conversationId)
     }
 
     /**

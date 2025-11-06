@@ -19,6 +19,6 @@ public class ConversationUseCase(
     }
 
     public suspend fun clearConversation(conversationId: String){
-        repository.clearConversation(conversationId, initNew = true)
+        repository.deleteConversation(conversationId, initNew = true)
     }
 }

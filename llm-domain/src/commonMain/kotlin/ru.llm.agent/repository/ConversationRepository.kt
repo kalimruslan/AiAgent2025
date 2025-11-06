@@ -3,7 +3,6 @@ package ru.llm.agent.repository
 import kotlinx.coroutines.flow.Flow
 import ru.llm.agent.NetworkResult
 import ru.llm.agent.model.conversation.ConversationMessage
-import ru.llm.agent.model.conversation.ConversationState
 
 public interface ConversationRepository {
     public suspend fun initializeConversation(conversationId: String)
@@ -18,7 +17,7 @@ public interface ConversationRepository {
 
     public suspend fun clearConversation(conversationId: String, initNew: Boolean)
 
-    public suspend fun deleteConversation(conversationId: String)
+    public suspend fun deleteConversation(conversationId: String, initNew: Boolean)
 
     public fun getAllConversations(): Flow<List<String>>
 }

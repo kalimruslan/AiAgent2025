@@ -3,7 +3,9 @@ package ru.llm.agent.database.messages
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
+import ru.llm.agent.database.context.ContextEntity
 
 @Dao
 public interface MessageDao {
@@ -24,4 +26,21 @@ public interface MessageDao {
 
     @Query("SELECT DISTINCT conversationId FROM messages ORDER BY timestamp DESC")
     public fun getAllConversations(): Flow<List<String>>
+
+    @Query("SELECT * FROM messages WHERE conversationId = :conversationId AND role = 'system' LIMIT 1")
+    public suspend fun getSystemMessageByConversation(conversationId: String): MessageEntity?
+
+    @Update
+    public suspend fun updateMessage(message: MessageEntity): Int
+
+    public suspend fun upsertSystemMessage(message: MessageEntity) {
+        val existing = getSystemMessageByConversation(message.conversationId)
+        if (existing != null) {
+            // Обновляем
+            updateMessage(message.copy(id = existing.id))
+        } else {
+            // Вставляем новую
+            insertMessage(message)
+        }
+    }
 }
