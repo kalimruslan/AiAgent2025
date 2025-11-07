@@ -10,13 +10,16 @@ import kotlinx.coroutines.launch
 import ru.llm.agent.doActionIfError
 import ru.llm.agent.doActionIfLoading
 import ru.llm.agent.doActionIfSuccess
+import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.Role
+import ru.llm.agent.repository.ConversationRepository
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 
 class ConversationViewModel(
     private val conversationUseCase: ConversationUseCase,
-    private val sendConversationMessageUseCase: SendConversationMessageUseCase
+    private val sendConversationMessageUseCase: SendConversationMessageUseCase,
+    private val conversationRepository: ConversationRepository
 ) : ViewModel() {
 
     private val _screeState = MutableStateFlow(ConversationUIState.State.empty())
@@ -31,12 +34,15 @@ class ConversationViewModel(
                 handleEvent(it)
             }
         }
-
-
     }
 
     fun start(){
         viewModelScope.launch {
+            // Загружаем сохраненный провайдер
+            val savedProvider = conversationRepository.getSelectedProvider(conversationId)
+            _screeState.update { it.copy(selectedProvider = savedProvider) }
+
+            // Загружаем сообщения
             conversationUseCase.invoke(conversationId).collect { messages ->
                 _screeState.update {
                     it.copy(
@@ -57,6 +63,7 @@ class ConversationViewModel(
             ConversationUIState.Event.ResetConversation -> resetConversation()
             ConversationUIState.Event.ClearError -> clearError()
             ConversationUIState.Event.OpenSettings -> {}
+            is ConversationUIState.Event.SelectProvider -> selectProvider(event.provider)
         }
     }
 
@@ -70,7 +77,7 @@ class ConversationViewModel(
             sendConversationMessageUseCase.invoke(
                 conversationId = conversationId,
                 message = message,
-                model = "gpt://b1gonedr4v7ke927m32n/yandexgpt-lite"
+                provider = _screeState.value.selectedProvider
             ).collect { result ->
                 result.doActionIfLoading {
                     _screeState.update { it.copy(isLoading = true, error = "") }
@@ -92,6 +99,16 @@ class ConversationViewModel(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Выбор провайдера LLM
+     */
+    private fun selectProvider(provider: LlmProvider) {
+        viewModelScope.launch {
+            conversationRepository.saveSelectedProvider(conversationId, provider)
+            _screeState.update { it.copy(selectedProvider = provider) }
         }
     }
 

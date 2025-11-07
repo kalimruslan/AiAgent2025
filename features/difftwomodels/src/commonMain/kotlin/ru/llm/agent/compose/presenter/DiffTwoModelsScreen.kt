@@ -159,7 +159,7 @@ fun MessageItem(
     model: String,
     message: MessageModel.ResponseMessage
 ) {
-    val isUser = message.role == Role.USER.title
+    val isUser = message.role == Role.USER
 
     Row(
         modifier = Modifier.fillMaxWidth(),

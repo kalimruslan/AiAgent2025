@@ -33,6 +33,7 @@ public val repositoriesModule: Module = module {
     single<ConversationRepository> {
         ConversationRepositoryImpl(
             yandexApi = get(),
+            proxyApi = get(),
             messageDao = get<MessageDatabase>().messageDao(),
             contextDao = get<MessageDatabase>().settingsDao()
         )

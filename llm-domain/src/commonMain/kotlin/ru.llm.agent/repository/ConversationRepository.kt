@@ -2,6 +2,7 @@ package ru.llm.agent.repository
 
 import kotlinx.coroutines.flow.Flow
 import ru.llm.agent.NetworkResult
+import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.conversation.ConversationMessage
 
 public interface ConversationRepository {
@@ -12,7 +13,7 @@ public interface ConversationRepository {
     public suspend fun sendMessage(
         conversationId: String,
         message: String,
-        model: String
+        provider: LlmProvider
     ): Flow<NetworkResult<ConversationMessage>>
 
     public suspend fun clearConversation(conversationId: String, initNew: Boolean)
@@ -20,4 +21,10 @@ public interface ConversationRepository {
     public suspend fun deleteConversation(conversationId: String, initNew: Boolean)
 
     public fun getAllConversations(): Flow<List<String>>
+
+    /** Получить выбранный провайдер для диалога */
+    public suspend fun getSelectedProvider(conversationId: String): LlmProvider
+
+    /** Сохранить выбранный провайдер для диалога */
+    public suspend fun saveSelectedProvider(conversationId: String, provider: LlmProvider)
 }

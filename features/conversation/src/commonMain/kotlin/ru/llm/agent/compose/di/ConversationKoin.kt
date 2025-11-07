@@ -13,7 +13,8 @@ internal fun conversationKoinModule(): Module {
         viewModel {
             ConversationViewModel(
                 conversationUseCase = get<ConversationUseCase>(),
-                sendConversationMessageUseCase = get<SendConversationMessageUseCase>()
+                sendConversationMessageUseCase = get<SendConversationMessageUseCase>(),
+                conversationRepository = get()
             )
         }
 

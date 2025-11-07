@@ -10,5 +10,6 @@ public data class ConversationMessage(
     val timestamp: Long = System.currentTimeMillis(),
     val isContinue: Boolean,
     val isComplete: Boolean,
-    val originalResponse: String? = null
+    val originalResponse: String? = null,
+    val model: String
 )
