@@ -9,8 +9,8 @@ public data class ConversationMessage(
     val role: Role,
     val text: String,
     val timestamp: Long = System.currentTimeMillis(),
-    val isContinue: Boolean,
-    val isComplete: Boolean,
+    val isContinue: Boolean = false,
+    val isComplete: Boolean = false,
     val originalResponse: String? = null,
     val model: String,
     /** Мнения экспертов, связанные с этим сообщением (для режима Committee) */

@@ -1,6 +1,8 @@
 package ru.llm.agent.repository
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import ru.ai.agent.data.request.proxyapi.ProxyApiRequest
@@ -16,6 +18,8 @@ import ru.llm.agent.data.response.yaGPT.YandexGPTResponse
 import ru.llm.agent.database.messages.MessageDao
 import ru.llm.agent.database.messages.MessageEntity
 import ru.llm.agent.database.context.ContextDao
+import ru.llm.agent.database.expert.ExpertOpinionDao
+import ru.llm.agent.database.expert.ExpertOpinionEntity
 import ru.llm.agent.mapNetworkResult
 import ru.llm.agent.model.AssistantJsonAnswer
 import ru.llm.agent.model.LlmProvider
@@ -32,6 +36,7 @@ import java.util.logging.Logger
  * @param proxyApi Api для работы с ProxyAPI
  * @param contextDao Dao для работы с контекстом
  * @param expertRepository Репозиторий для работы с мнениями экспертов
+ * @param expertOpinionDao Dao для работы с мнениями экспертов
  */
 public class ConversationRepositoryImpl(
     private val messageDao: MessageDao,
@@ -39,6 +44,7 @@ public class ConversationRepositoryImpl(
     private val proxyApi: ProxyApi,
     private val contextDao: ContextDao,
     private val expertRepository: ExpertRepository,
+    private val expertOpinionDao: ExpertOpinionDao,
 ) : ConversationRepository {
     /**
      * Инициализируем диалог, смотрим пустой ли он, если да, то добавляем системное сообщение
@@ -87,26 +93,53 @@ public class ConversationRepositoryImpl(
      * Получаем сообщения вместе с мнениями экспертов (для режима Committee)
      */
     override suspend fun getMessagesWithExpertOpinions(conversationId: String): Flow<List<ConversationMessage>> {
-        return expertRepository.getOpinionsForConversation(conversationId).map { allOpinions ->
-            Logger.getLogger("Committe").info("allOpinions - $allOpinions")
+        // Комбинируем два Flow: сообщения и мнения экспертов
+        return messageDao.getMessagesByConversation(conversationId).combine(
+            expertOpinionDao.getOpinionsForConversation(conversationId)
+        ) { messageEntities, allOpinions ->
+
             // Группируем мнения по messageId
             val opinionsByMessageId = allOpinions.groupBy { it.messageId }
 
-            // Загружаем сообщения синхронно
-            val messages = messageDao.getMessagesByConversationSync(conversationId)
-                .map { it.toModel() }
+            // Преобразуем entities в модели
+            val messages = messageEntities.map { it.toModel() }
 
-            Logger.getLogger("Committe").info("messages - $messages")
             // Для каждого сообщения пользователя добавляем мнения экспертов
-            messages.map { message ->
+            val result = messages.map { message ->
                 if (message.role == Role.USER) {
-                    val opinions = opinionsByMessageId[message.id] ?: emptyList()
+                    val opinions = opinionsByMessageId[message.id]?.map { it.toExpertOpinion() } ?: emptyList()
+                    Logger.getLogger("Committe").info("Message ${message.id} has ${opinions.size} opinions")
                     message.copy(expertOpinions = opinions)
                 } else {
                     message
                 }
             }
+
+            result
+        }.distinctUntilChanged { old, new ->
+            // Сравниваем списки: количество сообщений и количество мнений в каждом
+            val oldSignature = old.map { "${it.id}:${it.expertOpinions.size}" }.joinToString(",")
+            val newSignature = new.map { "${it.id}:${it.expertOpinions.size}" }.joinToString(",")
+            val isEqual = oldSignature == newSignature
+
+            isEqual
         }
+    }
+
+    /**
+     * Преобразование Entity в доменную модель ExpertOpinion
+     */
+    private fun ExpertOpinionEntity.toExpertOpinion(): ru.llm.agent.model.ExpertOpinion {
+        return ru.llm.agent.model.ExpertOpinion(
+            id = id,
+            expertId = expertId,
+            expertName = expertName,
+            expertIcon = expertIcon,
+            messageId = messageId,
+            opinion = opinion,
+            timestamp = timestamp,
+            originalResponse = originalResponse
+        )
     }
 
     /**
@@ -144,9 +177,62 @@ public class ConversationRepositoryImpl(
                 context = context,
                 provider = provider
             )
-            LlmProvider.PROXY_API_GPT4O_MINI -> sendMessageToProxy(
+            LlmProvider.PROXY_API_GPT4O_MINI, LlmProvider.PROXY_API_MISTRAY_AI-> sendMessageToProxy(
                 conversationId = conversationId,
                 allMessages = allMessages,
+                context = context,
+                provider = provider
+            )
+        }
+    }
+
+    /**
+     * Отправляем сообщение с кастомным системным промптом (для экспертов)
+     * Этот метод НЕ сохраняет системный промпт и пользовательское сообщение в БД,
+     * а сразу отправляет запрос к LLM с правильными ролями
+     */
+    override suspend fun sendMessage(
+        conversationId: String,
+        message: String,
+        provider: LlmProvider,
+        systemPrompt: String,
+    ): Flow<NetworkResult<ConversationMessage>> {
+        val context = contextDao.getContextByConversationId(conversationId)
+
+        // Сохраняем выбранный провайдер
+        saveSelectedProvider(conversationId, provider)
+
+        // Формируем список сообщений с правильными ролями: system + user
+        val messages = listOf(
+            ConversationMessage(
+                id = 0L,
+                conversationId = conversationId,
+                role = Role.SYSTEM,
+                text = systemPrompt,
+                timestamp = System.currentTimeMillis(),
+                model = provider.displayName
+            ),
+            ConversationMessage(
+                id = 0L,
+                conversationId = conversationId,
+                role = Role.USER,
+                text = message,
+                timestamp = System.currentTimeMillis(),
+                model = provider.displayName
+            )
+        )
+
+        // Выбираем API в зависимости от провайдера
+        return when (provider) {
+            LlmProvider.YANDEX_GPT -> sendMessageToYandex(
+                conversationId = conversationId,
+                allMessages = messages,
+                context = context,
+                provider = provider
+            )
+            LlmProvider.PROXY_API_GPT4O_MINI, LlmProvider.PROXY_API_MISTRAY_AI -> sendMessageToProxy(
+                conversationId = conversationId,
+                allMessages = messages,
                 context = context,
                 provider = provider
             )
@@ -281,7 +367,9 @@ public class ConversationRepositoryImpl(
      * Удаляем диалог
      */
     override suspend fun deleteConversation(conversationId: String, initNew: Boolean) {
-        messageDao.deleteConversation(conversationId)
+        messageDao.deleteAll()
+        expertOpinionDao.deleteOpinionsForConversation(conversationId)
+        contextDao.deleteAllContexts()
         if(initNew) initializeConversation(conversationId)
     }
 
@@ -332,5 +420,27 @@ public class ConversationRepositoryImpl(
                 )
             )
         }
+    }
+
+    /**
+     * Сохранить только сообщение пользователя без отправки к LLM
+     */
+    override suspend fun saveUserMessage(
+        conversationId: String,
+        message: String,
+        provider: LlmProvider
+    ): Long {
+        // Сохраняем выбранный провайдер
+        saveSelectedProvider(conversationId, provider)
+
+        // Сохраняем сообщение пользователя
+        val userEntity = MessageEntity(
+            conversationId = conversationId,
+            role = "user",
+            text = message,
+            timestamp = System.currentTimeMillis(),
+            model = getSelectedProvider(conversationId).displayName
+        )
+        return messageDao.insertMessage(userEntity)
     }
 }

@@ -19,6 +19,16 @@ public interface ConversationRepository {
         provider: LlmProvider
     ): Flow<NetworkResult<ConversationMessage>>
 
+    /**
+     * Отправить сообщение с кастомным системным промптом (для экспертов и специальных кейсов)
+     */
+    public suspend fun sendMessage(
+        conversationId: String,
+        message: String,
+        provider: LlmProvider,
+        systemPrompt: String
+    ): Flow<NetworkResult<ConversationMessage>>
+
     public suspend fun clearConversation(conversationId: String, initNew: Boolean)
 
     public suspend fun deleteConversation(conversationId: String, initNew: Boolean)
@@ -30,4 +40,11 @@ public interface ConversationRepository {
 
     /** Сохранить выбранный провайдер для диалога */
     public suspend fun saveSelectedProvider(conversationId: String, provider: LlmProvider)
+
+    /** Сохранить только сообщение пользователя без отправки к LLM (для режима Committee) */
+    public suspend fun saveUserMessage(
+        conversationId: String,
+        message: String,
+        provider: LlmProvider
+    ): Long
 }

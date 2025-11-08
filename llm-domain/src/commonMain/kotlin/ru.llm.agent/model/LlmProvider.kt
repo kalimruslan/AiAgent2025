@@ -21,6 +21,14 @@ public enum class LlmProvider(
     PROXY_API_GPT4O_MINI(
         displayName = "GPT-4o-mini",
         modelId = "gpt-4o-mini"
+    ),
+
+    /**
+     * Misatray AI из OpenRouter через ProxyAPI
+     */
+    PROXY_API_MISTRAY_AI(
+        displayName = "Misatray AI",
+        modelId = "mistralai/mistral-medium-3.1"
     );
 
     public companion object {

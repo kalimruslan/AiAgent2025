@@ -2,7 +2,6 @@ package ru.llm.agent.compose.presenter
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -89,10 +87,10 @@ fun ConversationScreen(
                     actions = {
                         TextButton(onClick = {
                             viewModel.setEvent(
-                                ConversationUIState.Event.ResetConversation
+                                ConversationUIState.Event.ResetAll
                             )
                         }) {
-                            Text("Начать заново")
+                            Text("Очистить все")
                         }
                     }
                 )
@@ -122,7 +120,7 @@ fun ConversationScreen(
                                 )
                                 TextButton(onClick = {
                                     viewModel.setEvent(
-                                        ConversationUIState.Event.ResetConversation
+                                        ConversationUIState.Event.ResetAll
                                     )
                                 }) {
                                     Text("Начать заново")

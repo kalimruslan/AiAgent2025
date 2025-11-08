@@ -30,7 +30,6 @@ public class ExecuteCommitteeUseCase(
      * @param userMessage Сообщение пользователя
      * @param experts Список выбранных экспертов
      * @param provider LLM провайдер для общения с экспертами
-     * @param messageId ID сообщения пользователя (для связи мнений)
      *
      * @return Flow с результатами: сначала мнения экспертов, затем финальный синтез
      */
@@ -38,8 +37,7 @@ public class ExecuteCommitteeUseCase(
         conversationId: String,
         userMessage: String,
         experts: List<Expert>,
-        provider: LlmProvider,
-        messageId: Long
+        provider: LlmProvider
     ): Flow<NetworkResult<CommitteeResult>> = flow {
         emit(NetworkResult.Loading())
 
@@ -49,6 +47,20 @@ public class ExecuteCommitteeUseCase(
             emit(NetworkResult.Error("Не выбраны эксперты"))
             return@flow
         }
+
+        // Сначала сохраняем сообщение пользователя и получаем его ID
+        val userMessageId = conversationRepository.saveUserMessage(
+            conversationId = conversationId,
+            message = userMessage,
+            provider = provider
+        )
+
+        if (userMessageId == 0L) {
+            emit(NetworkResult.Error("Не удалось сохранить сообщение пользователя"))
+            return@flow
+        }
+
+        Logger.getLogger("Committe").info("User message saved with ID: $userMessageId")
 
         val expertOpinions = mutableListOf<ExpertOpinionResult>()
 
@@ -63,13 +75,14 @@ public class ExecuteCommitteeUseCase(
                 // Инициализируем диалог для эксперта
                 //conversationRepository.initializeConversation(expertConversationId)
                 Logger.getLogger("Committe").info("Send message to expert - ${expert.name}, conversationId - $conversationId,\n" +
-                        "message - ${expert.systemPrompt}\n\nВопрос: $userMessage")
-                // Получаем мнение эксперта
+                        "systemPrompt - ${expert.systemPrompt}\n\nВопрос: $userMessage")
+                // Получаем мнение эксперта с правильным разделением ролей
                 var expertOpinion = ""
                 conversationRepository.sendMessage(
                     conversationId = expertConversationId,
-                    message = "${expert.systemPrompt}\n\nВопрос: $userMessage",
-                    provider = provider
+                    message = userMessage,
+                    provider = provider,
+                    systemPrompt = expert.systemPrompt
                 ).collect { result ->
                     when (result) {
                         is NetworkResult.Success -> {
@@ -80,7 +93,7 @@ public class ExecuteCommitteeUseCase(
                                 expertId = expert.id,
                                 expertName = expert.name,
                                 expertIcon = expert.icon,
-                                messageId = messageId,
+                                messageId = userMessageId,
                                 conversationId = conversationId,
                                 opinion = expertOpinion,
                                 timestamp = System.currentTimeMillis(),
@@ -133,18 +146,32 @@ public class ExecuteCommitteeUseCase(
                     }
                 """.trimIndent()
 
-                Logger.getLogger("Committe").info("Synthessys prompt - $synthesisSystemPrompt\n\n$synthesisPrompt")
+                Logger.getLogger("Committe").info("Synthessys system prompt - $synthesisSystemPrompt\n\nuser prompt - $synthesisPrompt")
 
                 var finalAnswer = ""
                 conversationRepository.sendMessage(
                     conversationId = synthesisConversationId,
-                    message = "$synthesisSystemPrompt\n\n$synthesisPrompt",
-                    provider = provider
+                    message = synthesisPrompt,
+                    provider = provider,
+                    systemPrompt = synthesisSystemPrompt
                 ).collect { result ->
                     when (result) {
                         is NetworkResult.Success -> {
                             finalAnswer = result.data.text
                             Logger.getLogger("Committe").info("Synthessys SUCCESS - $finalAnswer")
+
+                            // Сохраняем synthesis как мнение специального "эксперта"
+                            expertRepository.saveExpertOpinion(
+                                expertId = "synthesis",
+                                expertName = "Синтез",
+                                expertIcon = "🎯",
+                                messageId = userMessageId,
+                                conversationId = conversationId,
+                                opinion = finalAnswer,
+                                timestamp = System.currentTimeMillis(),
+                                originalResponse = result.data.text
+                            )
+
                             emit(NetworkResult.Success(CommitteeResult.FinalSynthesis(finalAnswer)))
                         }
                         is NetworkResult.Error -> {

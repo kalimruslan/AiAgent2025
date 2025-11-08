@@ -27,6 +27,12 @@ public interface ExpertOpinionDao {
     public fun getOpinionsForConversation(conversationId: String): Flow<List<ExpertOpinionEntity>>
 
     /**
+     * Получить все мнения для диалога (синхронно)
+     */
+    @Query("SELECT * FROM expert_opinions WHERE conversationId = :conversationId ORDER BY timestamp ASC")
+    public suspend fun getOpinionsForConversationSync(conversationId: String): List<ExpertOpinionEntity>
+
+    /**
      * Удалить все мнения для диалога
      */
     @Query("DELETE FROM expert_opinions WHERE conversationId = :conversationId")

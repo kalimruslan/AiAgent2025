@@ -75,6 +75,7 @@ class ConversationViewModel(
                 ConversationMode.COMMITTEE -> {
                     // В режиме Committee загружаем сообщения вместе с мнениями экспертов
                     conversationRepository.getMessagesWithExpertOpinions(conversationId).collect { messages ->
+                        Logger.getLogger("Committe").info("messages - $messages")
 
                         _screeState.update {
                             it.copy(
@@ -94,7 +95,7 @@ class ConversationViewModel(
     private fun handleEvent(event: ConversationUIState.Event) {
         when (event) {
             is ConversationUIState.Event.SendMessage -> sendMessageToAi(event.message)
-            ConversationUIState.Event.ResetConversation -> resetConversation()
+            ConversationUIState.Event.ResetAll -> resetConversation()
             ConversationUIState.Event.ClearError -> clearError()
             ConversationUIState.Event.OpenSettings -> {}
             is ConversationUIState.Event.SelectProvider -> selectProvider(event.provider)
@@ -154,16 +155,11 @@ class ConversationViewModel(
      */
     private fun sendMessageToCommittee(message: String) {
         viewModelScope.launch {
-            // Получаем ID последнего сообщения пользователя для связи мнений экспертов
-            val messages = _screeState.value.messages
-            val lastUserMessageId = messages.lastOrNull { it.role == Role.USER }?.id ?: 0L
-
             executeCommitteeUseCase.invoke(
                 conversationId = conversationId,
                 userMessage = message,
                 experts = _screeState.value.selectedExperts,
-                provider = _screeState.value.selectedProvider,
-                messageId = lastUserMessageId
+                provider = _screeState.value.selectedProvider
             ).collect { result ->
                 result.doActionIfLoading {
                     _screeState.update { it.copy(isLoading = true, error = "") }

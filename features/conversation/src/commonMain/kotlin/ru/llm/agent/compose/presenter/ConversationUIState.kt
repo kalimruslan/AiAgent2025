@@ -36,7 +36,7 @@ internal class ConversationUIState {
 
     sealed interface Event {
         data class SendMessage(val message: String) : Event
-        data object ResetConversation : Event
+        data object ResetAll : Event
         data object ClearError : Event
         data object OpenSettings : Event
         /** Выбор провайдера LLM */

@@ -38,22 +38,23 @@ public val repositoriesModule: Module = module {
             proxyApi = get(),
             messageDao = get<MessageDatabase>().messageDao(),
             contextDao = get<MessageDatabase>().settingsDao(),
-            expertRepository = get()
+            expertRepository = get(),
+            expertOpinionDao = get<MessageDatabase>().expertOpinionDao()
         )
     }
-    single<LocalDbRepository>{
+    single<LocalDbRepository> {
         LocalDbRepositoryImpl(
             contextDao = get<MessageDatabase>().settingsDao()
         )
     }
 
-    single<McpRepository>{
+    single<McpRepository> {
         McpRepositoryImpl(
             mcpClient = get()
         )
     }
 
-    single<ExpertRepository>{
+    single<ExpertRepository> {
         ExpertRepositoryImpl(
             expertOpinionDao = get<MessageDatabase>().expertOpinionDao()
         )
@@ -68,15 +69,27 @@ public val networkModule: Module = module {
         )
     }
 
-    single<HttpClient>(named("ProxyApi")) {
+    single<HttpClient>(named("ProxyApiOpenAI")) {
         createHttpClient(
             developerToken = proxyApiToken,
             baseUrl = "https://api.proxyapi.ru/openai/v1/"
         )
     }
 
+    single<HttpClient>(named("ProxyApiOpenRouter")) {
+        createHttpClient(
+            developerToken = proxyApiToken,
+            baseUrl = "https://api.proxyapi.ru/openrouter/v1/"
+        )
+    }
+
     single<YandexApi> { YandexApi(httpClient = get(named("Yandex"))) }
-    single<ProxyApi> { ProxyApi(httpClient = get(named("ProxyApi"))) }
+    single<ProxyApi> {
+        ProxyApi(
+            httpClientOpenAi = get(named("ProxyApiOpenAI")),
+            httpClientOpenRouter = get(named("ProxyApiOpenRouter"))
+        )
+    }
 
     single<McpClient> {
         McpClient(
