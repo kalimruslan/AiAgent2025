@@ -10,6 +10,9 @@ public interface ConversationRepository {
 
     public suspend fun getMessages(conversationId: String): Flow<List<ConversationMessage>>
 
+    /** Получить сообщения вместе с мнениями экспертов (для режима Committee) */
+    public suspend fun getMessagesWithExpertOpinions(conversationId: String): Flow<List<ConversationMessage>>
+
     public suspend fun sendMessage(
         conversationId: String,
         message: String,

@@ -11,16 +11,19 @@ import ru.llm.agent.database.messages.MessageDao
 import ru.llm.agent.database.messages.MessageEntity
 import ru.llm.agent.database.context.ContextDao
 import ru.llm.agent.database.context.ContextEntity
+import ru.llm.agent.database.expert.ExpertOpinionDao
+import ru.llm.agent.database.expert.ExpertOpinionEntity
 
 @Database(
-    entities = [MessageEntity::class, ContextEntity::class],
-    version = 2,
+    entities = [MessageEntity::class, ContextEntity::class, ExpertOpinionEntity::class],
+    version = 3,
     exportSchema = true
 )
 @ConstructedBy(MessageDatabaseConstructor::class)
 public abstract class MessageDatabase : RoomDatabase() {
     public abstract fun messageDao(): MessageDao
     public abstract fun settingsDao(): ContextDao
+    public abstract fun expertOpinionDao(): ExpertOpinionDao
 
     public companion object {
         public const val DATABASE_NAME: String = "messages.db"
@@ -30,6 +33,27 @@ public abstract class MessageDatabase : RoomDatabase() {
             override fun migrate(connection: SQLiteConnection) {
                 connection.execSQL(
                     "ALTER TABLE context ADD COLUMN llmProvider TEXT DEFAULT NULL"
+                )
+            }
+        }
+
+        /** Миграция 2 -> 3: Добавление таблицы expert_opinions для хранения мнений экспертов */
+        public val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS expert_opinions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        expertId TEXT NOT NULL,
+                        expertName TEXT NOT NULL,
+                        expertIcon TEXT NOT NULL,
+                        messageId INTEGER NOT NULL,
+                        conversationId TEXT NOT NULL,
+                        opinion TEXT NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        originalResponse TEXT
+                    )
+                    """.trimIndent()
                 )
             }
         }

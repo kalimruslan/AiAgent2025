@@ -23,6 +23,7 @@ import ru.llm.agent.model.Role
 import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.toModel
 import ru.llm.agent.utils.handleApi
+import java.util.logging.Logger
 
 /**
  * Репа для работы с диалогами
@@ -30,12 +31,14 @@ import ru.llm.agent.utils.handleApi
  * @param yandexApi Api для работы с Yandex API
  * @param proxyApi Api для работы с ProxyAPI
  * @param contextDao Dao для работы с контекстом
+ * @param expertRepository Репозиторий для работы с мнениями экспертов
  */
 public class ConversationRepositoryImpl(
     private val messageDao: MessageDao,
     private val yandexApi: YandexApi,
     private val proxyApi: ProxyApi,
     private val contextDao: ContextDao,
+    private val expertRepository: ExpertRepository,
 ) : ConversationRepository {
     /**
      * Инициализируем диалог, смотрим пустой ли он, если да, то добавляем системное сообщение
@@ -77,6 +80,32 @@ public class ConversationRepositoryImpl(
     override suspend fun getMessages(conversationId: String): Flow<List<ConversationMessage>> {
         return messageDao.getMessagesByConversation(conversationId).map { entities ->
             entities.map { it.toModel() }
+        }
+    }
+
+    /**
+     * Получаем сообщения вместе с мнениями экспертов (для режима Committee)
+     */
+    override suspend fun getMessagesWithExpertOpinions(conversationId: String): Flow<List<ConversationMessage>> {
+        return expertRepository.getOpinionsForConversation(conversationId).map { allOpinions ->
+            Logger.getLogger("Committe").info("allOpinions - $allOpinions")
+            // Группируем мнения по messageId
+            val opinionsByMessageId = allOpinions.groupBy { it.messageId }
+
+            // Загружаем сообщения синхронно
+            val messages = messageDao.getMessagesByConversationSync(conversationId)
+                .map { it.toModel() }
+
+            Logger.getLogger("Committe").info("messages - $messages")
+            // Для каждого сообщения пользователя добавляем мнения экспертов
+            messages.map { message ->
+                if (message.role == Role.USER) {
+                    val opinions = opinionsByMessageId[message.id] ?: emptyList()
+                    message.copy(expertOpinions = opinions)
+                } else {
+                    message
+                }
+            }
         }
     }
 

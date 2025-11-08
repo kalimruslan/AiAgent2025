@@ -1,5 +1,6 @@
 package ru.llm.agent.model.conversation
 
+import ru.llm.agent.model.ExpertOpinion
 import ru.llm.agent.model.Role
 
 public data class ConversationMessage(
@@ -11,5 +12,7 @@ public data class ConversationMessage(
     val isContinue: Boolean,
     val isComplete: Boolean,
     val originalResponse: String? = null,
-    val model: String
+    val model: String,
+    /** Мнения экспертов, связанные с этим сообщением (для режима Committee) */
+    val expertOpinions: List<ExpertOpinion> = emptyList()
 )

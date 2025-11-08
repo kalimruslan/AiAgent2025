@@ -12,6 +12,8 @@ import ru.llm.agent.database.DatabaseDriverFactory
 import ru.llm.agent.database.MessageDatabase
 import ru.llm.agent.repository.ConversationRepository
 import ru.llm.agent.repository.ConversationRepositoryImpl
+import ru.llm.agent.repository.ExpertRepository
+import ru.llm.agent.repository.ExpertRepositoryImpl
 import ru.llm.agent.repository.LlmRepository
 import ru.llm.agent.repository.LlmRepositoryImpl
 import ru.llm.agent.repository.LocalDbRepository
@@ -35,7 +37,8 @@ public val repositoriesModule: Module = module {
             yandexApi = get(),
             proxyApi = get(),
             messageDao = get<MessageDatabase>().messageDao(),
-            contextDao = get<MessageDatabase>().settingsDao()
+            contextDao = get<MessageDatabase>().settingsDao(),
+            expertRepository = get()
         )
     }
     single<LocalDbRepository>{
@@ -47,6 +50,12 @@ public val repositoriesModule: Module = module {
     single<McpRepository>{
         McpRepositoryImpl(
             mcpClient = get()
+        )
+    }
+
+    single<ExpertRepository>{
+        ExpertRepositoryImpl(
+            expertOpinionDao = get<MessageDatabase>().expertOpinionDao()
         )
     }
 }

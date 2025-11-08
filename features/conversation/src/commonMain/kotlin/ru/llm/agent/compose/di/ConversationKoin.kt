@@ -6,6 +6,7 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import ru.llm.agent.compose.presenter.ConversationViewModel
 import ru.llm.agent.usecase.ConversationUseCase
+import ru.llm.agent.usecase.ExecuteCommitteeUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 
 internal fun conversationKoinModule(): Module {
@@ -14,7 +15,8 @@ internal fun conversationKoinModule(): Module {
             ConversationViewModel(
                 conversationUseCase = get<ConversationUseCase>(),
                 sendConversationMessageUseCase = get<SendConversationMessageUseCase>(),
-                conversationRepository = get()
+                conversationRepository = get(),
+                executeCommitteeUseCase = get<ExecuteCommitteeUseCase>()
             )
         }
 
