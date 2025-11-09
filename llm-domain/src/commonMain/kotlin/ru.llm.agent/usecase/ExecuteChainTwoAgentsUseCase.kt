@@ -1,15 +1,10 @@
 package ru.llm.agent.usecase
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
 import ru.llm.agent.NetworkResult
 import ru.llm.agent.RoleSender
-import ru.llm.agent.andThen
-import ru.llm.agent.doActionIfError
-import ru.llm.agent.doActionIfLoading
-import ru.llm.agent.doActionIfSuccess
 import ru.llm.agent.model.AgentsChainResultModel
 import ru.llm.agent.model.AssistantJsonAnswer
 import ru.llm.agent.model.MessageModel
@@ -93,65 +88,4 @@ public class ExecuteChainTwoAgentsUseCase(
             }
         }
     }
-    /*public suspend operator fun invoke(
-        initialTask: MessageModel.UserMessage
-    ): Flow<NetworkResult<AgentsChainResultModel>> {
-        var agentsChainResultModel = AgentsChainResultModel()
-        var networkResult: NetworkResult<AgentsChainResultModel> = NetworkResult.Loading()
-        return llmRepository.sendMessageToProxyApi(
-            roleSender = RoleSender.USER.type,
-            text = initialTask.content,
-            model = "gpt-4o-mini"
-        ).andThen { proxyMessageModel: MessageModel? ->
-            val parsed = Json.decodeFromString<AssistantJsonAnswer>((proxyMessageModel as MessageModel.ResponseMessage).content)
-
-            agentsChainResultModel = agentsChainResultModel.copy(
-                firstAgentMessage = parsed.answer.orEmpty()
-            )
-
-            val promtMessage = MessageModel.UserMessage(
-                role = Role.USER,
-                content = """
-                    Ты аналитик данных. Получен результат вычисления ${initialTask.content} от первого агента:
-                    ${parsed.answer.orEmpty()}
-
-                    Твоя задача:
-                            1. Проанализируй результат
-                            2. Создай практический пример использования этого результата
-                            3. Дай рекомендации
-
-                            Ответь в формате:
-                            📊 АНАЛИЗ:
-                            [твой анализ]
-
-                            💡 ПРАКТИЧЕСКИЙ ПРИМЕР:
-                            [пример использования]
-
-                            ✅ РЕКОМЕНДАЦИИ:
-                            [рекомендации]
-                """.trimIndent()
-            )
-            llmRepository.sendMessageToYandexGPT(
-                promptMessage = null,
-                userMessage= promtMessage,
-                model = "gpt://b1gonedr4v7ke927m32n/yandexgpt-lite",
-                outputFormat = PromtFormat.TEXT
-            ).collect {
-                it.doActionIfSuccess { yaMessage: MessageModel? ->
-                    agentsChainResultModel = agentsChainResultModel.copy(
-                        secondAgentMessage = (yaMessage as MessageModel.ResponseMessage).content
-                    )
-                    networkResult = NetworkResult.Success(agentsChainResultModel)
-                }
-                it.doActionIfError {
-                    networkResult = NetworkResult.Error("Какая то ошибка")
-                }
-
-                it.doActionIfLoading {
-                    networkResult = NetworkResult.Loading()
-                }
-            }
-            flow { emit(networkResult) }
-        }
-    }*/
 }

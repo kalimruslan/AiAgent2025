@@ -3,11 +3,11 @@ package ru.llm.agent.usecase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import ru.llm.agent.NetworkResult
+import ru.llm.agent.core.utils.Logger
 import ru.llm.agent.model.Expert
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.repository.ConversationRepository
 import ru.llm.agent.repository.ExpertRepository
-import java.util.logging.Logger
 import kotlin.math.exp
 
 /**
@@ -20,7 +20,8 @@ import kotlin.math.exp
  */
 public class ExecuteCommitteeUseCase(
     private val conversationRepository: ConversationRepository,
-    private val expertRepository: ExpertRepository
+    private val expertRepository: ExpertRepository,
+    private val logger: Logger,
 ) {
 
     /**
@@ -41,7 +42,7 @@ public class ExecuteCommitteeUseCase(
     ): Flow<NetworkResult<CommitteeResult>> = flow {
         emit(NetworkResult.Loading())
 
-        Logger.getLogger("Committe").info("Execute comitte START - experts - ${experts.map { it.name }}")
+        logger.info("Execute comitte START - experts - ${experts.map { it.name }}")
 
         if (experts.isEmpty()) {
             emit(NetworkResult.Error("Не выбраны эксперты"))
@@ -60,7 +61,7 @@ public class ExecuteCommitteeUseCase(
             return@flow
         }
 
-        Logger.getLogger("Committe").info("User message saved with ID: $userMessageId")
+        logger.info("User message saved with ID: $userMessageId")
 
         val expertOpinions = mutableListOf<ExpertOpinionResult>()
 
@@ -74,7 +75,7 @@ public class ExecuteCommitteeUseCase(
 
                 // Инициализируем диалог для эксперта
                 //conversationRepository.initializeConversation(expertConversationId)
-                Logger.getLogger("Committe").info("Send message to expert - ${expert.name}, conversationId - $conversationId,\n" +
+                logger.info("Send message to expert - ${expert.name}, conversationId - $conversationId,\n" +
                         "systemPrompt - ${expert.systemPrompt}\n\nВопрос: $userMessage")
                 // Получаем мнение эксперта с правильным разделением ролей
                 var expertOpinion = ""
@@ -104,7 +105,7 @@ public class ExecuteCommitteeUseCase(
                                 expert = expert,
                                 opinion = expertOpinion
                             )
-                            Logger.getLogger("Committe").info("Expert ${expert.name} opinion result - $opinionResult")
+                            logger.info("Expert ${expert.name} opinion result - $opinionResult")
                             expertOpinions.add(opinionResult)
 
                             // Эмитим каждое мнение эксперта
@@ -146,7 +147,7 @@ public class ExecuteCommitteeUseCase(
                     }
                 """.trimIndent()
 
-                Logger.getLogger("Committe").info("Synthessys system prompt - $synthesisSystemPrompt\n\nuser prompt - $synthesisPrompt")
+                logger.info("Synthessys system prompt - $synthesisSystemPrompt\n\nuser prompt - $synthesisPrompt")
 
                 var finalAnswer = ""
                 conversationRepository.sendMessage(
@@ -158,7 +159,7 @@ public class ExecuteCommitteeUseCase(
                     when (result) {
                         is NetworkResult.Success -> {
                             finalAnswer = result.data.text
-                            Logger.getLogger("Committe").info("Synthessys SUCCESS - $finalAnswer")
+                            logger.info("Synthessys SUCCESS - $finalAnswer")
 
                             // Сохраняем synthesis как мнение специального "эксперта"
                             expertRepository.saveExpertOpinion(

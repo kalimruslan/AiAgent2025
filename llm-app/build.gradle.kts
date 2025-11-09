@@ -22,8 +22,10 @@ kotlin {
         commonMain.dependencies {
 //            implementation(projects.features.chat)
             implementation(projects.core.utils)
-            implementation(projects.llmData)
             implementation(projects.llmDomain)
+            // IMPORTANT: Only for DI modules (networkModule, repositoriesModule, databaseModule, platformDatabaseModule)
+            // DO NOT use data layer classes directly in application code!
+            implementation(projects.llmData)
             implementation(compose.components.resources)
             implementation(libs.navigation.compose)
             implementation(projects.features.conversation)

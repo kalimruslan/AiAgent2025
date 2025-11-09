@@ -3,6 +3,7 @@ package ru.llm.agent.di
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import ru.llm.agent.InteractYaGptWithMcpService
+import ru.llm.agent.core.utils.createLogger
 import ru.llm.agent.repository.ConversationRepository
 import ru.llm.agent.repository.ExpertRepository
 import ru.llm.agent.repository.LlmRepository
@@ -14,17 +15,9 @@ import ru.llm.agent.usecase.ExecuteCommitteeUseCase
 import ru.llm.agent.usecase.context.GetLocalContextUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 import ru.llm.agent.usecase.context.RemoveLocalContextUseCase
-import ru.llm.agent.usecase.old.SendMessageToYandexGptUseCase
 import ru.llm.agent.usecase.context.SaveLocalContextUseCase
-import ru.llm.agent.usecase.old.SendMessageToProxyUseCase
 
 public val useCasesModule: Module = module {
-    single<SendMessageToYandexGptUseCase> {
-        SendMessageToYandexGptUseCase(
-            repository = get<LlmRepository>()
-        )
-    }
-
     single<ConversationUseCase>{
         ConversationUseCase(
             repository = get<ConversationRepository>()
@@ -56,12 +49,6 @@ public val useCasesModule: Module = module {
         )
     }
 
-    single<SendMessageToProxyUseCase> {
-        SendMessageToProxyUseCase(
-            repository = get<LlmRepository>()
-        )
-    }
-
     single<ExecuteChainTwoAgentsUseCase> {
         ExecuteChainTwoAgentsUseCase(
             llmRepository = get<LlmRepository>()
@@ -71,14 +58,16 @@ public val useCasesModule: Module = module {
     single<InteractYaGptWithMcpService>{
         InteractYaGptWithMcpService(
             llmRepository = get<LlmRepository>(),
-            mcpRepository = get<McpRepository>()
+            mcpRepository = get<McpRepository>(),
+            logger = createLogger("McpService")
         )
     }
 
     single<ExecuteCommitteeUseCase>{
         ExecuteCommitteeUseCase(
             conversationRepository = get<ConversationRepository>(),
-            expertRepository = get<ExpertRepository>()
+            expertRepository = get<ExpertRepository>(),
+            logger = createLogger("Committee")
         )
     }
 

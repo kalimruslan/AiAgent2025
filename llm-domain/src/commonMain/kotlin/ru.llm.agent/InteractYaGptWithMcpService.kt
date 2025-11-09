@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import ru.llm.agent.core.utils.Logger
 import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.Role
 import ru.llm.agent.model.mcp.FunctionResult
@@ -13,12 +14,12 @@ import ru.llm.agent.model.mcp.ToolResultList
 import ru.llm.agent.model.mcp.YaGptTool
 import ru.llm.agent.repository.LlmRepository
 import ru.llm.agent.repository.McpRepository
-import java.util.logging.Logger
 import kotlin.let
 
 public class InteractYaGptWithMcpService(
     private val mcpRepository: McpRepository,
     private val llmRepository: LlmRepository,
+    private val logger: Logger,
 ) {
     private val conversationHistory = mutableListOf<MessageModel>()
     private var availableTools: List<YaGptTool> = emptyList()
@@ -50,13 +51,13 @@ public class InteractYaGptWithMcpService(
                     when (result) {
                         is NetworkResult.Loading -> emit(NetworkResult.Loading())
                         is NetworkResult.Error -> {
-                            Logger.getLogger("McpClient").info("Error: ${result.message}")
+                            logger.info("Error: ${result.message}")
                             emit(NetworkResult.Error(result.message))
                         }
 
                         is NetworkResult.Success -> {
                             val message = result.data
-                            Logger.getLogger("McpClient").info("Received message: $message")
+                            logger.info("Received message: $message")
                             result.data?.let {
                                 //conversationHistory.add(it)
                                 val responseMessage = it as MessageModel.ResponseMessage
@@ -71,13 +72,11 @@ public class InteractYaGptWithMcpService(
                                     val toolResults = mutableListOf<ToolResult>()
 
                                     for (toolCall in toolCalls) {
-                                        Logger.getLogger("McpClient")
-                                            .info("chat toolCall - $toolCall")
+                                        logger.info("chat toolCall - $toolCall")
 
                                         try {
                                             val arguments = toolCall.functionCall.arguments
-                                            Logger.getLogger("McpClient")
-                                                .info("chat arguments - $arguments")
+                                            logger.info("chat arguments - $arguments")
 
                                             val result = mcpRepository.callTool(
                                                 name = toolCall.functionCall.name,
@@ -91,8 +90,7 @@ public class InteractYaGptWithMcpService(
                                                     appendLine("${toolCall.functionCall.name}: $result")
                                                 }
                                             )
-                                            Logger.getLogger("McpClient")
-                                                .info("call tool - $toolResults")
+                                            logger.info("call tool - $toolResults")
 
                                             conversationHistory.add(message)
                                             emit(NetworkResult.Success(message))
@@ -117,14 +115,6 @@ public class InteractYaGptWithMcpService(
                                             )
                                         }
                                     }
-
-                                    // Добавляем результаты вызовов в историю
-//                            conversationHistory.add(
-//                                MessageModel.ToolsMessage(
-//                                    role = Role.FUNCTION,
-//                                    toolResultList = ToolResultList(toolResults = toolResults)
-//                                )
-//                            )
                                 }
                             } ?: emit(NetworkResult.Error("Error"))
                         }

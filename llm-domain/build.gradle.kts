@@ -13,6 +13,7 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
+                implementation(projects.core.utils)
                 implementation(libs.ktor.serialization.kotlinx.json)
             }
         }
