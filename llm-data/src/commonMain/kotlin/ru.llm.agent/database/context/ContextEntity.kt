@@ -15,5 +15,7 @@ public data class ContextEntity(
     val temperature: Double,
     val systemprompt: String,
     val maxTokens: Int,
-    val timestamp: Long
+    val timestamp: Long,
+    /** Выбранный LLM провайдер (YANDEX_GPT или PROXY_API_GPT4O_MINI) */
+    val llmProvider: String? = null
 )

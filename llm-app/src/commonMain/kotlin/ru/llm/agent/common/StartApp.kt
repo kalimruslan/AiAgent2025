@@ -62,25 +62,6 @@ fun AppNavigation() {
             )
         }
 
-
-
-        /*composable(Screen.DiffTwoModels.route) {
-            DiffTwoModelsScreen()
-        }
-
-        composable(Screen.TwoAgentsInteraction.route) {
-            InteractionTwoAgentsScreen()
-        }
-
-        composable(Screen.WorkingWithTokens.route) {
-            TokensScreen()
-        }
-
-        composable(Screen.McpClient.route) {
-            McpClientScreen()
-        }
-        */
-
     }
 
 }
@@ -88,10 +69,4 @@ fun AppNavigation() {
 sealed class Screen(val route: String) {
     object Conversations : Screen("conversations")
     object Options : Screen("options/{conversationId}")
-
-    object DiffTwoModels : Screen("diff_two_models")
-    object TwoAgentsInteraction : Screen("two_agents_interaction")
-    // 8 день. Работа с токенами
-    object WorkingWithTokens : Screen("working_with_tokens")
-    object McpClient : Screen("mcp_client")
 }

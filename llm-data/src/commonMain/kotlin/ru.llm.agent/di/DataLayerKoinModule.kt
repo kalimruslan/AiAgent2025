@@ -12,6 +12,8 @@ import ru.llm.agent.database.DatabaseDriverFactory
 import ru.llm.agent.database.MessageDatabase
 import ru.llm.agent.repository.ConversationRepository
 import ru.llm.agent.repository.ConversationRepositoryImpl
+import ru.llm.agent.repository.ExpertRepository
+import ru.llm.agent.repository.ExpertRepositoryImpl
 import ru.llm.agent.repository.LlmRepository
 import ru.llm.agent.repository.LlmRepositoryImpl
 import ru.llm.agent.repository.LocalDbRepository
@@ -33,19 +35,28 @@ public val repositoriesModule: Module = module {
     single<ConversationRepository> {
         ConversationRepositoryImpl(
             yandexApi = get(),
+            proxyApi = get(),
             messageDao = get<MessageDatabase>().messageDao(),
-            contextDao = get<MessageDatabase>().settingsDao()
+            contextDao = get<MessageDatabase>().settingsDao(),
+            expertRepository = get(),
+            expertOpinionDao = get<MessageDatabase>().expertOpinionDao()
         )
     }
-    single<LocalDbRepository>{
+    single<LocalDbRepository> {
         LocalDbRepositoryImpl(
             contextDao = get<MessageDatabase>().settingsDao()
         )
     }
 
-    single<McpRepository>{
+    single<McpRepository> {
         McpRepositoryImpl(
             mcpClient = get()
+        )
+    }
+
+    single<ExpertRepository> {
+        ExpertRepositoryImpl(
+            expertOpinionDao = get<MessageDatabase>().expertOpinionDao()
         )
     }
 }
@@ -58,15 +69,27 @@ public val networkModule: Module = module {
         )
     }
 
-    single<HttpClient>(named("ProxyApi")) {
+    single<HttpClient>(named("ProxyApiOpenAI")) {
         createHttpClient(
             developerToken = proxyApiToken,
             baseUrl = "https://api.proxyapi.ru/openai/v1/"
         )
     }
 
+    single<HttpClient>(named("ProxyApiOpenRouter")) {
+        createHttpClient(
+            developerToken = proxyApiToken,
+            baseUrl = "https://api.proxyapi.ru/openrouter/v1/"
+        )
+    }
+
     single<YandexApi> { YandexApi(httpClient = get(named("Yandex"))) }
-    single<ProxyApi> { ProxyApi(httpClient = get(named("ProxyApi"))) }
+    single<ProxyApi> {
+        ProxyApi(
+            httpClientOpenAi = get(named("ProxyApiOpenAI")),
+            httpClientOpenRouter = get(named("ProxyApiOpenRouter"))
+        )
+    }
 
     single<McpClient> {
         McpClient(

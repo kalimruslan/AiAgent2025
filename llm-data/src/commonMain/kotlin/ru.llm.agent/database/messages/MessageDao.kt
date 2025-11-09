@@ -24,6 +24,9 @@ public interface MessageDao {
     @Query("DELETE FROM messages WHERE conversationId = :conversationId")
     public suspend fun deleteConversation(conversationId: String)
 
+    @Query("DELETE FROM messages")
+    public suspend fun deleteAll()
+
     @Query("SELECT DISTINCT conversationId FROM messages ORDER BY timestamp DESC")
     public fun getAllConversations(): Flow<List<String>>
 

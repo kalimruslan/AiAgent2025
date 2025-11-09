@@ -11,5 +11,6 @@ public data class MessageEntity (
     val role: String, // "system", "user", "assistant"
     val text: String,
     val timestamp: Long,
-    val originalResponse: String? = null
+    val originalResponse: String? = null,
+    val model: String
 )
