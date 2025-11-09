@@ -1,32 +1,32 @@
 package ru.llm.agent.core.utils
 
 /**
- * Cross-platform logger interface for Clean Architecture compliance.
- * Allows logging without platform-specific dependencies in domain layer.
+ * Кроссплатформенный интерфейс логгера для соблюдения Clean Architecture.
+ * Позволяет логировать без platform-specific зависимостей в domain layer.
  */
 public interface Logger {
     /**
-     * Log informational message
+     * Логирование информационного сообщения
      */
     public fun info(message: String)
 
     /**
-     * Log warning message
+     * Логирование предупреждения
      */
     public fun warning(message: String)
 
     /**
-     * Log error message
+     * Логирование ошибки
      */
     public fun error(message: String, throwable: Throwable? = null)
 
     /**
-     * Log debug message
+     * Логирование отладочного сообщения
      */
     public fun debug(message: String)
 }
 
 /**
- * Factory to create platform-specific logger instances
+ * Фабрика для создания platform-specific экземпляров логгера
  */
 public expect fun createLogger(tag: String): Logger

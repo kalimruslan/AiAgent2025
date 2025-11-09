@@ -8,6 +8,36 @@ This is a **Kotlin Multiplatform (KMP)** project implementing an LLM Agent syste
 
 Target platforms: **Android** and **Desktop (JVM)**
 
+## Code Style and Conventions
+
+### Language for Comments and Documentation
+
+**IMPORTANT**: All code comments, KDoc documentation, and commit messages **MUST be written in Russian**.
+
+This includes:
+- KDoc comments (`/** */`) for classes, functions, and properties
+- Single-line comments (`//`)
+- Multi-line comments (`/* */`)
+- Git commit messages
+- TODO comments
+- Code review comments
+
+**Example:**
+```kotlin
+/**
+ * Кроссплатформенный интерфейс логгера для соблюдения Clean Architecture.
+ * Позволяет логировать без platform-specific зависимостей в domain layer.
+ */
+public interface Logger {
+    /**
+     * Логирование информационного сообщения
+     */
+    public fun info(message: String)
+}
+```
+
+**Exception**: Technical identifiers (class names, function names, variable names) remain in English as per Kotlin conventions.
+
 ## Common Commands
 
 ### Build & Run
