@@ -17,6 +17,17 @@ import ru.llm.agent.repository.LlmRepository
 import ru.llm.agent.repository.McpRepository
 import kotlin.let
 
+/**
+ * Сервис для взаимодействия с YandexGPT через MCP (Model Context Protocol).
+ * Реализует полный цикл function calling:
+ * 1. Получение списка доступных инструментов с MCP сервера
+ * 2. Отправка сообщения с tool definitions в YandexGPT
+ * 3. Обработка tool calls от модели
+ * 4. Выполнение инструментов через MCP
+ * 5. Отправка результатов обратно в модель
+ *
+ * Поддерживает до 3 итераций tool calling для решения сложных задач.
+ */
 public class InteractYaGptWithMcpService(
     private val mcpRepository: McpRepository,
     private val llmRepository: LlmRepository,
@@ -25,6 +36,11 @@ public class InteractYaGptWithMcpService(
     private val conversationHistory = mutableListOf<MessageModel>()
     private var availableTools: List<YaGptTool> = emptyList()
 
+    /**
+     * Получить список доступных MCP инструментов
+     *
+     * @return Flow со списком инструментов в формате YandexGPT
+     */
     public fun getTools(): Flow<List<YaGptTool>> {
         return flow {
             // Получаем список инструментов с MCP сервера
@@ -34,6 +50,17 @@ public class InteractYaGptWithMcpService(
 
     }
 
+    /**
+     * Отправить сообщение в YandexGPT с поддержкой MCP function calling
+     *
+     * Автоматически обрабатывает tool calls:
+     * - Выполняет запрошенные инструменты
+     * - Отправляет результаты обратно в модель
+     * - Повторяет процесс до получения финального ответа (макс. 3 итерации)
+     *
+     * @param userMessage Сообщение пользователя
+     * @return Flow с результатом обработки сообщения
+     */
     public fun chat(userMessage: String): Flow<NetworkResult<MessageModel>> {
         return flow {
             conversationHistory.add(

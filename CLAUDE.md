@@ -79,11 +79,7 @@ The project follows **Clean Architecture** with clear layer separation:
 ├── llm-data/             # Data layer: repository implementations, API clients, Room DB
 ├── features/             # Feature modules (UI + ViewModels)
 │   ├── conversation/     # Main chat interface with AI
-│   ├── addoptions/       # Settings and configuration
-│   ├── difftwomodels/    # Compare two LLM models
-│   ├── interactiontwoagents/  # Multi-agent interaction
-│   ├── tokens/           # Token counting and management
-│   └── mcpclient/        # MCP protocol client
+│   └── addoptions/       # Settings and configuration
 ├── core/
 │   ├── uikit/            # Shared UI components & theme
 │   └── utils/            # Platform abstractions and utilities
@@ -278,7 +274,7 @@ plugins {
 ### API Clients
 - `llm-data/src/commonMain/kotlin/ru/llm/agent/api/yandex/YandexApi.kt`
 - `llm-data/src/commonMain/kotlin/ru/llm/agent/api/proxy/ProxyApi.kt`
-- `llm-data/src/commonMain/kotlin/ru/llm/agent/api/mcp/McpClient.kt`
+- `llm-data/src/commonMain/kotlin/ru.llm.agent/McpClient.kt`
 
 ### MCP Server
 - Ktor server implementation: `server/src/main/kotlin/`
