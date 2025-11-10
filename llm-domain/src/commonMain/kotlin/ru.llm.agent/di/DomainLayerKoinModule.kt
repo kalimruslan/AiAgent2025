@@ -69,7 +69,9 @@ public val useCasesModule: Module = module {
 
     single<ExecuteChainTwoAgentsUseCase> {
         ExecuteChainTwoAgentsUseCase(
-            llmRepository = get<LlmRepository>()
+            llmRepository = get<LlmRepository>(),
+            parseAssistantResponseUseCase = get<ParseAssistantResponseUseCase>(),
+            systemPromptBuilder = get<SystemPromptBuilder>()
         )
     }
 

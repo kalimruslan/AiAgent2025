@@ -80,30 +80,7 @@ public class MessageSendingServiceImpl(
             val rawResponse = response.result.alternatives.firstOrNull()?.message?.text
                 ?: throw Exception("Empty response from Yandex API")
 
-            // Парсим ответ через use case
-            val parseResult = parseAssistantResponseUseCase(rawResponse)
-            val parsed = parseResult.getOrElse {
-                logger.error("Ошибка парсинга ответа от Yandex: ${it.message}")
-                throw it
-            }
-
-            // Формируем сообщение для сохранения
-            val conversationMessage = ConversationMessage(
-                id = 0L, // ID будет присвоен при сохранении в БД
-                conversationId = conversationId,
-                role = Role.ASSISTANT,
-                text = parsed.answer.orEmpty(),
-                timestamp = System.currentTimeMillis(),
-                isContinue = parsed.isCOntinue == true,
-                isComplete = parsed.isComplete == true,
-                originalResponse = rawResponse,
-                model = provider.displayName
-            )
-
-            MessageSendingResult(
-                conversationMessage = conversationMessage,
-                rawResponse = rawResponse
-            )
+            parseAndCreateMessage(conversationId, rawResponse, provider, "Yandex")
         }
     }
 
@@ -134,30 +111,49 @@ public class MessageSendingServiceImpl(
             val rawResponse = response.choices.firstOrNull()?.message?.content
                 ?: throw Exception("Empty response from Proxy API")
 
-            // Парсим ответ через use case
-            val parseResult = parseAssistantResponseUseCase(rawResponse)
-            val parsed = parseResult.getOrElse {
-                logger.error("Ошибка парсинга ответа от ProxyAPI: ${it.message}")
-                throw it
-            }
-
-            // Формируем сообщение для сохранения
-            val conversationMessage = ConversationMessage(
-                id = 0L, // ID будет присвоен при сохранении в БД
-                conversationId = conversationId,
-                role = Role.ASSISTANT,
-                text = parsed.answer.orEmpty(),
-                timestamp = System.currentTimeMillis(),
-                isContinue = parsed.isCOntinue == true,
-                isComplete = parsed.isComplete == true,
-                originalResponse = rawResponse,
-                model = provider.displayName
-            )
-
-            MessageSendingResult(
-                conversationMessage = conversationMessage,
-                rawResponse = rawResponse
-            )
+            parseAndCreateMessage(conversationId, rawResponse, provider, "ProxyAPI")
         }
+    }
+
+    /**
+     * Общий метод для парсинга ответа и создания сообщения.
+     * Устраняет дублирование кода между sendToYandex и sendToProxy.
+     *
+     * @param conversationId ID диалога
+     * @param rawResponse Сырой ответ от API
+     * @param provider LLM провайдер
+     * @param providerName Имя провайдера для логирования
+     * @return Результат отправки сообщения
+     */
+    private fun parseAndCreateMessage(
+        conversationId: String,
+        rawResponse: String,
+        provider: LlmProvider,
+        providerName: String
+    ): MessageSendingResult {
+        // Парсим ответ через use case
+        val parseResult = parseAssistantResponseUseCase(rawResponse)
+        val parsed = parseResult.getOrElse {
+            logger.error("Ошибка парсинга ответа от $providerName: ${it.message}")
+            throw it
+        }
+
+        // Формируем сообщение для сохранения
+        val conversationMessage = ConversationMessage(
+            id = 0L, // ID будет присвоен при сохранении в БД
+            conversationId = conversationId,
+            role = Role.ASSISTANT,
+            text = parsed.answer.orEmpty(),
+            timestamp = System.currentTimeMillis(),
+            isContinue = parsed.isCOntinue == true,
+            isComplete = parsed.isComplete == true,
+            originalResponse = rawResponse,
+            model = provider.displayName
+        )
+
+        return MessageSendingResult(
+            conversationMessage = conversationMessage,
+            rawResponse = rawResponse
+        )
     }
 }
