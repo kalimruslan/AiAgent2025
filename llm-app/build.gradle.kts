@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.frameio.kmplib)
     alias(libs.plugins.frameio.compose)
+    alias(libs.plugins.jetbrains.kotlin.serialization)
     alias(libs.plugins.manifestGuard)
     alias(libs.plugins.jetbrains.compose.hotreload)
 }
