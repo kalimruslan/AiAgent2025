@@ -24,6 +24,8 @@ import java.util.logging.Logger
 class ConversationViewModel(
     private val conversationUseCase: ConversationUseCase,
     private val sendConversationMessageUseCase: SendConversationMessageUseCase,
+    private val getSelectedProviderUseCase: ru.llm.agent.usecase.GetSelectedProviderUseCase,
+    private val saveSelectedProviderUseCase: ru.llm.agent.usecase.SaveSelectedProviderUseCase,
     private val conversationRepository: ConversationRepository,
     private val executeCommitteeUseCase: ExecuteCommitteeUseCase
 ) : ViewModel() {
@@ -45,7 +47,7 @@ class ConversationViewModel(
     fun start(){
         viewModelScope.launch {
             // Загружаем сохраненный провайдер
-            val savedProvider = conversationRepository.getSelectedProvider(conversationId)
+            val savedProvider = getSelectedProviderUseCase(conversationId)
             _screeState.update { it.copy(selectedProvider = savedProvider) }
 
             // Загружаем сообщения
@@ -199,7 +201,7 @@ class ConversationViewModel(
      */
     private fun selectProvider(provider: LlmProvider) {
         viewModelScope.launch {
-            conversationRepository.saveSelectedProvider(conversationId, provider)
+            saveSelectedProviderUseCase(conversationId, provider)
             _screeState.update { it.copy(selectedProvider = provider) }
         }
     }

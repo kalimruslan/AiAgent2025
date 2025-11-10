@@ -134,4 +134,40 @@ public class SystemPromptBuilder {
             Не добавляй никакого текста до или после JSON.
         """.trimIndent()
     }
+
+    /**
+     * Создает user message с вопросом пользователя и мнениями экспертов для синтеза.
+     *
+     * @param userQuestion Вопрос пользователя
+     * @param expertOpinions Список мнений экспертов (имя эксперта + его мнение + иконка)
+     * @return Промпт для синтеза со всеми мнениями экспертов
+     */
+    public fun buildUserQuestionWithOpinions(
+        userQuestion: String,
+        expertOpinions: List<ExpertOpinionData>
+    ): String {
+        val opinionsText = expertOpinions.joinToString("\n\n") { opinion ->
+            "${opinion.icon} **${opinion.name}**:\n${opinion.opinion}"
+        }
+
+        return """
+            Вопрос пользователя: "$userQuestion"
+
+            Мнения экспертов:
+            $opinionsText
+
+            Задача: Проанализируй все мнения экспертов и создай финальный, структурированный ответ.
+            Учти все важные моменты, которые упомянули эксперты. Если есть противоречия - укажи их.
+            Если эксперты согласны - выдели общую позицию.
+        """.trimIndent()
+    }
+
+    /**
+     * Данные мнения эксперта для промпта
+     */
+    public data class ExpertOpinionData(
+        val name: String,
+        val opinion: String,
+        val icon: String
+    )
 }

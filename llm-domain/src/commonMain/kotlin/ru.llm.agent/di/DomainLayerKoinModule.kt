@@ -9,10 +9,16 @@ import ru.llm.agent.repository.ExpertRepository
 import ru.llm.agent.repository.LlmRepository
 import ru.llm.agent.repository.LocalDbRepository
 import ru.llm.agent.repository.McpRepository
+import ru.llm.agent.repository.ProviderConfigRepository
+import ru.llm.agent.service.MessageSendingService
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteChainTwoAgentsUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase
+import ru.llm.agent.usecase.GetSelectedProviderUseCase
 import ru.llm.agent.usecase.ParseAssistantResponseUseCase
+import ru.llm.agent.usecase.SaveSelectedProviderUseCase
+import ru.llm.agent.usecase.SendMessageWithCustomPromptUseCase
+import ru.llm.agent.usecase.SynthesizeExpertOpinionsUseCase
 import ru.llm.agent.usecase.SystemPromptBuilder
 import ru.llm.agent.usecase.context.GetLocalContextUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
@@ -36,7 +42,8 @@ public val useCasesModule: Module = module {
 
     single<SendConversationMessageUseCase>{
         SendConversationMessageUseCase(
-            repository = get<ConversationRepository>()
+            conversationRepository = get<ConversationRepository>(),
+            messageSendingService = get<MessageSendingService>()
         )
     }
 
@@ -73,10 +80,40 @@ public val useCasesModule: Module = module {
         )
     }
 
+    single<SendMessageWithCustomPromptUseCase>{
+        SendMessageWithCustomPromptUseCase(
+            messageSendingService = get<MessageSendingService>(),
+            providerConfigRepository = get<ProviderConfigRepository>()
+        )
+    }
+
+    single<GetSelectedProviderUseCase>{
+        GetSelectedProviderUseCase(
+            providerConfigRepository = get<ProviderConfigRepository>()
+        )
+    }
+
+    single<SaveSelectedProviderUseCase>{
+        SaveSelectedProviderUseCase(
+            providerConfigRepository = get<ProviderConfigRepository>()
+        )
+    }
+
+    single<SynthesizeExpertOpinionsUseCase>{
+        SynthesizeExpertOpinionsUseCase(
+            sendMessageWithCustomPromptUseCase = get<SendMessageWithCustomPromptUseCase>(),
+            expertRepository = get<ExpertRepository>(),
+            systemPromptBuilder = get<SystemPromptBuilder>(),
+            logger = createLogger("Synthesis")
+        )
+    }
+
     single<ExecuteCommitteeUseCase>{
         ExecuteCommitteeUseCase(
             conversationRepository = get<ConversationRepository>(),
             expertRepository = get<ExpertRepository>(),
+            sendMessageWithCustomPromptUseCase = get<SendMessageWithCustomPromptUseCase>(),
+            synthesizeExpertOpinionsUseCase = get<SynthesizeExpertOpinionsUseCase>(),
             logger = createLogger("Committee")
         )
     }

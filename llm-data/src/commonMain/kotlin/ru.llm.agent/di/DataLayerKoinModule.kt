@@ -20,6 +20,10 @@ import ru.llm.agent.repository.LocalDbRepository
 import ru.llm.agent.repository.LocalDbRepositoryImpl
 import ru.llm.agent.repository.McpRepository
 import ru.llm.agent.repository.McpRepositoryImpl
+import ru.llm.agent.repository.ProviderConfigRepository
+import ru.llm.agent.repository.ProviderConfigRepositoryImpl
+import ru.llm.agent.service.MessageSendingService
+import ru.llm.agent.service.MessageSendingServiceImpl
 
 public expect val yandexDeveloperToken: String
 
@@ -32,19 +36,26 @@ public val repositoriesModule: Module = module {
             proxyApi = get()
         )
     }
+
+    // Новый репозиторий для управления конфигурацией провайдеров
+    single<ProviderConfigRepository> {
+        ProviderConfigRepositoryImpl(
+            contextDao = get<MessageDatabase>().settingsDao()
+        )
+    }
+
+    // Упрощенный ConversationRepository - только CRUD операции
     single<ConversationRepository> {
         ConversationRepositoryImpl(
-            yandexApi = get(),
-            proxyApi = get(),
             messageDao = get<MessageDatabase>().messageDao(),
             contextDao = get<MessageDatabase>().settingsDao(),
-            expertRepository = get(),
             expertOpinionDao = get<MessageDatabase>().expertOpinionDao(),
-            parseAssistantResponseUseCase = get(),
+            providerConfigRepository = get<ProviderConfigRepository>(),
             systemPromptBuilder = get(),
             logger = ru.llm.agent.core.utils.createLogger("ConversationRepository")
         )
     }
+
     single<LocalDbRepository> {
         LocalDbRepositoryImpl(
             contextDao = get<MessageDatabase>().settingsDao()
@@ -60,6 +71,18 @@ public val repositoriesModule: Module = module {
     single<ExpertRepository> {
         ExpertRepositoryImpl(
             expertOpinionDao = get<MessageDatabase>().expertOpinionDao()
+        )
+    }
+}
+
+// Модуль для сервисов
+public val servicesModule: Module = module {
+    single<MessageSendingService> {
+        MessageSendingServiceImpl(
+            yandexApi = get(),
+            proxyApi = get(),
+            parseAssistantResponseUseCase = get(),
+            logger = ru.llm.agent.core.utils.createLogger("MessageSendingService")
         )
     }
 }

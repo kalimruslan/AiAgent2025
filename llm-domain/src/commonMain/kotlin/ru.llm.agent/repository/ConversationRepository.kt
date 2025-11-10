@@ -1,50 +1,66 @@
 package ru.llm.agent.repository
 
 import kotlinx.coroutines.flow.Flow
-import ru.llm.agent.NetworkResult
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.conversation.ConversationMessage
 
+/**
+ * Репозиторий для работы с сообщениями в диалогах.
+ * Отвечает за CRUD операции с сообщениями и базовую инициализацию диалогов.
+ */
 public interface ConversationRepository {
+    /**
+     * Инициализировать новый диалог с системным сообщением
+     */
     public suspend fun initializeConversation(conversationId: String)
 
+    /**
+     * Получить все сообщения диалога
+     */
     public suspend fun getMessages(conversationId: String): Flow<List<ConversationMessage>>
 
-    /** Получить сообщения вместе с мнениями экспертов (для режима Committee) */
+    /**
+     * Получить сообщения вместе с мнениями экспертов (для режима Committee)
+     */
     public suspend fun getMessagesWithExpertOpinions(conversationId: String): Flow<List<ConversationMessage>>
 
-    public suspend fun sendMessage(
-        conversationId: String,
-        message: String,
-        provider: LlmProvider
-    ): Flow<NetworkResult<ConversationMessage>>
-
     /**
-     * Отправить сообщение с кастомным системным промптом (для экспертов и специальных кейсов)
+     * Сохранить сообщение пользователя в БД
+     *
+     * @return ID созданного сообщения
      */
-    public suspend fun sendMessage(
-        conversationId: String,
-        message: String,
-        provider: LlmProvider,
-        systemPrompt: String
-    ): Flow<NetworkResult<ConversationMessage>>
-
-    public suspend fun clearConversation(conversationId: String, initNew: Boolean)
-
-    public suspend fun deleteConversation(conversationId: String, initNew: Boolean)
-
-    public fun getAllConversations(): Flow<List<String>>
-
-    /** Получить выбранный провайдер для диалога */
-    public suspend fun getSelectedProvider(conversationId: String): LlmProvider
-
-    /** Сохранить выбранный провайдер для диалога */
-    public suspend fun saveSelectedProvider(conversationId: String, provider: LlmProvider)
-
-    /** Сохранить только сообщение пользователя без отправки к LLM (для режима Committee) */
     public suspend fun saveUserMessage(
         conversationId: String,
         message: String,
         provider: LlmProvider
     ): Long
+
+    /**
+     * Сохранить сообщение ассистента в БД
+     *
+     * @return ID созданного сообщения
+     */
+    public suspend fun saveAssistantMessage(
+        conversationMessage: ConversationMessage
+    ): Long
+
+    /**
+     * Получить все сообщения диалога синхронно (для use cases)
+     */
+    public suspend fun getMessagesByConversationSync(conversationId: String): List<ConversationMessage>
+
+    /**
+     * Очистить диалог
+     */
+    public suspend fun clearConversation(conversationId: String, initNew: Boolean)
+
+    /**
+     * Удалить диалог
+     */
+    public suspend fun deleteConversation(conversationId: String, initNew: Boolean)
+
+    /**
+     * Получить список всех диалогов
+     */
+    public fun getAllConversations(): Flow<List<String>>
 }

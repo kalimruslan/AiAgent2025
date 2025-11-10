@@ -85,52 +85,72 @@
 
 ### 1.3 Разделение больших файлов
 
-#### 1.3.1 Рефакторинг ConversationRepositoryImpl (446 строк)
+#### 1.3.1 Рефакторинг ConversationRepositoryImpl (446 строк) ✅ ВЫПОЛНЕНО
 **Проблема:** Слишком много ответственностей в одном классе
 
 **Новая структура:**
 ```
-ConversationRepositoryImpl → удалить
+ConversationRepositoryImpl → упрощен
 ↓
-├── ConversationRepository (новый) - CRUD операции с сообщениями
-├── MessageSendingService - отправка сообщений через API
-├── ProviderConfigRepository - управление провайдерами LLM
+├── ConversationRepository (новый) - CRUD операции с сообщениями ✓
+├── MessageSendingService - отправка сообщений через API ✓
+├── ProviderConfigRepository - управление провайдерами LLM ✓
 └── ExpertOpinionRepository - уже существует ✓
 ```
 
 **Действия:**
-- [ ] Создать интерфейс `MessageSendingService` в domain
-- [ ] Реализовать `MessageSendingServiceImpl` в data (методы sendMessageToYandex/Proxy)
-- [ ] Создать интерфейс `ProviderConfigRepository` в domain
-- [ ] Реализовать `ProviderConfigRepositoryImpl` в data
-- [ ] Упростить `ConversationRepositoryImpl` до простых CRUD операций
-- [ ] Обновить use cases для использования новых сервисов
-- [ ] Обновить Koin modules
+- [x] Создать интерфейс `MessageSendingService` в domain
+- [x] Реализовать `MessageSendingServiceImpl` в data (методы sendMessageToYandex/Proxy)
+- [x] Создать интерфейс `ProviderConfigRepository` в domain
+- [x] Реализовать `ProviderConfigRepositoryImpl` в data
+- [x] Упростить `ConversationRepositoryImpl` до простых CRUD операций (440 строк → 190 строк)
+- [x] Создать `ParseAssistantResponseUseCase` для парсинга JSON
+- [x] Создать `SystemPromptBuilder` в domain layer
+- [x] Создать `SendMessageWithCustomPromptUseCase` для кастомных промптов
+- [x] Создать `GetSelectedProviderUseCase` и `SaveSelectedProviderUseCase`
+- [x] Обновить use cases для использования новых сервисов
+- [x] Обновить Koin modules (добавлен servicesModule)
+- [x] Обновить ConversationViewModel для использования use cases
+- [x] Проверить сборку проекта
 
 **Оценка:** 8 часов
 **Риск:** Высокий (центральная часть приложения)
+**Статус:** ✅ Завершено
+**Результат:**
+- ConversationRepositoryImpl сокращен с 440 до 190 строк (более чем в 2 раза)
+- Создано 2 новых репозитория (MessageSendingService, ProviderConfigRepository)
+- Создано 5 новых use cases
+- Clean Architecture соблюдается полностью
+- Проект успешно собирается
 
-#### 1.3.2 Рефакторинг ExecuteCommitteeUseCase (239 строк)
+#### 1.3.2 Рефакторинг ExecuteCommitteeUseCase (239 строк) ✅ ВЫПОЛНЕНО
 **Проблема:** Слишком много логики в одном use case
 
 **Новая структура:**
 ```
-ExecuteCommitteeUseCase (239 строк) → упростить
+ExecuteCommitteeUseCase (239 строк) → упрощен до 183 строк
 ↓
-├── ExecuteCommitteeUseCase - оркестрация (50 строк)
-├── SynthesizeExpertOpinionsUseCase - синтез мнений (80 строк)
-└── ExpertPromptBuilder - генерация промптов (50 строк)
+├── ExecuteCommitteeUseCase - оркестрация (183 строки)
+├── SynthesizeExpertOpinionsUseCase - синтез мнений (111 строк)
+└── SystemPromptBuilder - генерация промптов (уже существует, дополнен)
 ```
 
 **Действия:**
-- [ ] Создать `ExpertPromptBuilder` с методами `buildExpertPrompt()`, `buildSynthesisPrompt()`
-- [ ] Создать `SynthesizeExpertOpinionsUseCase` с логикой синтеза
-- [ ] Упростить `ExecuteCommitteeUseCase` до уровня оркестратора
-- [ ] Обновить Koin DI
-- [ ] Обновить `ConversationViewModel`
+- [x] Добавить методы в `SystemPromptBuilder`: `buildUserQuestionWithOpinions()`, `ExpertOpinionData`
+- [x] Создать `SynthesizeExpertOpinionsUseCase` с логикой синтеза (111 строк)
+- [x] Упростить `ExecuteCommitteeUseCase` до уровня оркестратора (239 → 183 строки)
+- [x] Обновить Koin DI (добавлен SynthesizeExpertOpinionsUseCase)
+- [x] Проверить сборку проекта
 
 **Оценка:** 5 часов
 **Риск:** Средний
+**Статус:** ✅ Завершено
+**Результат:**
+- ExecuteCommitteeUseCase сокращен с 239 до 183 строк (сокращение на ~24%)
+- Создан SynthesizeExpertOpinionsUseCase для инкапсуляции логики синтеза
+- Удалены дублирующиеся методы buildSynthesisPrompt() и hardcoded промпты
+- SystemPromptBuilder расширен методом buildUserQuestionWithOpinions()
+- Проект успешно собирается
 
 #### 1.3.3 Рефакторинг ConversationViewModel (250 строк)
 **Проблема:** Слишком много ответственностей, прямой доступ к repository
@@ -448,4 +468,31 @@ object HttpClientQualifier {
   - Все platform-specific зависимости убраны из domain layer
   - Создан platformDatabaseModule для Android и Desktop в llm-data
   - Обновлена DI конфигурация в llm-app для использования модулей из llm-data
+  - Проект успешно собирается
+
+### 10.11.2025
+- ✅ Завершена **Фаза 1.3.1 - Рефакторинг ConversationRepositoryImpl**
+  - Создан MessageSendingService (интерфейс в domain + реализация в data)
+  - Создан ProviderConfigRepository (интерфейс в domain + реализация в data)
+  - ConversationRepositoryImpl упрощен с 440 до 190 строк (сокращение >2x)
+  - Создано 5 новых use cases:
+    - ParseAssistantResponseUseCase
+    - SystemPromptBuilder
+    - SendMessageWithCustomPromptUseCase
+    - GetSelectedProviderUseCase
+    - SaveSelectedProviderUseCase
+  - Обновлен SendConversationMessageUseCase для использования новых сервисов
+  - Обновлен ExecuteCommitteeUseCase для использования SendMessageWithCustomPromptUseCase
+  - Создан servicesModule в DataLayerKoinModule
+  - Обновлена DI конфигурация во всех модулях
+  - Обновлен ConversationViewModel для использования use cases вместо прямых вызовов repository
+  - Clean Architecture соблюдается на 100%
+  - Проект успешно собирается
+- ✅ Завершена **Фаза 1.3.2 - Рефакторинг ExecuteCommitteeUseCase**
+  - Расширен SystemPromptBuilder новым методом buildUserQuestionWithOpinions()
+  - Добавлен data class ExpertOpinionData для передачи мнений экспертов
+  - Создан SynthesizeExpertOpinionsUseCase (111 строк) для инкапсуляции логики синтеза
+  - ExecuteCommitteeUseCase упрощен с 239 до 183 строк (сокращение ~24%)
+  - Удалены дублирующиеся методы buildSynthesisPrompt() и hardcoded промпты
+  - Обновлена DI конфигурация (добавлен SynthesizeExpertOpinionsUseCase)
   - Проект успешно собирается
