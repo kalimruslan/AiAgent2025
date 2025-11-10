@@ -40,58 +40,73 @@ public data class LlmConfig(
         /**
          * Конфигурация по умолчанию для YandexGPT
          */
-        public fun defaultYandexGpt(): LlmConfig = LlmConfig(
-            modelId = "gpt://b1gonedr4v7ke927m32n/yandexgpt-lite",
-            temperature = 0.6,
-            maxTokens = 2000,
-            provider = LlmProvider.YANDEX_GPT,
-            stream = false
-        )
+        public fun defaultYandexGpt(): LlmConfig {
+            val providerConfig = ProviderConfig.yandexGpt()
+            return LlmConfig(
+                modelId = providerConfig.modelId,
+                temperature = providerConfig.defaultTemperature,
+                maxTokens = providerConfig.defaultMaxTokens,
+                provider = LlmProvider.YANDEX_GPT,
+                stream = false
+            )
+        }
 
         /**
          * Конфигурация для суммаризации текста (YandexGPT)
          */
-        public fun summarizationYandexGpt(): LlmConfig = LlmConfig(
-            modelId = "gpt://b1gonedr4v7ke927m32n/yandexgpt-lite",
-            temperature = 0.3,
-            maxTokens = 500,
-            systemPrompt = "Ты помощник, который кратко суммирует текст, сохраняя ключевую информацию.",
-            provider = LlmProvider.YANDEX_GPT,
-            stream = false
-        )
+        public fun summarizationYandexGpt(): LlmConfig {
+            val providerConfig = ProviderConfig.yandexGpt()
+            return LlmConfig(
+                modelId = providerConfig.modelId,
+                temperature = 0.3,
+                maxTokens = 500,
+                systemPrompt = "Ты помощник, который кратко суммирует текст, сохраняя ключевую информацию.",
+                provider = LlmProvider.YANDEX_GPT,
+                stream = false
+            )
+        }
 
         /**
          * Конфигурация для аналитики цепочки агентов (YandexGPT)
          */
-        public fun chainAnalysisYandexGpt(): LlmConfig = LlmConfig(
-            modelId = "gpt://b1gonedr4v7ke927m32n/yandexgpt-lite",
-            temperature = 0.3,
-            maxTokens = 500,
-            provider = LlmProvider.YANDEX_GPT,
-            stream = false
-        )
+        public fun chainAnalysisYandexGpt(): LlmConfig {
+            val providerConfig = ProviderConfig.yandexGpt()
+            return LlmConfig(
+                modelId = providerConfig.modelId,
+                temperature = 0.3,
+                maxTokens = 500,
+                provider = LlmProvider.YANDEX_GPT,
+                stream = false
+            )
+        }
 
         /**
          * Конфигурация по умолчанию для ProxyAPI GPT-4o-mini
          */
-        public fun defaultProxyApiGpt4o(): LlmConfig = LlmConfig(
-            modelId = "gpt-4o-mini",
-            temperature = 0.7,
-            maxTokens = 1024,
-            provider = LlmProvider.PROXY_API_GPT4O_MINI,
-            stream = false
-        )
+        public fun defaultProxyApiGpt4o(): LlmConfig {
+            val providerConfig = ProviderConfig.proxyApiGpt4oMini()
+            return LlmConfig(
+                modelId = providerConfig.modelId,
+                temperature = providerConfig.defaultTemperature,
+                maxTokens = providerConfig.defaultMaxTokens,
+                provider = LlmProvider.PROXY_API_GPT4O_MINI,
+                stream = false
+            )
+        }
 
         /**
          * Конфигурация по умолчанию для ProxyAPI Mistral AI
          */
-        public fun defaultProxyApiMistral(): LlmConfig = LlmConfig(
-            modelId = "mistralai/mistral-medium-3.1",
-            temperature = 0.7,
-            maxTokens = 1024,
-            provider = LlmProvider.PROXY_API_MISTRAY_AI,
-            stream = false
-        )
+        public fun defaultProxyApiMistral(): LlmConfig {
+            val providerConfig = ProviderConfig.proxyApiMistralAi()
+            return LlmConfig(
+                modelId = providerConfig.modelId,
+                temperature = providerConfig.defaultTemperature,
+                maxTokens = providerConfig.defaultMaxTokens,
+                provider = LlmProvider.PROXY_API_MISTRAY_AI,
+                stream = false
+            )
+        }
 
         /**
          * Конфигурация для критических задач (низкая температура)
