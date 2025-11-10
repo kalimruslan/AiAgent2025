@@ -1,4 +1,4 @@
-package ru.llm.agent.compose.presenter
+package ru.llm.agent.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ru.llm.agent.model.ConversationContext
+import ru.llm.agent.presentation.state.OptionsUIState
 import ru.llm.agent.usecase.context.GetLocalContextUseCase
 import ru.llm.agent.usecase.context.RemoveLocalContextUseCase
 import ru.llm.agent.usecase.context.SaveLocalContextUseCase

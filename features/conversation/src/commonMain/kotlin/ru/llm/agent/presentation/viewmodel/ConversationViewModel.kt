@@ -1,4 +1,4 @@
-package ru.llm.agent.compose.presenter
+package ru.llm.agent.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,6 +15,7 @@ import ru.llm.agent.model.ConversationMode
 import ru.llm.agent.model.Expert
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.Role
+import ru.llm.agent.presentation.state.ConversationUIState
 import ru.llm.agent.usecase.CommitteeResult
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase

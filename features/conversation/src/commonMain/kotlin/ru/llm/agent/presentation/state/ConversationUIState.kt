@@ -1,4 +1,4 @@
-package ru.llm.agent.compose.presenter
+package ru.llm.agent.presentation.state
 
 import ru.llm.agent.model.ConversationMode
 import ru.llm.agent.model.Expert
@@ -47,4 +47,3 @@ internal class ConversationUIState {
         data class ToggleExpert(val expert: Expert) : Event
     }
 }
-

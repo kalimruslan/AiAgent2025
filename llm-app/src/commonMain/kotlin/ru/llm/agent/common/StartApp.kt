@@ -10,8 +10,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import ru.llm.agent.compose.presenter.ConversationScreen
-import ru.llm.agent.compose.presenter.OptionsScreen
+import ru.llm.agent.presentation.ui.ConversationScreen
+import ru.llm.agent.presentation.ui.OptionsScreen
 import ru.llm.agent.core.uikit.AgentAiTheme
 
 @Composable

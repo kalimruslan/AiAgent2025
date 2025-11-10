@@ -1,10 +1,10 @@
-package ru.llm.agent.compose.di
+package ru.llm.agent.presentation.di
 
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
-import ru.llm.agent.compose.presenter.ConversationViewModel
+import ru.llm.agent.presentation.viewmodel.ConversationViewModel
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase
 import ru.llm.agent.usecase.GetMessagesWithExpertOpinionsUseCase
