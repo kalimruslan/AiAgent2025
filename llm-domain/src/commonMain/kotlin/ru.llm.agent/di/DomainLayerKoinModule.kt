@@ -27,7 +27,7 @@ import ru.llm.agent.usecase.SendConversationMessageUseCase
 import ru.llm.agent.usecase.context.RemoveLocalContextUseCase
 import ru.llm.agent.usecase.context.SaveLocalContextUseCase
 
-public val useCasesModule: Module = module {
+public val domainKoinModule: Module = module {
     // Утилитарные компоненты для парсинга и генерации промптов
     single<ParseAssistantResponseUseCase> {
         ParseAssistantResponseUseCase()

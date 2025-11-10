@@ -8,7 +8,7 @@ import org.koin.core.module.Module
 import ru.llm.agent.di.networkModule
 import ru.llm.agent.di.repositoriesModule
 import ru.llm.agent.di.servicesModule
-import ru.llm.agent.di.useCasesModule
+import ru.llm.agent.di.domainKoinModule
 import ru.llm.agent.di.databaseModule
 import ru.llm.agent.di.platformDatabaseModule
 
@@ -31,7 +31,7 @@ fun KoinApplication.initKoinApp(
         networkModule,
         servicesModule,
         repositoriesModule,
-        useCasesModule,
+        domainKoinModule,
     )
 }
 

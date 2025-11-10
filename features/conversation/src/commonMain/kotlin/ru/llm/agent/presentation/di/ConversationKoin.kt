@@ -24,13 +24,10 @@ internal fun conversationKoinModule(): Module {
                 executeCommitteeUseCase = get<ExecuteCommitteeUseCase>()
             )
         }
-
-        scope(conversationChatScopeQualifier) {
-            // Сюда можно добавлять зависимости  у которых время жизни ограничен этим скоупом
-        }
     }
 }
 
+// Константы для scope ID используются в UI слое
 internal const val CONVERSATION_CHAT_SCOPE_ID = "CONVERSATION_CHAT_SCOPE_ID"
 
 internal val conversationChatScopeQualifier
