@@ -39,7 +39,10 @@ public val repositoriesModule: Module = module {
             messageDao = get<MessageDatabase>().messageDao(),
             contextDao = get<MessageDatabase>().settingsDao(),
             expertRepository = get(),
-            expertOpinionDao = get<MessageDatabase>().expertOpinionDao()
+            expertOpinionDao = get<MessageDatabase>().expertOpinionDao(),
+            parseAssistantResponseUseCase = get(),
+            systemPromptBuilder = get(),
+            logger = ru.llm.agent.core.utils.createLogger("ConversationRepository")
         )
     }
     single<LocalDbRepository> {

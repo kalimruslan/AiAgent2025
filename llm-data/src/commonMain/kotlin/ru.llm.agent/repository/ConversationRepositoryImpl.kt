@@ -4,7 +4,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.json.Json
 import ru.ai.agent.data.request.proxyapi.ProxyApiRequest
 import ru.ai.agent.data.request.proxyapi.ProxyMessageRequest
 import ru.ai.agent.data.response.proxyapi.ProxyApiResponse
@@ -21,13 +20,14 @@ import ru.llm.agent.database.context.ContextDao
 import ru.llm.agent.database.expert.ExpertOpinionDao
 import ru.llm.agent.database.expert.ExpertOpinionEntity
 import ru.llm.agent.mapNetworkResult
-import ru.llm.agent.model.AssistantJsonAnswer
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.Role
 import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.toModel
+import ru.llm.agent.usecase.ParseAssistantResponseUseCase
+import ru.llm.agent.usecase.SystemPromptBuilder
+import ru.llm.agent.core.utils.Logger
 import ru.llm.agent.utils.handleApi
-import java.util.logging.Logger
 
 /**
  * Репа для работы с диалогами
@@ -37,6 +37,9 @@ import java.util.logging.Logger
  * @param contextDao Dao для работы с контекстом
  * @param expertRepository Репозиторий для работы с мнениями экспертов
  * @param expertOpinionDao Dao для работы с мнениями экспертов
+ * @param parseAssistantResponseUseCase Use case для парсинга ответов от ассистента
+ * @param systemPromptBuilder Builder для создания системных промптов
+ * @param logger Кроссплатформенный logger
  */
 public class ConversationRepositoryImpl(
     private val messageDao: MessageDao,
@@ -45,6 +48,9 @@ public class ConversationRepositoryImpl(
     private val contextDao: ContextDao,
     private val expertRepository: ExpertRepository,
     private val expertOpinionDao: ExpertOpinionDao,
+    private val parseAssistantResponseUseCase: ParseAssistantResponseUseCase,
+    private val systemPromptBuilder: SystemPromptBuilder,
+    private val logger: Logger,
 ) : ConversationRepository {
     /**
      * Инициализируем диалог, смотрим пустой ли он, если да, то добавляем системное сообщение
@@ -57,22 +63,7 @@ public class ConversationRepositoryImpl(
             val systemMessage = MessageEntity(
                 conversationId = conversationId,
                 role = "system",
-                text = context?.systemprompt
-                    ?: """
-                    Ты — консультант по Андроид разработке.
-
-                    ПРАВИЛА ДИАЛОГА:
-                    1. Задавай уточняющие вопросы, чтобы понять идею пользователя
-                    2. Когда соберешь достаточно информации (не более 3 вопроса), дай финальный совет
-
-                    Отвечай строго в JSON формате по следующей схеме:
-                    {
-                      "answer": "текст ответа",
-                      "is_continue": "флаг, если нужно продолжить диалог, например true или false",
-                      "is_complete": "флаг, если готов дать финальный ответ, например true или false",
-                    }
-                    Не добавляй никакого текста до или после JSON.
-                """.trimIndent(),
+                text = context?.systemprompt ?: systemPromptBuilder.buildDefaultAndroidConsultantPrompt(),
                 timestamp = System.currentTimeMillis(),
                 model = getSelectedProvider(conversationId).displayName
             )
@@ -108,7 +99,7 @@ public class ConversationRepositoryImpl(
             val result = messages.map { message ->
                 if (message.role == Role.USER) {
                     val opinions = opinionsByMessageId[message.id]?.map { it.toExpertOpinion() } ?: emptyList()
-                    Logger.getLogger("Committe").info("Message ${message.id} has ${opinions.size} opinions")
+                    logger.info("Message ${message.id} has ${opinions.size} opinions")
                     message.copy(expertOpinions = opinions)
                 } else {
                     message
@@ -264,14 +255,15 @@ public class ConversationRepositoryImpl(
         }
 
         return result.mapNetworkResult { response: YandexGPTResponse ->
-            val messageText =
-                response.result.alternatives.firstOrNull()?.message?.text
-                    ?.replace(Regex("^`+"), "")
-                    ?.replace(Regex("`+$"), "")
-                    ?: throw Exception("Empty response from API")
+            val rawResponse = response.result.alternatives.firstOrNull()?.message?.text
+                ?: throw Exception("Empty response from API")
 
-            // Парсим статус
-            val parsed = Json.decodeFromString<AssistantJsonAnswer>(messageText)
+            // Парсим ответ через use case
+            val parseResult = parseAssistantResponseUseCase(rawResponse)
+            val parsed = parseResult.getOrElse {
+                logger.error("Ошибка парсинга ответа от Yandex: ${it.message}")
+                throw it
+            }
 
             // Сохраняем ответ ассистента
             val assistantEntity = MessageEntity(
@@ -279,7 +271,7 @@ public class ConversationRepositoryImpl(
                 role = "assistant",
                 text = parsed.answer.orEmpty(),
                 timestamp = System.currentTimeMillis(),
-                originalResponse = messageText,
+                originalResponse = rawResponse,
                 model = getSelectedProvider(conversationId).displayName
             )
 
@@ -293,7 +285,7 @@ public class ConversationRepositoryImpl(
                 timestamp = assistantEntity.timestamp,
                 isContinue = parsed.isCOntinue == true,
                 isComplete = parsed.isComplete == true,
-                originalResponse = messageText,
+                originalResponse = rawResponse,
                 model = getSelectedProvider(conversationId).displayName
             )
         }
@@ -322,13 +314,15 @@ public class ConversationRepositoryImpl(
         }
 
         return result.mapNetworkResult { response: ProxyApiResponse ->
-            val messageText = response.choices.firstOrNull()?.message?.content
-                ?.replace(Regex("^`+"), "")
-                ?.replace(Regex("`+$"), "")
+            val rawResponse = response.choices.firstOrNull()?.message?.content
                 ?: throw Exception("Empty response from API")
 
-            // Парсим статус
-            val parsed = Json.decodeFromString<AssistantJsonAnswer>(messageText)
+            // Парсим ответ через use case
+            val parseResult = parseAssistantResponseUseCase(rawResponse)
+            val parsed = parseResult.getOrElse {
+                logger.error("Ошибка парсинга ответа от ProxyAPI: ${it.message}")
+                throw it
+            }
 
             // Сохраняем ответ ассистента
             val assistantEntity = MessageEntity(
@@ -336,7 +330,7 @@ public class ConversationRepositoryImpl(
                 role = "assistant",
                 text = parsed.answer.orEmpty(),
                 timestamp = System.currentTimeMillis(),
-                originalResponse = messageText,
+                originalResponse = rawResponse,
                 model = getSelectedProvider(conversationId).displayName
             )
 
@@ -350,7 +344,7 @@ public class ConversationRepositoryImpl(
                 timestamp = assistantEntity.timestamp,
                 isContinue = parsed.isCOntinue == true,
                 isComplete = parsed.isComplete == true,
-                originalResponse = messageText,
+                originalResponse = rawResponse,
                 model = getSelectedProvider(conversationId).displayName
             )
         }

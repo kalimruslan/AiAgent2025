@@ -12,12 +12,22 @@ import ru.llm.agent.repository.McpRepository
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteChainTwoAgentsUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase
+import ru.llm.agent.usecase.ParseAssistantResponseUseCase
+import ru.llm.agent.usecase.SystemPromptBuilder
 import ru.llm.agent.usecase.context.GetLocalContextUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 import ru.llm.agent.usecase.context.RemoveLocalContextUseCase
 import ru.llm.agent.usecase.context.SaveLocalContextUseCase
 
 public val useCasesModule: Module = module {
+    // Утилитарные компоненты для парсинга и генерации промптов
+    single<ParseAssistantResponseUseCase> {
+        ParseAssistantResponseUseCase()
+    }
+
+    single<SystemPromptBuilder> {
+        SystemPromptBuilder()
+    }
     single<ConversationUseCase>{
         ConversationUseCase(
             repository = get<ConversationRepository>()
