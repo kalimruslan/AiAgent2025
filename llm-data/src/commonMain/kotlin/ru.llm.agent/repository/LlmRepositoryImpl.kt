@@ -18,6 +18,9 @@ import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.PromtFormat
 import ru.llm.agent.model.Role
 import ru.llm.agent.model.conversation.MessageWithTokensModels
+import ru.llm.agent.model.LlmProvider
+import ru.llm.agent.model.config.LlmConfig
+import ru.llm.agent.model.config.LlmTaskType
 import ru.llm.agent.model.mcp.YaGptTool
 import ru.llm.agent.toModel
 import ru.llm.agent.utils.handleApi
@@ -27,6 +30,7 @@ import kotlin.collections.map
 public class LlmRepositoryImpl(
     private val proxyApi: ProxyApi,
     private val yandexApi: YandexApi,
+    private val llmConfigRepository: LlmConfigRepository,
 ) : LlmRepository {
 
     override suspend fun countYandexGPTTokens(
@@ -55,18 +59,21 @@ public class LlmRepositoryImpl(
         model: String,
         maxTokens: Int,
     ): String {
+        // Используем предустановленную конфигурацию для суммаризации
+        val config = LlmConfig.summarizationYandexGpt().withMaxTokens(maxTokens)
+
         var summarizedText = ""
         val request = YaRequest(
             modelUri = model,
             completionOptions = CompletionOptions(
-                stream = false,
-                temperature = 0.3,
-                maxTokens = maxTokens
+                stream = config.stream,
+                temperature = config.temperature,
+                maxTokens = config.maxTokens
             ),
             messages = listOf(
                 YaMessageRequest(
                     Role.SYSTEM.title,
-                    "Ты помощник, который кратко суммирует текст, сохраняя ключевую информацию."
+                    config.systemPrompt ?: "Ты помощник, который кратко суммирует текст, сохраняя ключевую информацию."
                 ),
                 YaMessageRequest(
                     Role.USER.title,
@@ -93,6 +100,9 @@ public class LlmRepositoryImpl(
         text: String,
         model: String,
     ): Flow<NetworkResult<MessageModel?>> {
+        // Используем конфигурацию для GPT-4o-mini по умолчанию
+        val config = LlmConfig.defaultProxyApiGpt4o()
+
         val request = ProxyApiRequest(
             model = model,
             messages = listOf(
@@ -108,8 +118,8 @@ public class LlmRepositoryImpl(
                 ),
                 ProxyMessageRequest("user", text)
             ),
-            temperature = 0.7,
-            maxTokens = 1024
+            temperature = config.temperature,
+            maxTokens = config.maxTokens
         )
         val result = handleApi<ProxyApiResponse> {
             proxyApi.sendMessage(request)
@@ -128,11 +138,15 @@ public class LlmRepositoryImpl(
         model: String,
         outputFormat: PromtFormat,
     ): Flow<NetworkResult<MessageModel?>> {
+        // Используем конфигурацию по умолчанию для YandexGPT
+        val config = LlmConfig.defaultYandexGpt()
+
         val request = YaRequest(
             modelUri = model,
             completionOptions = CompletionOptions(
-                temperature = 0.6,
-                maxTokens = 2000
+                temperature = config.temperature,
+                maxTokens = config.maxTokens,
+                stream = config.stream
             ),
             messages = if (promptMessage == null) {
                 listOf(
@@ -164,11 +178,15 @@ public class LlmRepositoryImpl(
     }
 
     override suspend fun sendMessagesToYandexGpt(messages: List<Map<String, String>>): Flow<NetworkResult<MessageWithTokensModels?>> {
+        // Используем конфигурацию для анализа цепочки агентов
+        val config = LlmConfig.chainAnalysisYandexGpt()
+
         val request = YaRequest(
-            modelUri = "gpt://b1gonedr4v7ke927m32n/yandexgpt-lite",
+            modelUri = config.modelId,
             completionOptions = CompletionOptions(
-                temperature = 0.3,
-                maxTokens = 500
+                temperature = config.temperature,
+                maxTokens = config.maxTokens,
+                stream = config.stream
             ),
             messages = messages.flatMap { map ->
                 map.map {
@@ -201,11 +219,15 @@ public class LlmRepositoryImpl(
         messages: List<MessageModel>,
         availableTools: List<YaGptTool>,
     ): Flow<NetworkResult<MessageModel?>> {
+        // Используем конфигурацию по умолчанию для YandexGPT (подходит для MCP чата)
+        val config = LlmConfig.defaultYandexGpt()
+
         val request = YaRequest(
-            modelUri = "gpt://b1gonedr4v7ke927m32n/yandexgpt-lite",
+            modelUri = config.modelId,
             completionOptions = CompletionOptions(
-                temperature = 0.6,
-                maxTokens = 2000
+                temperature = config.temperature,
+                maxTokens = config.maxTokens,
+                stream = config.stream
             ),
             messages = messages.map {
                 YaMessageRequest(role = it.role.title, text = it.text)
