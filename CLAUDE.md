@@ -234,11 +234,24 @@ actual fun platformSpecificFunction(): String = "Desktop"
 - DAOs: `MessageDao`, `ContextDao`
 
 ### Navigation
-Jetpack Navigation Compose with sealed class routes:
+Jetpack Navigation Compose с type-safe навигацией через @Serializable классы:
 ```kotlin
-sealed class Screen(val route: String) {
-    object Conversations : Screen("conversations")
-    object Options : Screen("options/{conversationId}")
+@Serializable
+object ConversationsRoute
+
+@Serializable
+data class OptionsRoute(val conversationId: String)
+
+// Использование:
+NavHost(
+    navController = navController,
+    startDestination = ConversationsRoute
+) {
+    composable<ConversationsRoute> { /* ... */ }
+    composable<OptionsRoute> { backStackEntry ->
+        val route: OptionsRoute = backStackEntry.toRoute()
+        // Используем route.conversationId
+    }
 }
 ```
 

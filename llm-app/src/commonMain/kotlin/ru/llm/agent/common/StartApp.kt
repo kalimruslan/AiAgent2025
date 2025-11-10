@@ -6,10 +6,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
+import kotlinx.serialization.Serializable
 import ru.llm.agent.presentation.ui.ConversationScreen
 import ru.llm.agent.presentation.ui.OptionsScreen
 import ru.llm.agent.core.uikit.AgentAiTheme
@@ -31,42 +32,39 @@ fun StartApp() {
     }
 }
 
+/**
+ * Навигационные маршруты приложения с type-safe параметрами
+ */
+@Serializable
+object ConversationsRoute
+
+@Serializable
+data class OptionsRoute(val conversationId: String)
+
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-    val currentBackStackEntry = navController.currentBackStackEntry
-    val conversationId = currentBackStackEntry?.savedStateHandle?.getStateFlow("conversationId", "")
-        ?.collectAsStateWithLifecycle("")
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Conversations.route
+        startDestination = ConversationsRoute
     ) {
-        composable(Screen.Conversations.route) {
+        composable<ConversationsRoute> {
             ConversationScreen(
-                onNavigateToOptions = { converationId ->
-                    navController.previousBackStackEntry?.savedStateHandle?.set("conversationId", conversationId)
-                    navController.navigate(Screen.Options.route)
+                onNavigateToOptions = { conversationId ->
+                    navController.navigate(OptionsRoute(conversationId = conversationId))
                 }
             )
         }
 
-        composable(
-            route = Screen.Options.route,
-        ) {
+        composable<OptionsRoute> { backStackEntry ->
+            val optionsRoute: OptionsRoute = backStackEntry.toRoute()
             OptionsScreen(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                conversationId = conversationId?.value.orEmpty()
+                conversationId = optionsRoute.conversationId
             )
         }
-
     }
-
-}
-
-sealed class Screen(val route: String) {
-    object Conversations : Screen("conversations")
-    object Options : Screen("options/{conversationId}")
 }
