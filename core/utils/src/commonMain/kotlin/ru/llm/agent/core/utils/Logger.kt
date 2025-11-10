@@ -30,3 +30,10 @@ public interface Logger {
  * Фабрика для создания platform-specific экземпляров логгера
  */
 public expect fun createLogger(tag: String): Logger
+
+/**
+ * Extension для упрощения использования warning как warn
+ */
+public fun Logger.warn(message: String) {
+    warning(message)
+}

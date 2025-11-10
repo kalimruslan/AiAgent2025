@@ -4,6 +4,7 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 import ru.llm.agent.InteractYaGptWithMcpService
 import ru.llm.agent.core.utils.createLogger
+import ru.llm.agent.error.ErrorLogger
 import ru.llm.agent.repository.ConversationRepository
 import ru.llm.agent.repository.ExpertRepository
 import ru.llm.agent.repository.LlmRepository
@@ -34,6 +35,13 @@ public val useCasesModule: Module = module {
 
     single<SystemPromptBuilder> {
         SystemPromptBuilder()
+    }
+
+    // Централизованный ErrorLogger для обработки всех ошибок
+    single<ErrorLogger> {
+        ErrorLogger(
+            logger = createLogger("ErrorLogger")
+        )
     }
     single<ConversationUseCase>{
         ConversationUseCase(
