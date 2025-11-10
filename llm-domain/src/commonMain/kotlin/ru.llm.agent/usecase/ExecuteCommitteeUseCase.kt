@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import ru.llm.agent.NetworkResult
 import ru.llm.agent.core.utils.Logger
+import ru.llm.agent.error.DomainError
 import ru.llm.agent.model.Expert
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.repository.ConversationRepository
@@ -46,7 +47,12 @@ public class ExecuteCommitteeUseCase(
         logger.info("Execute comitte START - experts - ${experts.map { it.name }}")
 
         if (experts.isEmpty()) {
-            emit(NetworkResult.Error("Не выбраны эксперты"))
+            emit(NetworkResult.Error(
+                DomainError.ValidationError(
+                    field = "experts",
+                    message = "Не выбраны эксперты для обсуждения"
+                )
+            ))
             return@flow
         }
 
@@ -58,7 +64,13 @@ public class ExecuteCommitteeUseCase(
         )
 
         if (userMessageId == 0L) {
-            emit(NetworkResult.Error("Не удалось сохранить сообщение пользователя"))
+            emit(NetworkResult.Error(
+                DomainError.DatabaseError(
+                    operation = "saveUserMessage",
+                    message = "Не удалось сохранить сообщение пользователя",
+                    exception = Exception("userMessageId is 0")
+                )
+            ))
             return@flow
         }
 
@@ -113,7 +125,12 @@ public class ExecuteCommitteeUseCase(
                             emit(NetworkResult.Success(CommitteeResult.ExpertOpinion(opinionResult)))
                         }
                         is NetworkResult.Error -> {
-                            emit(NetworkResult.Error("Ошибка при получении мнения от ${expert.name}: ${result.message}"))
+                            emit(NetworkResult.Error(
+                                DomainError.BusinessLogicError(
+                                    reason = "expertOpinionFailed",
+                                    message = "Ошибка при получении мнения от ${expert.name}: ${result.error.toUserMessage()}"
+                                )
+                            ))
                         }
                         is NetworkResult.Loading -> {
                             // Промежуточное состояние загрузки
@@ -121,7 +138,12 @@ public class ExecuteCommitteeUseCase(
                     }
                 }
             } catch (e: Exception) {
-                emit(NetworkResult.Error("Ошибка при обработке мнения эксперта ${expert.name}: ${e.message}"))
+                emit(NetworkResult.Error(
+                    DomainError.UnknownError(
+                        message = "Ошибка при обработке мнения эксперта ${expert.name}: ${e.message}",
+                        exception = e
+                    )
+                ))
             }
         }
 
@@ -142,7 +164,12 @@ public class ExecuteCommitteeUseCase(
                             emit(NetworkResult.Success(CommitteeResult.FinalSynthesis(result.data)))
                         }
                         is NetworkResult.Error -> {
-                            emit(NetworkResult.Error("Ошибка при синтезе: ${result.message}"))
+                            emit(NetworkResult.Error(
+                                DomainError.BusinessLogicError(
+                                    reason = "synthesisFailed",
+                                    message = "Ошибка при синтезе: ${result.error.toUserMessage()}"
+                                )
+                            ))
                         }
                         is NetworkResult.Loading -> {
                             // Промежуточное состояние
@@ -150,10 +177,20 @@ public class ExecuteCommitteeUseCase(
                     }
                 }
             } catch (e: Exception) {
-                emit(NetworkResult.Error("Ошибка при синтезе финального ответа: ${e.message}"))
+                emit(NetworkResult.Error(
+                    DomainError.UnknownError(
+                        message = "Ошибка при синтезе финального ответа: ${e.message}",
+                        exception = e
+                    )
+                ))
             }
         } else {
-            emit(NetworkResult.Error("Не удалось получить ни одного мнения от экспертов"))
+            emit(NetworkResult.Error(
+                DomainError.BusinessLogicError(
+                    reason = "noExpertOpinions",
+                    message = "Не удалось получить ни одного мнения от экспертов"
+                )
+            ))
         }
     }
 }

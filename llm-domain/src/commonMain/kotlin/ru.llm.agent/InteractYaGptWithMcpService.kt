@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import ru.llm.agent.core.utils.Logger
+import ru.llm.agent.error.DomainError
 import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.Role
 import ru.llm.agent.model.mcp.FunctionResult
@@ -51,8 +52,8 @@ public class InteractYaGptWithMcpService(
                     when (result) {
                         is NetworkResult.Loading -> emit(NetworkResult.Loading())
                         is NetworkResult.Error -> {
-                            logger.info("Error: ${result.message}")
-                            emit(NetworkResult.Error(result.message))
+                            logger.info("Error: ${result.error.toLogMessage()}")
+                            emit(NetworkResult.Error(result.error))
                         }
 
                         is NetworkResult.Success -> {
@@ -116,7 +117,11 @@ public class InteractYaGptWithMcpService(
                                         }
                                     }
                                 }
-                            } ?: emit(NetworkResult.Error("Error"))
+                            } ?: emit(NetworkResult.Error(
+                                DomainError.UnknownError(
+                                    message = "Получен пустой ответ от LLM"
+                                )
+                            ))
                         }
                     }
                 }

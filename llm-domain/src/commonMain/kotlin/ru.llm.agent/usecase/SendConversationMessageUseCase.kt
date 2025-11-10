@@ -3,6 +3,7 @@ package ru.llm.agent.usecase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import ru.llm.agent.NetworkResult
+import ru.llm.agent.error.DomainError
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.repository.ConversationRepository
@@ -61,7 +62,7 @@ public class SendConversationMessageUseCase(
                         )
                     }
                     is NetworkResult.Error -> {
-                        emit(NetworkResult.Error(result.message))
+                        emit(NetworkResult.Error(result.error))
                     }
                     is NetworkResult.Loading -> {
                         emit(NetworkResult.Loading())
@@ -69,7 +70,15 @@ public class SendConversationMessageUseCase(
                 }
             }
         } catch (e: Exception) {
-            emit(NetworkResult.Error("Ошибка при отправке сообщения: ${e.message}"))
+            emit(
+                NetworkResult.Error(
+                    DomainError.DatabaseError(
+                        operation = "sendMessage",
+                        message = "Ошибка при отправке сообщения: ${e.message}",
+                        exception = e
+                    )
+                )
+            )
         }
     }
 }

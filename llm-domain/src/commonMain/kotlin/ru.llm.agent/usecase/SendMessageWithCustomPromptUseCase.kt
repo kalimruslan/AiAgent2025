@@ -71,7 +71,7 @@ public class SendMessageWithCustomPromptUseCase(
                     NetworkResult.Success(networkResult.data.conversationMessage)
                 }
                 is NetworkResult.Error -> {
-                    NetworkResult.Error(networkResult.message)
+                    NetworkResult.Error(networkResult.error)
                 }
                 is NetworkResult.Loading -> {
                     NetworkResult.Loading()

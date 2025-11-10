@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import ru.llm.agent.NetworkResult
 import ru.llm.agent.core.utils.Logger
+import ru.llm.agent.error.DomainError
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.repository.ExpertRepository
 
@@ -43,7 +44,12 @@ public class SynthesizeExpertOpinionsUseCase(
         emit(NetworkResult.Loading())
 
         if (expertOpinions.isEmpty()) {
-            emit(NetworkResult.Error("Нет мнений экспертов для синтеза"))
+            emit(NetworkResult.Error(
+                DomainError.ValidationError(
+                    field = "expertOpinions",
+                    message = "Нет мнений экспертов для синтеза"
+                )
+            ))
             return@flow
         }
 
@@ -96,7 +102,12 @@ public class SynthesizeExpertOpinionsUseCase(
                         emit(NetworkResult.Success(finalAnswer))
                     }
                     is NetworkResult.Error -> {
-                        emit(NetworkResult.Error("Ошибка при синтезе: ${result.message}"))
+                        emit(NetworkResult.Error(
+                            DomainError.BusinessLogicError(
+                                reason = "synthesis_failed",
+                                message = "Ошибка при синтезе: ${result.error.toUserMessage()}"
+                            )
+                        ))
                     }
                     is NetworkResult.Loading -> {
                         // Промежуточное состояние
@@ -105,7 +116,12 @@ public class SynthesizeExpertOpinionsUseCase(
                 }
             }
         } catch (e: Exception) {
-            emit(NetworkResult.Error("Ошибка при синтезе финального ответа: ${e.message}"))
+            emit(NetworkResult.Error(
+                DomainError.UnknownError(
+                    message = "Ошибка при синтезе финального ответа: ${e.message}",
+                    exception = e
+                )
+            ))
         }
     }
 }

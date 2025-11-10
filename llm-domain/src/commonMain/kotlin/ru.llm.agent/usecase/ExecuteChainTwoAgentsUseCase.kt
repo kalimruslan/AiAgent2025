@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import ru.llm.agent.NetworkResult
 import ru.llm.agent.RoleSender
+import ru.llm.agent.error.DomainError
 import ru.llm.agent.model.AgentsChainResultModel
 import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.PromtFormat
@@ -35,7 +36,13 @@ public class ExecuteChainTwoAgentsUseCase(
                     val rawResponse = (it.data as MessageModel.ResponseMessage).content
                     val parseResult = parseAssistantResponseUseCase(rawResponse)
                     val parsed = parseResult.getOrNull() ?: run {
-                        emit(NetworkResult.Error("Ошибка парсинга ответа первого агента"))
+                        emit(NetworkResult.Error(
+                            DomainError.ParseError(
+                                rawData = rawResponse,
+                                message = "Ошибка парсинга ответа первого агента",
+                                exception = parseResult.exceptionOrNull()
+                            )
+                        ))
                         return@collect
                     }
 
