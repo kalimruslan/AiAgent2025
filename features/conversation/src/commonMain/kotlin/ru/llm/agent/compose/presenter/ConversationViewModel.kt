@@ -14,7 +14,6 @@ import ru.llm.agent.model.ConversationMode
 import ru.llm.agent.model.Expert
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.Role
-import ru.llm.agent.repository.ConversationRepository
 import ru.llm.agent.usecase.CommitteeResult
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase
@@ -26,7 +25,7 @@ class ConversationViewModel(
     private val sendConversationMessageUseCase: SendConversationMessageUseCase,
     private val getSelectedProviderUseCase: ru.llm.agent.usecase.GetSelectedProviderUseCase,
     private val saveSelectedProviderUseCase: ru.llm.agent.usecase.SaveSelectedProviderUseCase,
-    private val conversationRepository: ConversationRepository,
+    private val getMessagesWithExpertOpinionsUseCase: ru.llm.agent.usecase.GetMessagesWithExpertOpinionsUseCase,
     private val executeCommitteeUseCase: ExecuteCommitteeUseCase
 ) : ViewModel() {
 
@@ -76,7 +75,7 @@ class ConversationViewModel(
 
                 ConversationMode.COMMITTEE -> {
                     // В режиме Committee загружаем сообщения вместе с мнениями экспертов
-                    conversationRepository.getMessagesWithExpertOpinions(conversationId).collect { messages ->
+                    getMessagesWithExpertOpinionsUseCase(conversationId).collect { messages ->
                         Logger.getLogger("Committe").info("messages - $messages")
 
                         _screeState.update {

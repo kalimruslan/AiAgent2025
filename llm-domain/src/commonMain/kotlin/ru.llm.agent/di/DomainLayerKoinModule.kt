@@ -14,6 +14,7 @@ import ru.llm.agent.service.MessageSendingService
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteChainTwoAgentsUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase
+import ru.llm.agent.usecase.GetMessagesWithExpertOpinionsUseCase
 import ru.llm.agent.usecase.GetSelectedProviderUseCase
 import ru.llm.agent.usecase.ParseAssistantResponseUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
@@ -105,6 +106,12 @@ public val useCasesModule: Module = module {
             expertRepository = get<ExpertRepository>(),
             systemPromptBuilder = get<SystemPromptBuilder>(),
             logger = createLogger("Synthesis")
+        )
+    }
+
+    single<GetMessagesWithExpertOpinionsUseCase>{
+        GetMessagesWithExpertOpinionsUseCase(
+            conversationRepository = get<ConversationRepository>()
         )
     }
 

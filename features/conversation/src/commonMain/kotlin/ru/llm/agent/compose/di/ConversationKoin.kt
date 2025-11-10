@@ -7,6 +7,7 @@ import org.koin.dsl.module
 import ru.llm.agent.compose.presenter.ConversationViewModel
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase
+import ru.llm.agent.usecase.GetMessagesWithExpertOpinionsUseCase
 import ru.llm.agent.usecase.GetSelectedProviderUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
@@ -19,7 +20,7 @@ internal fun conversationKoinModule(): Module {
                 sendConversationMessageUseCase = get<SendConversationMessageUseCase>(),
                 getSelectedProviderUseCase = get<GetSelectedProviderUseCase>(),
                 saveSelectedProviderUseCase = get<SaveSelectedProviderUseCase>(),
-                conversationRepository = get(),
+                getMessagesWithExpertOpinionsUseCase = get<GetMessagesWithExpertOpinionsUseCase>(),
                 executeCommitteeUseCase = get<ExecuteCommitteeUseCase>()
             )
         }

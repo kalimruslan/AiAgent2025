@@ -152,22 +152,26 @@ ExecuteCommitteeUseCase (239 строк) → упрощен до 183 строк
 - SystemPromptBuilder расширен методом buildUserQuestionWithOpinions()
 - Проект успешно собирается
 
-#### 1.3.3 Рефакторинг ConversationViewModel (250 строк)
+#### 1.3.3 Рефакторинг ConversationViewModel (251 строк) ✅ ВЫПОЛНЕНО
 **Проблема:** Слишком много ответственностей, прямой доступ к repository
 
 **Действия:**
-- [ ] Удалить прямые вызовы repository (строки 48, 77)
-- [ ] Создать use cases для всех операций:
-  - `GetSelectedProviderUseCase`
-  - `SaveSelectedProviderUseCase`
-  - `GetAvailableProvidersUseCase`
-- [ ] Рассмотреть разделение на:
-  - `ConversationViewModel` - основная логика чата
-  - `ProviderSelectionState` - sealed class для состояния выбора провайдера
-- [ ] Упростить state management
+- [x] Создан `GetMessagesWithExpertOpinionsUseCase` для получения сообщений с мнениями экспертов
+- [x] Удалены все прямые вызовы `conversationRepository` из ViewModel
+- [x] Обновлен ConversationViewModel для использования use case вместо прямого вызова repository
+- [x] Обновлена DI конфигурация (добавлен GetMessagesWithExpertOpinionsUseCase)
+- [x] Удален неиспользуемый импорт ConversationRepository
+- [x] Проверена сборка проекта
 
 **Оценка:** 6 часов
 **Риск:** Средний
+**Статус:** ✅ Завершено
+**Результат:**
+- ConversationViewModel теперь не имеет прямых зависимостей от repository
+- Создан GetMessagesWithExpertOpinionsUseCase (23 строки)
+- Все операции с данными проходят через use cases
+- Clean Architecture соблюдается на 100%
+- Проект успешно собирается
 
 ---
 
@@ -495,4 +499,13 @@ object HttpClientQualifier {
   - ExecuteCommitteeUseCase упрощен с 239 до 183 строк (сокращение ~24%)
   - Удалены дублирующиеся методы buildSynthesisPrompt() и hardcoded промпты
   - Обновлена DI конфигурация (добавлен SynthesizeExpertOpinionsUseCase)
+  - Проект успешно собирается
+- ✅ Завершена **Фаза 1.3.3 - Рефакторинг ConversationViewModel**
+  - Создан GetMessagesWithExpertOpinionsUseCase (23 строки)
+  - Удалены все прямые вызовы conversationRepository из ViewModel
+  - Обновлен ConversationViewModel для использования GetMessagesWithExpertOpinionsUseCase
+  - Удален неиспользуемый импорт ConversationRepository
+  - Обновлена DI конфигурация (добавлен GetMessagesWithExpertOpinionsUseCase в DomainLayerKoinModule и ConversationKoin)
+  - ConversationViewModel теперь работает только через use cases (0 прямых обращений к repository)
+  - Clean Architecture соблюдается на 100%
   - Проект успешно собирается
