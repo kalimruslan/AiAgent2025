@@ -1,4 +1,4 @@
-package ru.llm.agent.compose.presenter
+package ru.llm.agent.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,21 +10,27 @@ import kotlinx.coroutines.launch
 import ru.llm.agent.doActionIfError
 import ru.llm.agent.doActionIfLoading
 import ru.llm.agent.doActionIfSuccess
+import ru.llm.agent.error.DomainError
 import ru.llm.agent.model.ConversationMode
 import ru.llm.agent.model.Expert
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.Role
-import ru.llm.agent.repository.ConversationRepository
+import ru.llm.agent.presentation.state.ConversationUIState
 import ru.llm.agent.usecase.CommitteeResult
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase
+import ru.llm.agent.usecase.GetMessagesWithExpertOpinionsUseCase
+import ru.llm.agent.usecase.GetSelectedProviderUseCase
+import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 import java.util.logging.Logger
 
 class ConversationViewModel(
     private val conversationUseCase: ConversationUseCase,
     private val sendConversationMessageUseCase: SendConversationMessageUseCase,
-    private val conversationRepository: ConversationRepository,
+    private val getSelectedProviderUseCase: GetSelectedProviderUseCase,
+    private val saveSelectedProviderUseCase: SaveSelectedProviderUseCase,
+    private val getMessagesWithExpertOpinionsUseCase: GetMessagesWithExpertOpinionsUseCase,
     private val executeCommitteeUseCase: ExecuteCommitteeUseCase
 ) : ViewModel() {
 
@@ -45,7 +51,7 @@ class ConversationViewModel(
     fun start(){
         viewModelScope.launch {
             // Загружаем сохраненный провайдер
-            val savedProvider = conversationRepository.getSelectedProvider(conversationId)
+            val savedProvider = getSelectedProviderUseCase(conversationId)
             _screeState.update { it.copy(selectedProvider = savedProvider) }
 
             // Загружаем сообщения
@@ -74,7 +80,7 @@ class ConversationViewModel(
 
                 ConversationMode.COMMITTEE -> {
                     // В режиме Committee загружаем сообщения вместе с мнениями экспертов
-                    conversationRepository.getMessagesWithExpertOpinions(conversationId).collect { messages ->
+                    getMessagesWithExpertOpinionsUseCase(conversationId).collect { messages ->
                         Logger.getLogger("Committe").info("messages - $messages")
 
                         _screeState.update {
@@ -138,11 +144,11 @@ class ConversationViewModel(
                         )
                     }
                 }
-                result.doActionIfError {
+                result.doActionIfError { domainError ->
                     _screeState.update {
                         it.copy(
                             isLoading = false,
-                            error = "Произошла ошибка"
+                            error = mapErrorToUserMessage(domainError)
                         )
                     }
                 }
@@ -182,11 +188,11 @@ class ConversationViewModel(
                         }
                     }
                 }
-                result.doActionIfError {
+                result.doActionIfError { domainError ->
                     _screeState.update {
                         it.copy(
                             isLoading = false,
-                            error = "Произошла ошибка"
+                            error = mapErrorToUserMessage(domainError)
                         )
                     }
                 }
@@ -199,7 +205,7 @@ class ConversationViewModel(
      */
     private fun selectProvider(provider: LlmProvider) {
         viewModelScope.launch {
-            conversationRepository.saveSelectedProvider(conversationId, provider)
+            saveSelectedProviderUseCase(conversationId, provider)
             _screeState.update { it.copy(selectedProvider = provider) }
         }
     }
@@ -246,5 +252,43 @@ class ConversationViewModel(
 
     private fun clearError() {
         _screeState.update { it.copy(error = "") }
+    }
+
+    /**
+     * Преобразование DomainError в пользовательское сообщение
+     * с возможностью кастомизации для специфичных ошибок
+     */
+    private fun mapErrorToUserMessage(error: DomainError): String {
+        return when (error) {
+            is DomainError.NetworkError -> {
+                when (error.code) {
+                    400 -> "Неверный запрос. Проверьте данные и попробуйте снова."
+                    401 -> "Ошибка авторизации. Проверьте API ключ."
+                    403 -> "Доступ запрещен. Проверьте права доступа."
+                    404 -> "Сервис не найден. Проверьте настройки."
+                    429 -> "Слишком много запросов. Попробуйте позже."
+                    500, 502, 503 -> "Сервер временно недоступен. Попробуйте позже."
+                    else -> "Ошибка сети: ${error.message}"
+                }
+            }
+            is DomainError.ValidationError -> {
+                "Ошибка валидации: ${error.message}"
+            }
+            is DomainError.DatabaseError -> {
+                "Ошибка сохранения данных: ${error.message}"
+            }
+            is DomainError.ParseError -> {
+                "Ошибка обработки ответа от AI. Попробуйте еще раз."
+            }
+            is DomainError.BusinessLogicError -> {
+                error.message // Бизнес-логика обычно возвращает готовые сообщения
+            }
+            is DomainError.ConfigurationError -> {
+                "Ошибка конфигурации: ${error.message}. Проверьте настройки."
+            }
+            is DomainError.UnknownError -> {
+                "Произошла неизвестная ошибка: ${error.message}"
+            }
+        }
     }
 }

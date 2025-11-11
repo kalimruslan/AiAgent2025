@@ -1,4 +1,4 @@
-package ru.llm.agent.compose.presenter
+package ru.llm.agent.presentation.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,9 +25,11 @@ import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.module.rememberKoinModules
 import org.koin.compose.scope.KoinScope
 import org.koin.compose.viewmodel.koinViewModel
-import ru.llm.agent.compose.di.CONVERSATION_CHAT_SCOPE_ID
-import ru.llm.agent.compose.di.conversationChatScopeQualifier
-import ru.llm.agent.compose.di.conversationKoinModule
+import ru.llm.agent.presentation.di.CONVERSATION_CHAT_SCOPE_ID
+import ru.llm.agent.presentation.di.conversationChatScopeQualifier
+import ru.llm.agent.presentation.viewmodel.ConversationViewModel
+import ru.llm.agent.presentation.state.ConversationUIState
+import ru.llm.agent.presentation.di.conversationKoinModule
 import ru.llm.agent.core.uikit.LlmAgentTheme
 import ru.llm.agent.model.ConversationMode
 import ru.llm.agent.model.Expert

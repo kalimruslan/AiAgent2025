@@ -16,6 +16,7 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.kotlinx.serialization.json)
             implementation(projects.llmDomain)
+            implementation(projects.core.utils)
 
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.serialization.kotlinx.json)

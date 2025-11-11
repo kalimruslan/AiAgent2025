@@ -3,12 +3,12 @@ package ru.llm.agent.usecase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import ru.llm.agent.NetworkResult
+import ru.llm.agent.core.utils.Logger
+import ru.llm.agent.error.DomainError
 import ru.llm.agent.model.Expert
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.repository.ConversationRepository
 import ru.llm.agent.repository.ExpertRepository
-import java.util.logging.Logger
-import kotlin.math.exp
 
 /**
  * UseCase для выполнения режима "Комитет экспертов"
@@ -20,7 +20,10 @@ import kotlin.math.exp
  */
 public class ExecuteCommitteeUseCase(
     private val conversationRepository: ConversationRepository,
-    private val expertRepository: ExpertRepository
+    private val expertRepository: ExpertRepository,
+    private val sendMessageWithCustomPromptUseCase: SendMessageWithCustomPromptUseCase,
+    private val synthesizeExpertOpinionsUseCase: SynthesizeExpertOpinionsUseCase,
+    private val logger: Logger,
 ) {
 
     /**
@@ -41,10 +44,15 @@ public class ExecuteCommitteeUseCase(
     ): Flow<NetworkResult<CommitteeResult>> = flow {
         emit(NetworkResult.Loading())
 
-        Logger.getLogger("Committe").info("Execute comitte START - experts - ${experts.map { it.name }}")
+        logger.info("Execute comitte START - experts - ${experts.map { it.name }}")
 
         if (experts.isEmpty()) {
-            emit(NetworkResult.Error("Не выбраны эксперты"))
+            emit(NetworkResult.Error(
+                DomainError.ValidationError(
+                    field = "experts",
+                    message = "Не выбраны эксперты для обсуждения"
+                )
+            ))
             return@flow
         }
 
@@ -56,11 +64,17 @@ public class ExecuteCommitteeUseCase(
         )
 
         if (userMessageId == 0L) {
-            emit(NetworkResult.Error("Не удалось сохранить сообщение пользователя"))
+            emit(NetworkResult.Error(
+                DomainError.DatabaseError(
+                    operation = "saveUserMessage",
+                    message = "Не удалось сохранить сообщение пользователя",
+                    exception = Exception("userMessageId is 0")
+                )
+            ))
             return@flow
         }
 
-        Logger.getLogger("Committe").info("User message saved with ID: $userMessageId")
+        logger.info("User message saved with ID: $userMessageId")
 
         val expertOpinions = mutableListOf<ExpertOpinionResult>()
 
@@ -74,15 +88,15 @@ public class ExecuteCommitteeUseCase(
 
                 // Инициализируем диалог для эксперта
                 //conversationRepository.initializeConversation(expertConversationId)
-                Logger.getLogger("Committe").info("Send message to expert - ${expert.name}, conversationId - $conversationId,\n" +
+                logger.info("Send message to expert - ${expert.name}, conversationId - $conversationId,\n" +
                         "systemPrompt - ${expert.systemPrompt}\n\nВопрос: $userMessage")
                 // Получаем мнение эксперта с правильным разделением ролей
                 var expertOpinion = ""
-                conversationRepository.sendMessage(
+                sendMessageWithCustomPromptUseCase(
                     conversationId = expertConversationId,
-                    message = userMessage,
-                    provider = provider,
-                    systemPrompt = expert.systemPrompt
+                    userMessage = userMessage,
+                    systemPrompt = expert.systemPrompt,
+                    provider = provider
                 ).collect { result ->
                     when (result) {
                         is NetworkResult.Success -> {
@@ -104,14 +118,19 @@ public class ExecuteCommitteeUseCase(
                                 expert = expert,
                                 opinion = expertOpinion
                             )
-                            Logger.getLogger("Committe").info("Expert ${expert.name} opinion result - $opinionResult")
+                            logger.info("Expert ${expert.name} opinion result - $opinionResult")
                             expertOpinions.add(opinionResult)
 
                             // Эмитим каждое мнение эксперта
                             emit(NetworkResult.Success(CommitteeResult.ExpertOpinion(opinionResult)))
                         }
                         is NetworkResult.Error -> {
-                            emit(NetworkResult.Error("Ошибка при получении мнения от ${expert.name}: ${result.message}"))
+                            emit(NetworkResult.Error(
+                                DomainError.BusinessLogicError(
+                                    reason = "expertOpinionFailed",
+                                    message = "Ошибка при получении мнения от ${expert.name}: ${result.error.toUserMessage()}"
+                                )
+                            ))
                         }
                         is NetworkResult.Loading -> {
                             // Промежуточное состояние загрузки
@@ -119,7 +138,12 @@ public class ExecuteCommitteeUseCase(
                     }
                 }
             } catch (e: Exception) {
-                emit(NetworkResult.Error("Ошибка при обработке мнения эксперта ${expert.name}: ${e.message}"))
+                emit(NetworkResult.Error(
+                    DomainError.UnknownError(
+                        message = "Ошибка при обработке мнения эксперта ${expert.name}: ${e.message}",
+                        exception = e
+                    )
+                ))
             }
         }
 
@@ -127,55 +151,25 @@ public class ExecuteCommitteeUseCase(
         if (expertOpinions.isNotEmpty()) {
             emit(NetworkResult.Loading())
 
-            val synthesisPrompt = buildSynthesisPrompt(userMessage, expertOpinions)
-
             try {
-                // Создаем временный диалог для синтеза
-                val synthesisConversationId = "$conversationId-synthesis"
-
-                val synthesisSystemPrompt = """
-                    Ты - координатор комитета экспертов. Твоя задача - синтезировать финальный ответ
-                    на основе мнений всех экспертов. Учитывай все точки зрения, находи общие моменты
-                    и различия. Создай структурированный и полный ответ.
-
-                    Отвечай строго в JSON формате:
-                    {
-                      "answer": "твой синтезированный ответ",
-                      "is_continue": false,
-                      "is_complete": true
-                    }
-                """.trimIndent()
-
-                Logger.getLogger("Committe").info("Synthessys system prompt - $synthesisSystemPrompt\n\nuser prompt - $synthesisPrompt")
-
-                var finalAnswer = ""
-                conversationRepository.sendMessage(
-                    conversationId = synthesisConversationId,
-                    message = synthesisPrompt,
-                    provider = provider,
-                    systemPrompt = synthesisSystemPrompt
+                synthesizeExpertOpinionsUseCase(
+                    conversationId = conversationId,
+                    userMessageId = userMessageId,
+                    userQuestion = userMessage,
+                    expertOpinions = expertOpinions,
+                    provider = provider
                 ).collect { result ->
                     when (result) {
                         is NetworkResult.Success -> {
-                            finalAnswer = result.data.text
-                            Logger.getLogger("Committe").info("Synthessys SUCCESS - $finalAnswer")
-
-                            // Сохраняем synthesis как мнение специального "эксперта"
-                            expertRepository.saveExpertOpinion(
-                                expertId = "synthesis",
-                                expertName = "Синтез",
-                                expertIcon = "🎯",
-                                messageId = userMessageId,
-                                conversationId = conversationId,
-                                opinion = finalAnswer,
-                                timestamp = System.currentTimeMillis(),
-                                originalResponse = result.data.text
-                            )
-
-                            emit(NetworkResult.Success(CommitteeResult.FinalSynthesis(finalAnswer)))
+                            emit(NetworkResult.Success(CommitteeResult.FinalSynthesis(result.data)))
                         }
                         is NetworkResult.Error -> {
-                            emit(NetworkResult.Error("Ошибка при синтезе: ${result.message}"))
+                            emit(NetworkResult.Error(
+                                DomainError.BusinessLogicError(
+                                    reason = "synthesisFailed",
+                                    message = "Ошибка при синтезе: ${result.error.toUserMessage()}"
+                                )
+                            ))
                         }
                         is NetworkResult.Loading -> {
                             // Промежуточное состояние
@@ -183,34 +177,21 @@ public class ExecuteCommitteeUseCase(
                     }
                 }
             } catch (e: Exception) {
-                emit(NetworkResult.Error("Ошибка при синтезе финального ответа: ${e.message}"))
+                emit(NetworkResult.Error(
+                    DomainError.UnknownError(
+                        message = "Ошибка при синтезе финального ответа: ${e.message}",
+                        exception = e
+                    )
+                ))
             }
         } else {
-            emit(NetworkResult.Error("Не удалось получить ни одного мнения от экспертов"))
+            emit(NetworkResult.Error(
+                DomainError.BusinessLogicError(
+                    reason = "noExpertOpinions",
+                    message = "Не удалось получить ни одного мнения от экспертов"
+                )
+            ))
         }
-    }
-
-    /**
-     * Построить промпт для синтеза финального ответа
-     */
-    private fun buildSynthesisPrompt(
-        userMessage: String,
-        expertOpinions: List<ExpertOpinionResult>
-    ): String {
-        val opinionsText = expertOpinions.joinToString("\n\n") { result ->
-            "${result.expert.icon} **${result.expert.name}**:\n${result.opinion}"
-        }
-
-        return """
-            Вопрос пользователя: "$userMessage"
-
-            Мнения экспертов:
-            $opinionsText
-
-            Задача: Проанализируй все мнения экспертов и создай финальный, структурированный ответ.
-            Учти все важные моменты, которые упомянули эксперты. Если есть противоречия - укажи их.
-            Если эксперты согласны - выдели общую позицию.
-        """.trimIndent()
     }
 }
 

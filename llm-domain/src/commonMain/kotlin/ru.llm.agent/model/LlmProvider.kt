@@ -1,5 +1,7 @@
 package ru.llm.agent.model
 
+import ru.llm.agent.model.config.ProviderConfig
+
 /**
  * Провайдеры LLM для выбора модели
  */
@@ -30,6 +32,11 @@ public enum class LlmProvider(
         displayName = "Misatray AI",
         modelId = "mistralai/mistral-medium-3.1"
     );
+
+    /**
+     * Получить полную конфигурацию провайдера
+     */
+    public fun getConfig(): ProviderConfig = ProviderConfig.forProvider(this)
 
     public companion object {
         /**

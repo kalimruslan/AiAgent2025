@@ -1,4 +1,4 @@
-package ru.llm.agent.compose.presenter
+package ru.llm.agent.presentation.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -15,10 +15,12 @@ import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.module.rememberKoinModules
 import org.koin.compose.scope.KoinScope
 import org.koin.compose.viewmodel.koinViewModel
-import ru.llm.agent.compose.di.OPTIONS_SCOPE_ID
-import ru.llm.agent.compose.di.optionsKoinModule
-import ru.llm.agent.compose.di.optionsScopeQualifier
+import ru.llm.agent.presentation.di.OPTIONS_SCOPE_ID
+import ru.llm.agent.presentation.di.optionsKoinModule
+import ru.llm.agent.presentation.di.optionsScopeQualifier
 import ru.llm.agent.core.uikit.LlmAgentTheme
+import ru.llm.agent.presentation.viewmodel.OptionsViewModel
+import ru.llm.agent.presentation.state.OptionsUIState
 import kotlin.time.Instant
 
 /**

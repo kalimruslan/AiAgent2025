@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.frameio.kmplib)
     alias(libs.plugins.frameio.compose)
+    alias(libs.plugins.jetbrains.kotlin.serialization)
     alias(libs.plugins.manifestGuard)
     alias(libs.plugins.jetbrains.compose.hotreload)
 }
@@ -22,8 +23,10 @@ kotlin {
         commonMain.dependencies {
 //            implementation(projects.features.chat)
             implementation(projects.core.utils)
-            implementation(projects.llmData)
             implementation(projects.llmDomain)
+            // IMPORTANT: Only for DI modules (networkModule, repositoriesModule, databaseModule, platformDatabaseModule)
+            // DO NOT use data layer classes directly in application code!
+            implementation(projects.llmData)
             implementation(compose.components.resources)
             implementation(libs.navigation.compose)
             implementation(projects.features.conversation)

@@ -11,3 +11,7 @@ public actual val yandexDeveloperToken: String
 public actual val proxyApiToken: String
     get() = System.getProperty("PROXY_API_KEY")?: error("YANDEX_API_KEY not found")
 
+public val platformDatabaseModule: Module = module {
+    single<DatabaseDriverFactory> { DatabaseDriverFactory() }
+}
+

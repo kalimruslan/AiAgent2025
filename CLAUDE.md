@@ -8,6 +8,36 @@ This is a **Kotlin Multiplatform (KMP)** project implementing an LLM Agent syste
 
 Target platforms: **Android** and **Desktop (JVM)**
 
+## Code Style and Conventions
+
+### Language for Comments and Documentation
+
+**IMPORTANT**: All code comments, KDoc documentation, and commit messages **MUST be written in Russian**.
+
+This includes:
+- KDoc comments (`/** */`) for classes, functions, and properties
+- Single-line comments (`//`)
+- Multi-line comments (`/* */`)
+- Git commit messages
+- TODO comments
+- Code review comments
+
+**Example:**
+```kotlin
+/**
+ * Кроссплатформенный интерфейс логгера для соблюдения Clean Architecture.
+ * Позволяет логировать без platform-specific зависимостей в domain layer.
+ */
+public interface Logger {
+    /**
+     * Логирование информационного сообщения
+     */
+    public fun info(message: String)
+}
+```
+
+**Exception**: Technical identifiers (class names, function names, variable names) remain in English as per Kotlin conventions.
+
 ## Common Commands
 
 ### Build & Run
@@ -49,11 +79,7 @@ The project follows **Clean Architecture** with clear layer separation:
 ├── llm-data/             # Data layer: repository implementations, API clients, Room DB
 ├── features/             # Feature modules (UI + ViewModels)
 │   ├── conversation/     # Main chat interface with AI
-│   ├── addoptions/       # Settings and configuration
-│   ├── difftwomodels/    # Compare two LLM models
-│   ├── interactiontwoagents/  # Multi-agent interaction
-│   ├── tokens/           # Token counting and management
-│   └── mcpclient/        # MCP protocol client
+│   └── addoptions/       # Settings and configuration
 ├── core/
 │   ├── uikit/            # Shared UI components & theme
 │   └── utils/            # Platform abstractions and utilities
@@ -208,11 +234,24 @@ actual fun platformSpecificFunction(): String = "Desktop"
 - DAOs: `MessageDao`, `ContextDao`
 
 ### Navigation
-Jetpack Navigation Compose with sealed class routes:
+Jetpack Navigation Compose с type-safe навигацией через @Serializable классы:
 ```kotlin
-sealed class Screen(val route: String) {
-    object Conversations : Screen("conversations")
-    object Options : Screen("options/{conversationId}")
+@Serializable
+object ConversationsRoute
+
+@Serializable
+data class OptionsRoute(val conversationId: String)
+
+// Использование:
+NavHost(
+    navController = navController,
+    startDestination = ConversationsRoute
+) {
+    composable<ConversationsRoute> { /* ... */ }
+    composable<OptionsRoute> { backStackEntry ->
+        val route: OptionsRoute = backStackEntry.toRoute()
+        // Используем route.conversationId
+    }
 }
 ```
 
@@ -248,7 +287,7 @@ plugins {
 ### API Clients
 - `llm-data/src/commonMain/kotlin/ru/llm/agent/api/yandex/YandexApi.kt`
 - `llm-data/src/commonMain/kotlin/ru/llm/agent/api/proxy/ProxyApi.kt`
-- `llm-data/src/commonMain/kotlin/ru/llm/agent/api/mcp/McpClient.kt`
+- `llm-data/src/commonMain/kotlin/ru.llm.agent/McpClient.kt`
 
 ### MCP Server
 - Ktor server implementation: `server/src/main/kotlin/`

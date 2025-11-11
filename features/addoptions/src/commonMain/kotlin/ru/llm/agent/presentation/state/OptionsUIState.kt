@@ -1,4 +1,4 @@
-package ru.llm.agent.compose.presenter
+package ru.llm.agent.presentation.state
 
 internal class OptionsUIState {
     data class State(

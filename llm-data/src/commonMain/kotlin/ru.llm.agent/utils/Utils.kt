@@ -9,10 +9,11 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.serialization.SerializationException
 import ru.llm.agent.NetworkResult
 import ru.llm.agent.data.LlmApiError
+import ru.llm.agent.error.DomainError
 
 /**
- * Общий Обработчик запросов, который все ответы превращает во Flow
- * @param execute - функция для выпаолнения запросов
+ * Общий обработчик запросов, который все ответы превращает во Flow
+ * @param execute - функция для выполнения запросов
  */
 public inline fun <reified T> handleApi(crossinline execute: suspend () -> HttpResponse): Flow<NetworkResult<T>> =
     flow {
@@ -37,15 +38,33 @@ public inline fun <reified T> handleApi(crossinline execute: suspend () -> HttpR
 
                     emit(
                         NetworkResult.Error(
-                            message = errorBody?.message ?: "unknown error"
+                            error = DomainError.NetworkError(
+                                code = result.status.value,
+                                message = errorBody?.message ?: "Неизвестная ошибка сети",
+                                exception = null
+                            )
                         )
                     )
                 }
             }
+        } catch (e: SerializationException) {
+            emit(
+                NetworkResult.Error(
+                    error = DomainError.ParseError(
+                        rawData = e.message ?: "",
+                        message = "Ошибка парсинга ответа от сервера",
+                        exception = e
+                    )
+                )
+            )
         } catch (e: Exception) {
             emit(
                 NetworkResult.Error(
-                    message = e.message
+                    error = DomainError.NetworkError(
+                        code = null,
+                        message = e.message ?: "Ошибка при выполнении запроса",
+                        exception = e
+                    )
                 )
             )
         }

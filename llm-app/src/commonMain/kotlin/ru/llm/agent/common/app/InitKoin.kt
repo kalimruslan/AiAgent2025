@@ -7,7 +7,10 @@ import org.koin.core.logger.Logger
 import org.koin.core.module.Module
 import ru.llm.agent.di.networkModule
 import ru.llm.agent.di.repositoriesModule
-import ru.llm.agent.di.useCasesModule
+import ru.llm.agent.di.servicesModule
+import ru.llm.agent.di.domainKoinModule
+import ru.llm.agent.di.databaseModule
+import ru.llm.agent.di.platformDatabaseModule
 
 internal expect fun defaultKoinLogger(level: Level): Logger
 
@@ -23,9 +26,12 @@ fun KoinApplication.initKoinApp(
 
     modules(
         platformKoinModule(platformContext),
+        platformDatabaseModule,
+        databaseModule,
         networkModule,
+        servicesModule,
         repositoriesModule,
-        useCasesModule,
+        domainKoinModule,
     )
 }
 

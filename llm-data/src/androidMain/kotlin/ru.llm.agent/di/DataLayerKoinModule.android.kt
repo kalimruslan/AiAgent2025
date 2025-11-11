@@ -11,3 +11,7 @@ public actual val yandexDeveloperToken: String
 
 public actual val proxyApiToken: String
     get() = BuildConfig.PROXY_API_KEY
+
+public val platformDatabaseModule: Module = module {
+    single<DatabaseDriverFactory> { DatabaseDriverFactory(androidContext()) }
+}

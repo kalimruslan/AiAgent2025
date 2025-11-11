@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import ru.llm.agent.core.utils.Logger
+import ru.llm.agent.error.DomainError
 import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.Role
 import ru.llm.agent.model.mcp.FunctionResult
@@ -13,16 +15,32 @@ import ru.llm.agent.model.mcp.ToolResultList
 import ru.llm.agent.model.mcp.YaGptTool
 import ru.llm.agent.repository.LlmRepository
 import ru.llm.agent.repository.McpRepository
-import java.util.logging.Logger
 import kotlin.let
 
+/**
+ * Сервис для взаимодействия с YandexGPT через MCP (Model Context Protocol).
+ * Реализует полный цикл function calling:
+ * 1. Получение списка доступных инструментов с MCP сервера
+ * 2. Отправка сообщения с tool definitions в YandexGPT
+ * 3. Обработка tool calls от модели
+ * 4. Выполнение инструментов через MCP
+ * 5. Отправка результатов обратно в модель
+ *
+ * Поддерживает до 3 итераций tool calling для решения сложных задач.
+ */
 public class InteractYaGptWithMcpService(
     private val mcpRepository: McpRepository,
     private val llmRepository: LlmRepository,
+    private val logger: Logger,
 ) {
     private val conversationHistory = mutableListOf<MessageModel>()
     private var availableTools: List<YaGptTool> = emptyList()
 
+    /**
+     * Получить список доступных MCP инструментов
+     *
+     * @return Flow со списком инструментов в формате YandexGPT
+     */
     public fun getTools(): Flow<List<YaGptTool>> {
         return flow {
             // Получаем список инструментов с MCP сервера
@@ -32,6 +50,17 @@ public class InteractYaGptWithMcpService(
 
     }
 
+    /**
+     * Отправить сообщение в YandexGPT с поддержкой MCP function calling
+     *
+     * Автоматически обрабатывает tool calls:
+     * - Выполняет запрошенные инструменты
+     * - Отправляет результаты обратно в модель
+     * - Повторяет процесс до получения финального ответа (макс. 3 итерации)
+     *
+     * @param userMessage Сообщение пользователя
+     * @return Flow с результатом обработки сообщения
+     */
     public fun chat(userMessage: String): Flow<NetworkResult<MessageModel>> {
         return flow {
             conversationHistory.add(
@@ -50,13 +79,13 @@ public class InteractYaGptWithMcpService(
                     when (result) {
                         is NetworkResult.Loading -> emit(NetworkResult.Loading())
                         is NetworkResult.Error -> {
-                            Logger.getLogger("McpClient").info("Error: ${result.message}")
-                            emit(NetworkResult.Error(result.message))
+                            logger.info("Error: ${result.error.toLogMessage()}")
+                            emit(NetworkResult.Error(result.error))
                         }
 
                         is NetworkResult.Success -> {
                             val message = result.data
-                            Logger.getLogger("McpClient").info("Received message: $message")
+                            logger.info("Received message: $message")
                             result.data?.let {
                                 //conversationHistory.add(it)
                                 val responseMessage = it as MessageModel.ResponseMessage
@@ -71,13 +100,11 @@ public class InteractYaGptWithMcpService(
                                     val toolResults = mutableListOf<ToolResult>()
 
                                     for (toolCall in toolCalls) {
-                                        Logger.getLogger("McpClient")
-                                            .info("chat toolCall - $toolCall")
+                                        logger.info("chat toolCall - $toolCall")
 
                                         try {
                                             val arguments = toolCall.functionCall.arguments
-                                            Logger.getLogger("McpClient")
-                                                .info("chat arguments - $arguments")
+                                            logger.info("chat arguments - $arguments")
 
                                             val result = mcpRepository.callTool(
                                                 name = toolCall.functionCall.name,
@@ -91,8 +118,7 @@ public class InteractYaGptWithMcpService(
                                                     appendLine("${toolCall.functionCall.name}: $result")
                                                 }
                                             )
-                                            Logger.getLogger("McpClient")
-                                                .info("call tool - $toolResults")
+                                            logger.info("call tool - $toolResults")
 
                                             conversationHistory.add(message)
                                             emit(NetworkResult.Success(message))
@@ -117,16 +143,12 @@ public class InteractYaGptWithMcpService(
                                             )
                                         }
                                     }
-
-                                    // Добавляем результаты вызовов в историю
-//                            conversationHistory.add(
-//                                MessageModel.ToolsMessage(
-//                                    role = Role.FUNCTION,
-//                                    toolResultList = ToolResultList(toolResults = toolResults)
-//                                )
-//                            )
                                 }
-                            } ?: emit(NetworkResult.Error("Error"))
+                            } ?: emit(NetworkResult.Error(
+                                DomainError.UnknownError(
+                                    message = "Получен пустой ответ от LLM"
+                                )
+                            ))
                         }
                     }
                 }

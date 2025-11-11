@@ -4,10 +4,12 @@ import ru.ai.agent.data.response.proxyapi.ProxyMessageResponse
 import ru.llm.agent.data.response.yaGPT.YaMessageResponse
 import ru.llm.agent.database.messages.MessageEntity
 import ru.llm.agent.database.context.ContextEntity
+import ru.llm.agent.database.expert.ExpertOpinionEntity
 import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.PromtFormat
 import ru.llm.agent.model.Role
 import ru.llm.agent.model.ConversationContext
+import ru.llm.agent.model.ExpertOpinion
 import ru.llm.agent.model.conversation.ConversationMessage
 
 public fun YaMessageResponse.toModel(usedTokens: String? = null, outputFormat: PromtFormat = PromtFormat.TEXT): MessageModel =
@@ -61,3 +63,16 @@ public fun ContextEntity.toModel(): ConversationContext = ConversationContext(
     maxTokens = maxTokens,
     timestamp = timestamp
 )
+
+public fun ExpertOpinionEntity.toModel(): ExpertOpinion {
+    return ExpertOpinion(
+        id = id,
+        expertId = expertId,
+        expertName = expertName,
+        expertIcon = expertIcon,
+        messageId = messageId,
+        opinion = opinion,
+        timestamp = timestamp,
+        originalResponse = originalResponse
+    )
+}
