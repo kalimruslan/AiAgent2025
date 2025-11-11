@@ -14,5 +14,13 @@ public data class ConversationMessage(
     val originalResponse: String? = null,
     val model: String,
     /** Мнения экспертов, связанные с этим сообщением (для режима Committee) */
-    val expertOpinions: List<ExpertOpinion> = emptyList()
+    val expertOpinions: List<ExpertOpinion> = emptyList(),
+    /** Количество входных токенов (из запроса) */
+    val inputTokens: Int? = null,
+    /** Количество токенов в ответе (completion tokens) */
+    val completionTokens: Int? = null,
+    /** Общее количество токенов */
+    val totalTokens: Int? = null,
+    /** Время ответа LLM в миллисекундах */
+    val responseTimeMs: Long? = null
 )

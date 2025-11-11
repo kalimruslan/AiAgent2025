@@ -136,7 +136,11 @@ public class ConversationRepositoryImpl(
             text = conversationMessage.text,
             timestamp = conversationMessage.timestamp,
             originalResponse = conversationMessage.originalResponse,
-            model = conversationMessage.model
+            model = conversationMessage.model,
+            inputTokens = conversationMessage.inputTokens,
+            completionTokens = conversationMessage.completionTokens,
+            totalTokens = conversationMessage.totalTokens,
+            responseTimeMs = conversationMessage.responseTimeMs
         )
         return messageDao.insertMessage(assistantEntity)
     }

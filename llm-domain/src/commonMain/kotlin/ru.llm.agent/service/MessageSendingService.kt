@@ -34,8 +34,16 @@ public interface MessageSendingService {
  *
  * @param conversationMessage Сформированное сообщение для сохранения в БД
  * @param rawResponse Сырой ответ от API (для отладки и логирования)
+ * @param inputTokens Количество входных токенов (из запроса)
+ * @param completionTokens Количество токенов в ответе
+ * @param totalTokens Общее количество токенов
+ * @param responseTimeMs Время ответа LLM в миллисекундах
  */
 public data class MessageSendingResult(
     val conversationMessage: ConversationMessage,
-    val rawResponse: String
+    val rawResponse: String,
+    val inputTokens: Int? = null,
+    val completionTokens: Int? = null,
+    val totalTokens: Int? = null,
+    val responseTimeMs: Long
 )
