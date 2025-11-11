@@ -16,7 +16,7 @@ public actual class DatabaseDriverFactory {
         )
             .setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(Dispatchers.IO)
-            .addMigrations(MessageDatabase.MIGRATION_1_2, MessageDatabase.MIGRATION_2_3)
+            .addMigrations(MessageDatabase.MIGRATION_1_2, MessageDatabase.MIGRATION_2_3, MessageDatabase.MIGRATION_3_4)
             .build()
     }
 }

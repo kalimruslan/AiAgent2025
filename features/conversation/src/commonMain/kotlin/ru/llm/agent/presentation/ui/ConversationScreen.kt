@@ -268,6 +268,7 @@ private fun BoxScope.MessagesContent(
 fun MessageItem(message: ConversationMessage) {
     val isUser = message.role == Role.USER
     var showOriginalJson by remember { mutableStateOf(false) }
+    var showMetadata by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         if(!isUser) {
@@ -302,6 +303,27 @@ fun MessageItem(message: ConversationMessage) {
                         else
                             MaterialTheme.colorScheme.onSecondaryContainer
                     )
+
+                    // Показать метаданные (токены и время) если есть
+                    if (!isUser && hasMetadata(message)) {
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        TextButton(
+                            onClick = { showMetadata = !showMetadata },
+                            modifier = Modifier.padding(0.dp)
+                        ) {
+                            Text(
+                                text = if (showMetadata) "Скрыть статистику" else "Показать статистику",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                            )
+                        }
+
+                        if (showMetadata) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            MetadataCard(message)
+                        }
+                    }
 
                     // Show original JSON response if available (for assistant messages)
                     if (!isUser && message.originalResponse != null) {
@@ -763,6 +785,109 @@ fun ExpertChip(
                     fontSize = 10.sp
                 )
             }
+        }
+    }
+}
+
+/**
+ * Проверка наличия метаданных у сообщения
+ */
+fun hasMetadata(message: ConversationMessage): Boolean {
+    return message.totalTokens != null ||
+           message.inputTokens != null ||
+           message.completionTokens != null ||
+           message.responseTimeMs != null
+}
+
+/**
+ * Карточка с метаданными (токены и время)
+ */
+@Composable
+fun MetadataCard(message: ConversationMessage) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = "📊 Статистика ответа",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+            if (message.inputTokens != null) {
+                MetadataRow(
+                    label = "Входные токены:",
+                    value = "${message.inputTokens}"
+                )
+            }
+
+            if (message.completionTokens != null) {
+                MetadataRow(
+                    label = "Токены ответа:",
+                    value = "${message.completionTokens}"
+                )
+            }
+
+            if (message.totalTokens != null) {
+                MetadataRow(
+                    label = "Всего токенов:",
+                    value = "${message.totalTokens}",
+                    isBold = true
+                )
+            }
+
+            message.responseTimeMs?.let { responseTime ->
+                MetadataRow(
+                    label = "Время ответа:",
+                    value = formatResponseTime(responseTime)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Строка с меткой и значением
+ */
+@Composable
+fun MetadataRow(label: String, value: String, isBold: Boolean = false) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = if (isBold) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
+        )
+    }
+}
+
+/**
+ * Форматирование времени ответа
+ */
+fun formatResponseTime(milliseconds: Long): String {
+    return when {
+        milliseconds < 1000 -> "${milliseconds} мс"
+        milliseconds < 60000 -> String.format("%.1f сек", milliseconds / 1000.0)
+        else -> {
+            val minutes = milliseconds / 60000
+            val seconds = (milliseconds % 60000) / 1000
+            "${minutes} мин ${seconds} сек"
         }
     }
 }

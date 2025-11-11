@@ -16,7 +16,7 @@ import ru.llm.agent.database.expert.ExpertOpinionEntity
 
 @Database(
     entities = [MessageEntity::class, ContextEntity::class, ExpertOpinionEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 @ConstructedBy(MessageDatabaseConstructor::class)
@@ -54,6 +54,24 @@ public abstract class MessageDatabase : RoomDatabase() {
                         originalResponse TEXT
                     )
                     """.trimIndent()
+                )
+            }
+        }
+
+        /** Миграция 3 -> 4: Добавление полей для метаданных LLM (токены и время ответа) */
+        public val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "ALTER TABLE messages ADD COLUMN inputTokens INTEGER DEFAULT NULL"
+                )
+                connection.execSQL(
+                    "ALTER TABLE messages ADD COLUMN completionTokens INTEGER DEFAULT NULL"
+                )
+                connection.execSQL(
+                    "ALTER TABLE messages ADD COLUMN totalTokens INTEGER DEFAULT NULL"
+                )
+                connection.execSQL(
+                    "ALTER TABLE messages ADD COLUMN responseTimeMs INTEGER DEFAULT NULL"
                 )
             }
         }

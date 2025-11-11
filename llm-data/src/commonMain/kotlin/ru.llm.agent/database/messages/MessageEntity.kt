@@ -12,5 +12,13 @@ public data class MessageEntity (
     val text: String,
     val timestamp: Long,
     val originalResponse: String? = null,
-    val model: String
+    val model: String,
+    /** Количество входных токенов (из запроса) */
+    val inputTokens: Int? = null,
+    /** Количество токенов в ответе (completion tokens) */
+    val completionTokens: Int? = null,
+    /** Общее количество токенов */
+    val totalTokens: Int? = null,
+    /** Время ответа LLM в миллисекундах */
+    val responseTimeMs: Long? = null
 )

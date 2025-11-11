@@ -46,7 +46,11 @@ public fun MessageEntity.toModel(): ConversationMessage = ConversationMessage(
     isContinue = false,
     isComplete = false,
     originalResponse = originalResponse,
-    model = model
+    model = model,
+    inputTokens = inputTokens,
+    completionTokens = completionTokens,
+    totalTokens = totalTokens,
+    responseTimeMs = responseTimeMs
 )
 
 public fun ConversationContext.toEntity(conversationId: String): ContextEntity = ContextEntity(

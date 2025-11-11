@@ -72,15 +72,29 @@ public class MessageSendingServiceImpl(
             }
         )
 
+        val startTime = System.currentTimeMillis()
+
         val result = handleApi<YandexGPTResponse> {
             yandexApi.sendMessage(request)
         }
 
         return result.mapNetworkResult { response: YandexGPTResponse ->
+            val responseTime = System.currentTimeMillis() - startTime
+            val usage = response.result.usage
+
             val rawResponse = response.result.alternatives.firstOrNull()?.message?.text
                 ?: throw Exception("Empty response from Yandex API")
 
-            parseAndCreateMessage(conversationId, rawResponse, provider, "Yandex")
+            parseAndCreateMessage(
+                conversationId = conversationId,
+                rawResponse = rawResponse,
+                provider = provider,
+                providerName = "Yandex",
+                inputTokens = usage?.inputTextTokens?.toIntOrNull(),
+                completionTokens = usage?.completionTokens?.toIntOrNull(),
+                totalTokens = usage?.totalTokens?.toIntOrNull(),
+                responseTimeMs = responseTime
+            )
         }
     }
 
@@ -103,15 +117,29 @@ public class MessageSendingServiceImpl(
             }
         )
 
+        val startTime = System.currentTimeMillis()
+
         val result = handleApi<ProxyApiResponse> {
             proxyApi.sendMessage(request)
         }
 
         return result.mapNetworkResult { response: ProxyApiResponse ->
+            val responseTime = System.currentTimeMillis() - startTime
+            val usage = response.usage
+
             val rawResponse = response.choices.firstOrNull()?.message?.content
                 ?: throw Exception("Empty response from Proxy API")
 
-            parseAndCreateMessage(conversationId, rawResponse, provider, "ProxyAPI")
+            parseAndCreateMessage(
+                conversationId = conversationId,
+                rawResponse = rawResponse,
+                provider = provider,
+                providerName = "ProxyAPI",
+                inputTokens = usage?.promptTokens,
+                completionTokens = usage?.completionTokens,
+                totalTokens = usage?.totalTokens,
+                responseTimeMs = responseTime
+            )
         }
     }
 
@@ -123,13 +151,21 @@ public class MessageSendingServiceImpl(
      * @param rawResponse Сырой ответ от API
      * @param provider LLM провайдер
      * @param providerName Имя провайдера для логирования
+     * @param inputTokens Количество входных токенов
+     * @param completionTokens Количество токенов ответа
+     * @param totalTokens Общее количество токенов
+     * @param responseTimeMs Время ответа в миллисекундах
      * @return Результат отправки сообщения
      */
     private fun parseAndCreateMessage(
         conversationId: String,
         rawResponse: String,
         provider: LlmProvider,
-        providerName: String
+        providerName: String,
+        inputTokens: Int? = null,
+        completionTokens: Int? = null,
+        totalTokens: Int? = null,
+        responseTimeMs: Long
     ): MessageSendingResult {
         // Парсим ответ через use case
         val parseResult = parseAssistantResponseUseCase(rawResponse)
@@ -148,12 +184,20 @@ public class MessageSendingServiceImpl(
             isContinue = parsed.isCOntinue == true,
             isComplete = parsed.isComplete == true,
             originalResponse = rawResponse,
-            model = provider.displayName
+            model = provider.displayName,
+            inputTokens = inputTokens,
+            completionTokens = completionTokens,
+            totalTokens = totalTokens,
+            responseTimeMs = responseTimeMs
         )
 
         return MessageSendingResult(
             conversationMessage = conversationMessage,
-            rawResponse = rawResponse
+            rawResponse = rawResponse,
+            inputTokens = inputTokens,
+            completionTokens = completionTokens,
+            totalTokens = totalTokens,
+            responseTimeMs = responseTimeMs
         )
     }
 }
