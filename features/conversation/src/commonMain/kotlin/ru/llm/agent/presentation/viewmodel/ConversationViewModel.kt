@@ -20,7 +20,9 @@ import ru.llm.agent.usecase.CommitteeResult
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase
 import ru.llm.agent.usecase.GetMessagesWithExpertOpinionsUseCase
+import ru.llm.agent.usecase.GetMessageTokenCountUseCase
 import ru.llm.agent.usecase.GetSelectedProviderUseCase
+import ru.llm.agent.usecase.GetTokenUsageUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 import java.util.logging.Logger
@@ -31,7 +33,9 @@ class ConversationViewModel(
     private val getSelectedProviderUseCase: GetSelectedProviderUseCase,
     private val saveSelectedProviderUseCase: SaveSelectedProviderUseCase,
     private val getMessagesWithExpertOpinionsUseCase: GetMessagesWithExpertOpinionsUseCase,
-    private val executeCommitteeUseCase: ExecuteCommitteeUseCase
+    private val executeCommitteeUseCase: ExecuteCommitteeUseCase,
+    private val getTokenUsageUseCase: GetTokenUsageUseCase,
+    private val getMessageTokenCountUseCase: GetMessageTokenCountUseCase
 ) : ViewModel() {
 
     private val _screeState = MutableStateFlow(ConversationUIState.State.empty())
@@ -56,6 +60,25 @@ class ConversationViewModel(
 
             // Загружаем сообщения
             loadMessages()
+
+            // Загружаем использование токенов
+            loadTokenUsage()
+        }
+    }
+
+    /**
+     * Загрузить информацию об использовании токенов
+     */
+    private fun loadTokenUsage() {
+        viewModelScope.launch {
+            getTokenUsageUseCase(conversationId).collect { tokenUsage ->
+                _screeState.update {
+                    it.copy(
+                        usedTokens = tokenUsage.usedTokens,
+                        maxTokens = tokenUsage.maxTokens
+                    )
+                }
+            }
         }
     }
 
@@ -128,6 +151,26 @@ class ConversationViewModel(
      */
     private fun sendMessageToSingleAi(message: String) {
         viewModelScope.launch {
+            // Подсчитываем токены ПЕРЕД отправкой
+            Logger.getLogger("TokenCount").info("Подсчёт токенов для сообщения: $message")
+            getMessageTokenCountUseCase(
+                conversationId = conversationId,
+                newMessage = message,
+                modelUri = _screeState.value.selectedProvider.modelId
+            ).collect { tokenResult ->
+                tokenResult.doActionIfSuccess { tokenCount ->
+                    Logger.getLogger("TokenCount").info("Токенов в запросе: $tokenCount")
+                    // Сохраняем количество токенов в state для отображения в UI
+                    _screeState.update { it.copy(requestTokens = tokenCount) }
+                }
+                tokenResult.doActionIfError { domainError ->
+                    Logger.getLogger("TokenCount").warning("Ошибка подсчёта токенов: ${domainError.toUserMessage()}")
+                    // Сбрасываем токены при ошибке
+                    _screeState.update { it.copy(requestTokens = null) }
+                }
+            }
+
+            // Отправляем сообщение
             sendConversationMessageUseCase.invoke(
                 conversationId = conversationId,
                 message = message,
@@ -140,7 +183,8 @@ class ConversationViewModel(
                     _screeState.update { state ->
                         state.copy(
                             isLoading = false,
-                            isConversationComplete = it.isComplete
+                            isConversationComplete = it.isComplete,
+                            requestTokens = null // Сбрасываем после отправки
                         )
                     }
                 }
@@ -148,7 +192,8 @@ class ConversationViewModel(
                     _screeState.update {
                         it.copy(
                             isLoading = false,
-                            error = mapErrorToUserMessage(domainError)
+                            error = mapErrorToUserMessage(domainError),
+                            requestTokens = null // Сбрасываем при ошибке
                         )
                     }
                 }

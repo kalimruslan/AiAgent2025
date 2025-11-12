@@ -151,6 +151,13 @@ fun ConversationScreen(
                     .background(LlmAgentTheme.colors.background)
                     .padding(paddingValues)
             ) {
+                // Progress bar для токенов
+                TokenUsageProgressBar(
+                    usedTokens = state.usedTokens,
+                    maxTokens = state.maxTokens,
+                    requestTokens = state.requestTokens
+                )
+
                 // Показываем выбор экспертов только в режиме Committee
                 if (state.selectedMode == ConversationMode.COMMITTEE) {
                     ExpertsSelectionPanel(
@@ -888,6 +895,89 @@ fun formatResponseTime(milliseconds: Long): String {
             val minutes = milliseconds / 60000
             val seconds = (milliseconds % 60000) / 1000
             "${minutes} мин ${seconds} сек"
+        }
+    }
+}
+
+/**
+ * ProgressBar для отображения использования токенов
+ */
+@Composable
+fun TokenUsageProgressBar(
+    usedTokens: Int,
+    maxTokens: Int,
+    requestTokens: Int?,
+    modifier: Modifier = Modifier
+) {
+    val progress = if (maxTokens > 0) usedTokens.toFloat() / maxTokens.toFloat() else 0f
+    val progressClamped = progress.coerceIn(0f, 1f)
+
+    // Определяем цвет в зависимости от использования
+    val progressColor = when {
+        progressClamped < 0.5f -> MaterialTheme.colorScheme.primary
+        progressClamped < 0.8f -> Color(0xFFFF9800) // Оранжевый
+        else -> MaterialTheme.colorScheme.error
+    }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Использование токенов",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "$usedTokens / $maxTokens",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                )
+            }
+
+            // Отображаем токены текущего запроса, если они подсчитаны
+            if (requestTokens != null && requestTokens > 0) {
+                Text(
+                    text = "Текущий запрос: ~$requestTokens токенов",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 12.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                )
+            }
+
+            LinearProgressIndicator(
+                progress = { progressClamped },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp),
+                color = progressColor,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
+
+            // Предупреждение, если токены заканчиваются
+            if (progressClamped > 0.8f) {
+                Text(
+                    text = "⚠️ Токены заканчиваются",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 11.sp
+                )
+            }
         }
     }
 }

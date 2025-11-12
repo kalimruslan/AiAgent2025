@@ -4,12 +4,16 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 public interface ContextDao {
 
     @Query("SELECT * FROM context WHERE conversationId = :conversationId")
     public suspend fun getContextByConversationId(conversationId: String): ContextEntity?
+
+    @Query("SELECT * FROM context WHERE conversationId = :conversationId")
+    public fun getContextByConversationIdFlow(conversationId: String): Flow<ContextEntity?>
 
     @Insert
     public suspend fun insertSettings(message: ContextEntity): Long

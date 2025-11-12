@@ -175,4 +175,13 @@ public class ConversationRepositoryImpl(
     override fun getAllConversations(): Flow<List<String>> {
         return messageDao.getAllConversations()
     }
+
+    /**
+     * Получить контекст диалога (температура, system prompt, maxTokens)
+     */
+    override suspend fun getContext(conversationId: String): Flow<ru.llm.agent.model.ConversationContext?> {
+        return contextDao.getContextByConversationIdFlow(conversationId).map { contextEntity ->
+            contextEntity?.toModel()
+        }
+    }
 }

@@ -16,7 +16,9 @@ import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteChainTwoAgentsUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase
 import ru.llm.agent.usecase.GetMessagesWithExpertOpinionsUseCase
+import ru.llm.agent.usecase.GetMessageTokenCountUseCase
 import ru.llm.agent.usecase.GetSelectedProviderUseCase
+import ru.llm.agent.usecase.GetTokenUsageUseCase
 import ru.llm.agent.usecase.ParseAssistantResponseUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendMessageWithCustomPromptUseCase
@@ -132,6 +134,19 @@ public val domainKoinModule: Module = module {
             sendMessageWithCustomPromptUseCase = get<SendMessageWithCustomPromptUseCase>(),
             synthesizeExpertOpinionsUseCase = get<SynthesizeExpertOpinionsUseCase>(),
             logger = createLogger("Committee")
+        )
+    }
+
+    single<GetTokenUsageUseCase>{
+        GetTokenUsageUseCase(
+            conversationRepository = get<ConversationRepository>()
+        )
+    }
+
+    single<GetMessageTokenCountUseCase>{
+        GetMessageTokenCountUseCase(
+            llmRepository = get<LlmRepository>(),
+            conversationRepository = get<ConversationRepository>()
         )
     }
 

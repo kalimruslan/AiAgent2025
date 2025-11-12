@@ -19,6 +19,12 @@ internal class ConversationUIState {
         val selectedExperts: List<Expert> = Expert.getPredefinedExperts().take(3), // По умолчанию первые 3
         /** Список всех доступных экспертов */
         val availableExperts: List<Expert> = Expert.getPredefinedExperts(),
+        /** Использованные токены (сумма из всех сообщений) */
+        val usedTokens: Int = 0,
+        /** Максимальное количество токенов */
+        val maxTokens: Int = 8000,
+        /** Токены текущего запроса (null если не подсчитывается) */
+        val requestTokens: Int? = null,
     ) {
         companion object {
             fun empty() = State(

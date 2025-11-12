@@ -8,7 +8,9 @@ import ru.llm.agent.presentation.viewmodel.ConversationViewModel
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase
 import ru.llm.agent.usecase.GetMessagesWithExpertOpinionsUseCase
+import ru.llm.agent.usecase.GetMessageTokenCountUseCase
 import ru.llm.agent.usecase.GetSelectedProviderUseCase
+import ru.llm.agent.usecase.GetTokenUsageUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 
@@ -21,7 +23,9 @@ internal fun conversationKoinModule(): Module {
                 getSelectedProviderUseCase = get<GetSelectedProviderUseCase>(),
                 saveSelectedProviderUseCase = get<SaveSelectedProviderUseCase>(),
                 getMessagesWithExpertOpinionsUseCase = get<GetMessagesWithExpertOpinionsUseCase>(),
-                executeCommitteeUseCase = get<ExecuteCommitteeUseCase>()
+                executeCommitteeUseCase = get<ExecuteCommitteeUseCase>(),
+                getTokenUsageUseCase = get<GetTokenUsageUseCase>(),
+                getMessageTokenCountUseCase = get<GetMessageTokenCountUseCase>()
             )
         }
     }

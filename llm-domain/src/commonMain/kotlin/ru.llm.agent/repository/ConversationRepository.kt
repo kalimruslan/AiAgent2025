@@ -63,4 +63,9 @@ public interface ConversationRepository {
      * Получить список всех диалогов
      */
     public fun getAllConversations(): Flow<List<String>>
+
+    /**
+     * Получить контекст диалога (температура, system prompt, maxTokens)
+     */
+    public suspend fun getContext(conversationId: String): Flow<ru.llm.agent.model.ConversationContext?>
 }
