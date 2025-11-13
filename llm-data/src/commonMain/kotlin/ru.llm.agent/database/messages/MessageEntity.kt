@@ -20,5 +20,7 @@ public data class MessageEntity (
     /** Общее количество токенов */
     val totalTokens: Int? = null,
     /** Время ответа LLM в миллисекундах */
-    val responseTimeMs: Long? = null
+    val responseTimeMs: Long? = null,
+    /** Флаг суммаризированного сообщения (история диалога была сжата в это сообщение) */
+    val isSummarized: Boolean = false
 )

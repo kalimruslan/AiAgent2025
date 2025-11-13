@@ -155,7 +155,9 @@ fun ConversationScreen(
                 TokenUsageProgressBar(
                     usedTokens = state.usedTokens,
                     maxTokens = state.maxTokens,
-                    requestTokens = state.requestTokens
+                    requestTokens = state.requestTokens,
+                    summarizationInfo = state.summarizationInfo,
+                    isSummarizing = state.isSummarizing
                 )
 
                 // Показываем выбор экспертов только в режиме Committee
@@ -907,6 +909,8 @@ fun TokenUsageProgressBar(
     usedTokens: Int,
     maxTokens: Int,
     requestTokens: Int?,
+    summarizationInfo: ru.llm.agent.model.SummarizationInfo?,
+    isSummarizing: Boolean,
     modifier: Modifier = Modifier
 ) {
     val progress = if (maxTokens > 0) usedTokens.toFloat() / maxTokens.toFloat() else 0f
@@ -915,7 +919,7 @@ fun TokenUsageProgressBar(
     // Определяем цвет в зависимости от использования
     val progressColor = when {
         progressClamped < 0.5f -> MaterialTheme.colorScheme.primary
-        progressClamped < 0.8f -> Color(0xFFFF9800) // Оранжевый
+        progressClamped < 0.8f -> Color(0xFFFF9800)
         else -> MaterialTheme.colorScheme.error
     }
 
@@ -969,8 +973,40 @@ fun TokenUsageProgressBar(
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
 
+            // Индикатор процесса суммаризации
+            if (isSummarizing) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "⏳ Сжатие истории...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 11.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                    )
+                }
+            }
+
+            // Информация о суммаризации
+            if (!isSummarizing && summarizationInfo != null && summarizationInfo.hasSummarizedMessages) {
+                Text(
+                    text = "📝 История сжата: ${summarizationInfo.summarizedMessagesCount} сообщений (сохранено ~${summarizationInfo.savedTokens} токенов)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF4CAF50), // Зеленый цвет
+                    fontSize = 11.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                )
+            }
+
             // Предупреждение, если токены заканчиваются
-            if (progressClamped > 0.8f) {
+            if (!isSummarizing && progressClamped > 0.8f) {
                 Text(
                     text = "⚠️ Токены заканчиваются",
                     style = MaterialTheme.typography.bodySmall,

@@ -184,4 +184,57 @@ public class ConversationRepositoryImpl(
             contextEntity?.toModel()
         }
     }
+
+    /**
+     * Получить информацию о суммаризации истории диалога
+     */
+    override suspend fun getSummarizationInfo(conversationId: String): Flow<ru.llm.agent.model.SummarizationInfo> {
+        return messageDao.getMessagesByConversation(conversationId).map { messages ->
+            val summarizedMessages = messages.filter { it.isSummarized }
+
+            // Подсчитываем сэкономленные токены
+            // Это приблизительная оценка на основе количества суммаризированных сообщений
+            val savedTokens = summarizedMessages.sumOf { it.totalTokens ?: 0 }
+
+            // Находим последнюю суммаризацию
+            val lastSummarizationTimestamp = summarizedMessages.maxOfOrNull { it.timestamp }
+
+            ru.llm.agent.model.SummarizationInfo(
+                hasSummarizedMessages = summarizedMessages.isNotEmpty(),
+                summarizedMessagesCount = summarizedMessages.size,
+                savedTokens = savedTokens,
+                lastSummarizationTimestamp = lastSummarizationTimestamp
+            )
+        }
+    }
+
+    /**
+     * Удалить сообщения по их ID
+     */
+    override suspend fun deleteMessages(messageIds: List<Long>) {
+        if (messageIds.isNotEmpty()) {
+            messageDao.deleteMessagesByIds(messageIds)
+        }
+    }
+
+    /**
+     * Сохранить системное сообщение (например, суммаризацию)
+     */
+    override suspend fun saveSystemMessage(
+        conversationId: String,
+        text: String,
+        isSummarized: Boolean,
+        totalTokens: Int?
+    ): Long {
+        val message = MessageEntity(
+            conversationId = conversationId,
+            role = "system",
+            text = text,
+            timestamp = System.currentTimeMillis(),
+            model = "System",
+            isSummarized = isSummarized,
+            totalTokens = totalTokens
+        )
+        return messageDao.insertMessage(message)
+    }
 }

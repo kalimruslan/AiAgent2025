@@ -13,6 +13,7 @@ import ru.llm.agent.usecase.GetSelectedProviderUseCase
 import ru.llm.agent.usecase.GetTokenUsageUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
+import ru.llm.agent.usecase.SummarizeHistoryUseCase
 
 internal fun conversationKoinModule(): Module {
     return module {
@@ -25,7 +26,9 @@ internal fun conversationKoinModule(): Module {
                 getMessagesWithExpertOpinionsUseCase = get<GetMessagesWithExpertOpinionsUseCase>(),
                 executeCommitteeUseCase = get<ExecuteCommitteeUseCase>(),
                 getTokenUsageUseCase = get<GetTokenUsageUseCase>(),
-                getMessageTokenCountUseCase = get<GetMessageTokenCountUseCase>()
+                getMessageTokenCountUseCase = get<GetMessageTokenCountUseCase>(),
+                summarizeHistoryUseCase = get<SummarizeHistoryUseCase>(),
+                conversationRepository = get<ru.llm.agent.repository.ConversationRepository>()
             )
         }
     }

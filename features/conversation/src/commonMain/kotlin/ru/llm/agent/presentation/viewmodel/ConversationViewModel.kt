@@ -25,6 +25,7 @@ import ru.llm.agent.usecase.GetSelectedProviderUseCase
 import ru.llm.agent.usecase.GetTokenUsageUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
+import ru.llm.agent.usecase.SummarizeHistoryUseCase
 import java.util.logging.Logger
 
 class ConversationViewModel(
@@ -35,7 +36,9 @@ class ConversationViewModel(
     private val getMessagesWithExpertOpinionsUseCase: GetMessagesWithExpertOpinionsUseCase,
     private val executeCommitteeUseCase: ExecuteCommitteeUseCase,
     private val getTokenUsageUseCase: GetTokenUsageUseCase,
-    private val getMessageTokenCountUseCase: GetMessageTokenCountUseCase
+    private val getMessageTokenCountUseCase: GetMessageTokenCountUseCase,
+    private val summarizeHistoryUseCase: SummarizeHistoryUseCase,
+    private val conversationRepository: ru.llm.agent.repository.ConversationRepository
 ) : ViewModel() {
 
     private val _screeState = MutableStateFlow(ConversationUIState.State.empty())
@@ -63,6 +66,22 @@ class ConversationViewModel(
 
             // Загружаем использование токенов
             loadTokenUsage()
+
+            // Загружаем информацию о суммаризации
+            loadSummarizationInfo()
+        }
+    }
+
+    /**
+     * Загрузить информацию о суммаризации истории
+     */
+    private fun loadSummarizationInfo() {
+        viewModelScope.launch {
+            conversationRepository.getSummarizationInfo(conversationId).collect { summarizationInfo ->
+                _screeState.update {
+                    it.copy(summarizationInfo = summarizationInfo)
+                }
+            }
         }
     }
 
@@ -147,6 +166,46 @@ class ConversationViewModel(
     }
 
     /**
+     * Проверить и выполнить суммаризацию истории при необходимости
+     */
+    private suspend fun checkAndSummarizeIfNeeded() {
+        val state = _screeState.value
+        val currentTokens = state.usedTokens
+        val maxTokens = state.maxTokens
+        val requestTokens = state.requestTokens ?: 0
+
+        // Проверяем, не превысим ли мы порог с учетом текущего запроса
+        val projectedTokens = currentTokens + requestTokens
+        val usageRatio = projectedTokens.toDouble() / maxTokens.toDouble()
+
+        // Порог 75% для суммаризации
+        if (usageRatio >= 0.75) {
+            Logger.getLogger("Summarization").info("Превышен порог использования токенов: ${(usageRatio * 100).toInt()}%. Начинаем суммаризацию...")
+
+            _screeState.update { it.copy(isSummarizing = true) }
+
+            // Вызываем суммаризацию
+            summarizeHistoryUseCase(
+                conversationId = conversationId,
+                currentTokens = currentTokens,
+                maxTokens = maxTokens,
+                provider = _screeState.value.selectedProvider
+            ).collect { result ->
+                result.doActionIfSuccess { wasSummarized ->
+                    if (wasSummarized) {
+                        Logger.getLogger("Summarization").info("Суммаризация выполнена успешно")
+                    }
+                    _screeState.update { it.copy(isSummarizing = false) }
+                }
+                result.doActionIfError { error ->
+                    Logger.getLogger("Summarization").warning("Ошибка при суммаризации: ${error.toUserMessage()}")
+                    _screeState.update { it.copy(isSummarizing = false) }
+                }
+            }
+        }
+    }
+
+    /**
      * Отправка сообщения в режиме Single AI
      */
     private fun sendMessageToSingleAi(message: String) {
@@ -169,6 +228,9 @@ class ConversationViewModel(
                     _screeState.update { it.copy(requestTokens = null) }
                 }
             }
+
+            // Проверяем и выполняем суммаризацию при необходимости
+            checkAndSummarizeIfNeeded()
 
             // Отправляем сообщение
             sendConversationMessageUseCase.invoke(
