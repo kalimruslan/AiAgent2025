@@ -50,7 +50,8 @@ public fun MessageEntity.toModel(): ConversationMessage = ConversationMessage(
     inputTokens = inputTokens,
     completionTokens = completionTokens,
     totalTokens = totalTokens,
-    responseTimeMs = responseTimeMs
+    responseTimeMs = responseTimeMs,
+    isSummarized = isSummarized
 )
 
 public fun ConversationContext.toEntity(conversationId: String): ContextEntity = ContextEntity(

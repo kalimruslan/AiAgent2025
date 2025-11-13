@@ -46,4 +46,22 @@ public interface MessageDao {
             insertMessage(message)
         }
     }
+
+    /**
+     * Удалить сообщения по списку ID
+     */
+    @Query("DELETE FROM messages WHERE id IN (:messageIds)")
+    public suspend fun deleteMessagesByIds(messageIds: List<Long>)
+
+    /**
+     * Получить количество суммаризированных сообщений в диалоге
+     */
+    @Query("SELECT COUNT(*) FROM messages WHERE conversationId = :conversationId AND isSummarized = 1")
+    public suspend fun getSummarizedMessagesCount(conversationId: String): Int
+
+    /**
+     * Получить все суммаризированные сообщения в диалоге
+     */
+    @Query("SELECT * FROM messages WHERE conversationId = :conversationId AND isSummarized = 1 ORDER BY timestamp DESC")
+    public suspend fun getSummarizedMessages(conversationId: String): List<MessageEntity>
 }

@@ -68,4 +68,35 @@ public interface ConversationRepository {
      * Получить контекст диалога (температура, system prompt, maxTokens)
      */
     public suspend fun getContext(conversationId: String): Flow<ru.llm.agent.model.ConversationContext?>
+
+    /**
+     * Получить информацию о суммаризации истории диалога
+     *
+     * @param conversationId ID диалога
+     * @return Flow с информацией о суммаризации
+     */
+    public suspend fun getSummarizationInfo(conversationId: String): Flow<ru.llm.agent.model.SummarizationInfo>
+
+    /**
+     * Удалить сообщения по их ID
+     *
+     * @param messageIds Список ID сообщений для удаления
+     */
+    public suspend fun deleteMessages(messageIds: List<Long>)
+
+    /**
+     * Сохранить системное сообщение (например, суммаризацию)
+     *
+     * @param conversationId ID диалога
+     * @param text Текст сообщения
+     * @param isSummarized Флаг суммаризированного сообщения
+     * @param totalTokens Количество токенов в сообщении (для отслеживания использования)
+     * @return ID созданного сообщения
+     */
+    public suspend fun saveSystemMessage(
+        conversationId: String,
+        text: String,
+        isSummarized: Boolean = false,
+        totalTokens: Int? = null
+    ): Long
 }

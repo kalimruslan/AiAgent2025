@@ -16,7 +16,7 @@ import ru.llm.agent.database.expert.ExpertOpinionEntity
 
 @Database(
     entities = [MessageEntity::class, ContextEntity::class, ExpertOpinionEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 @ConstructedBy(MessageDatabaseConstructor::class)
@@ -72,6 +72,15 @@ public abstract class MessageDatabase : RoomDatabase() {
                 )
                 connection.execSQL(
                     "ALTER TABLE messages ADD COLUMN responseTimeMs INTEGER DEFAULT NULL"
+                )
+            }
+        }
+
+        /** Миграция 4 -> 5: Добавление поля isSummarized для суммаризации истории */
+        public val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "ALTER TABLE messages ADD COLUMN isSummarized INTEGER NOT NULL DEFAULT 0"
                 )
             }
         }

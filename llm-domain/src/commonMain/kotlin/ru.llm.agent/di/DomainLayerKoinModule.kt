@@ -26,6 +26,7 @@ import ru.llm.agent.usecase.SynthesizeExpertOpinionsUseCase
 import ru.llm.agent.usecase.SystemPromptBuilder
 import ru.llm.agent.usecase.context.GetLocalContextUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
+import ru.llm.agent.usecase.SummarizeHistoryUseCase
 import ru.llm.agent.usecase.context.RemoveLocalContextUseCase
 import ru.llm.agent.usecase.context.SaveLocalContextUseCase
 
@@ -147,6 +148,13 @@ public val domainKoinModule: Module = module {
         GetMessageTokenCountUseCase(
             llmRepository = get<LlmRepository>(),
             conversationRepository = get<ConversationRepository>()
+        )
+    }
+
+    single<SummarizeHistoryUseCase>{
+        SummarizeHistoryUseCase(
+            conversationRepository = get<ConversationRepository>(),
+            llmRepository = get<LlmRepository>()
         )
     }
 

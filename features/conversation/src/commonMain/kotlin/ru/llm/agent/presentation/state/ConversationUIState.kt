@@ -3,6 +3,7 @@ package ru.llm.agent.presentation.state
 import ru.llm.agent.model.ConversationMode
 import ru.llm.agent.model.Expert
 import ru.llm.agent.model.LlmProvider
+import ru.llm.agent.model.SummarizationInfo
 import ru.llm.agent.model.conversation.ConversationMessage
 
 internal class ConversationUIState {
@@ -25,6 +26,10 @@ internal class ConversationUIState {
         val maxTokens: Int = 8000,
         /** Токены текущего запроса (null если не подсчитывается) */
         val requestTokens: Int? = null,
+        /** Информация о суммаризации истории */
+        val summarizationInfo: SummarizationInfo? = null,
+        /** Флаг процесса суммаризации */
+        val isSummarizing: Boolean = false
     ) {
         companion object {
             fun empty() = State(
