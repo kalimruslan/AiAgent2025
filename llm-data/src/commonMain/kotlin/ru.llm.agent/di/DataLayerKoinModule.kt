@@ -81,6 +81,25 @@ public val repositoriesModule: Module = module {
             expertOpinionDao = get<MessageDatabase>().expertOpinionDao()
         )
     }
+
+    // Новые специализированные repository (после рефакторинга)
+    single<ru.llm.agent.repository.MessageRepository> {
+        ru.llm.agent.repository.MessageRepositoryImpl(
+            database = get<MessageDatabase>()
+        )
+    }
+
+    single<ru.llm.agent.repository.TokenManagementRepository> {
+        ru.llm.agent.repository.TokenManagementRepositoryImpl(
+            database = get<MessageDatabase>()
+        )
+    }
+
+    single<ru.llm.agent.repository.SummarizationRepository> {
+        ru.llm.agent.repository.SummarizationRepositoryImpl(
+            database = get<MessageDatabase>()
+        )
+    }
 }
 
 // Модуль для сервисов
