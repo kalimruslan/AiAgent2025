@@ -2,6 +2,7 @@ package ru.llm.agent.presentation.state
 
 import ru.llm.agent.model.ConversationMode
 import ru.llm.agent.model.Expert
+import ru.llm.agent.model.ExportFormat
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.SummarizationInfo
 import ru.llm.agent.model.conversation.ConversationMessage
@@ -56,5 +57,7 @@ internal class ConversationUIState {
         data class SelectMode(val mode: ConversationMode) : Event
         /** Переключить эксперта (добавить/убрать из выбранных) */
         data class ToggleExpert(val expert: Expert) : Event
+        /** Экспортировать диалог в указанном формате */
+        data class ExportConversation(val format: ExportFormat) : Event
     }
 }

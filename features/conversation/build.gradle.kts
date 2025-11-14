@@ -13,6 +13,7 @@ kotlin {
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.jetbrains.compose.ui.backhandler)
             implementation(projects.llmDomain)
+            implementation(projects.core.utils)
 
             implementation(libs.compose.material.icons.extended)
 
