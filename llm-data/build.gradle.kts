@@ -33,6 +33,10 @@ kotlin {
             implementation(libs.ktor.client.android)
             implementation(libs.androidx.room.ktx)
         }
+
+        desktopMain.dependencies {
+            implementation(libs.pdfbox)
+        }
     }
 }
 

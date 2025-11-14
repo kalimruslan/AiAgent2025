@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -33,6 +34,7 @@ import ru.llm.agent.presentation.di.conversationKoinModule
 import ru.llm.agent.core.uikit.LlmAgentTheme
 import ru.llm.agent.model.ConversationMode
 import ru.llm.agent.model.Expert
+import ru.llm.agent.model.ExportFormat
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.Role
 import ru.llm.agent.model.conversation.ConversationMessage
@@ -90,13 +92,23 @@ fun ConversationScreen(
                         titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     ),
                     actions = {
-                        TextButton(onClick = {
-                            viewModel.setEvent(
-                                ConversationUIState.Event.ResetAll
-                            )
-                        }) {
-                            Text("Очистить все")
-                        }
+                        TopBarMenu(
+                            onClearAll = {
+                                viewModel.setEvent(
+                                    ConversationUIState.Event.ResetAll
+                                )
+                            },
+                            onExportJson = {
+                                viewModel.setEvent(
+                                    ConversationUIState.Event.ExportConversation(ExportFormat.JSON)
+                                )
+                            },
+                            onExportPdf = {
+                                viewModel.setEvent(
+                                    ConversationUIState.Event.ExportConversation(ExportFormat.PDF)
+                                )
+                            }
+                        )
                     }
                 )
             },
@@ -900,6 +912,55 @@ fun formatResponseTime(milliseconds: Long): String {
             val minutes = milliseconds / 60000
             val seconds = (milliseconds % 60000) / 1000
             "${minutes} мин ${seconds} сек"
+        }
+    }
+}
+
+/**
+ * Меню в TopBar с иконкой трех точек
+ */
+@Composable
+fun TopBarMenu(
+    onClearAll: () -> Unit,
+    onExportJson: () -> Unit,
+    onExportPdf: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "Меню",
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Очистить все") },
+                onClick = {
+                    expanded = false
+                    onClearAll()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Выгрузить диалог (JSON)") },
+                onClick = {
+                    expanded = false
+                    onExportJson()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Выгрузить диалог (PDF)") },
+                onClick = {
+                    expanded = false
+                    onExportPdf()
+                }
+            )
         }
     }
 }

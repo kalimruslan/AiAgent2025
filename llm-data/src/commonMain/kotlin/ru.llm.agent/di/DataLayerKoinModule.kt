@@ -24,6 +24,9 @@ import ru.llm.agent.repository.McpRepository
 import ru.llm.agent.repository.McpRepositoryImpl
 import ru.llm.agent.repository.ProviderConfigRepository
 import ru.llm.agent.repository.ProviderConfigRepositoryImpl
+import ru.llm.agent.exporter.ConversationExporter
+import ru.llm.agent.exporter.JsonConversationExporter
+import ru.llm.agent.exporter.PdfConversationExporter
 import ru.llm.agent.service.MessageSendingService
 import ru.llm.agent.service.MessageSendingServiceImpl
 
@@ -167,3 +170,8 @@ public val databaseModule: Module = module {
     single<MessageDatabase> { get<DatabaseDriverFactory>().createDatabase() }
 }
 
+// Модуль для экспортеров диалогов
+public val exportersModule: Module = module {
+    single<ConversationExporter> { JsonConversationExporter() }
+    single<ConversationExporter> { PdfConversationExporter() }
+}

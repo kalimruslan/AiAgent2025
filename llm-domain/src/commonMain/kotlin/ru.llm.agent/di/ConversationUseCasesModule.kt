@@ -9,7 +9,10 @@ import ru.llm.agent.repository.MessageRepository
 import ru.llm.agent.repository.SummarizationRepository
 import ru.llm.agent.repository.TokenManagementRepository
 import ru.llm.agent.service.MessageSendingService
+import ru.llm.agent.exporter.ConversationExporter
+import ru.llm.agent.model.ExportFormat
 import ru.llm.agent.usecase.ConversationUseCase
+import ru.llm.agent.usecase.ExportConversationUseCase
 import ru.llm.agent.usecase.GetConversationStateUseCase
 import ru.llm.agent.usecase.GetMessageTokenCountUseCase
 import ru.llm.agent.usecase.GetSummarizationInfoUseCase
@@ -69,6 +72,15 @@ public val conversationUseCasesModule: Module = module {
             messageRepository = get<MessageRepository>(),
             tokenManagementRepository = get<TokenManagementRepository>(),
             summarizationRepository = get<SummarizationRepository>()
+        )
+    }
+
+    // Экспорт диалогов
+    single<ExportConversationUseCase> {
+        ExportConversationUseCase(
+            conversationRepository = get<ConversationRepository>(),
+            exporters = getAll<ConversationExporter>()
+                .associateBy { it.format }
         )
     }
 }

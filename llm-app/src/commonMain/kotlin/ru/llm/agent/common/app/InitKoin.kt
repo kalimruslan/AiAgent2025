@@ -10,6 +10,7 @@ import ru.llm.agent.di.repositoriesModule
 import ru.llm.agent.di.servicesModule
 import ru.llm.agent.di.domainKoinModule
 import ru.llm.agent.di.databaseModule
+import ru.llm.agent.di.exportersModule
 import ru.llm.agent.di.platformDatabaseModule
 
 internal expect fun defaultKoinLogger(level: Level): Logger
@@ -31,6 +32,7 @@ fun KoinApplication.initKoinApp(
         networkModule,
         servicesModule,
         repositoriesModule,
+        exportersModule,
         domainKoinModule,
     )
 }

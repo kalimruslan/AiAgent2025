@@ -16,9 +16,13 @@ import ru.llm.agent.model.Expert
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.Role
 import ru.llm.agent.presentation.state.ConversationUIState
+import ru.llm.agent.core.utils.FileSaveResult
+import ru.llm.agent.core.utils.getFileManager
+import ru.llm.agent.model.ExportFormat
 import ru.llm.agent.usecase.CommitteeResult
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase
+import ru.llm.agent.usecase.ExportConversationUseCase
 import ru.llm.agent.usecase.GetMessagesWithExpertOpinionsUseCase
 import ru.llm.agent.usecase.GetMessageTokenCountUseCase
 import ru.llm.agent.usecase.GetSelectedProviderUseCase
@@ -39,8 +43,11 @@ class ConversationViewModel(
     private val getTokenUsageUseCase: GetTokenUsageUseCase,
     private val getMessageTokenCountUseCase: GetMessageTokenCountUseCase,
     private val summarizeHistoryUseCase: SummarizeHistoryUseCase,
-    private val getSummarizationInfoUseCase: GetSummarizationInfoUseCase
+    private val getSummarizationInfoUseCase: GetSummarizationInfoUseCase,
+    private val exportConversationUseCase: ExportConversationUseCase
 ) : ViewModel() {
+
+    private val fileManager = getFileManager()
 
     private val _screeState = MutableStateFlow(ConversationUIState.State.empty())
     internal val screeState = _screeState.asStateFlow()
@@ -150,6 +157,7 @@ class ConversationViewModel(
             is ConversationUIState.Event.SelectProvider -> selectProvider(event.provider)
             is ConversationUIState.Event.SelectMode -> selectMode(event.mode)
             is ConversationUIState.Event.ToggleExpert -> toggleExpert(event.expert)
+            is ConversationUIState.Event.ExportConversation -> exportConversation(event.format)
         }
     }
 
@@ -360,6 +368,59 @@ class ConversationViewModel(
 
     private fun clearError() {
         _screeState.update { it.copy(error = "") }
+    }
+
+    /**
+     * Экспортировать диалог в указанном формате
+     */
+    private fun exportConversation(format: ExportFormat) {
+        viewModelScope.launch {
+            Logger.getLogger("Export").info("Начинаем экспорт диалога в формате ${format.name}")
+
+            exportConversationUseCase.invoke(
+                conversationId = conversationId,
+                format = format
+            ).collect { result ->
+                result.doActionIfLoading {
+                    Logger.getLogger("Export").info("Экспортируем диалог...")
+                }
+                result.doActionIfSuccess { exportedData ->
+                    viewModelScope.launch {
+                        Logger.getLogger("Export").info("Диалог экспортирован, сохраняем файл...")
+
+                        // Генерируем имя файла
+                        val timestamp = System.currentTimeMillis()
+                        val fileName = "conversation_${conversationId}_$timestamp.${format.extension}"
+
+                        // Сохраняем файл
+                        when (val saveResult = fileManager.saveFile(fileName, exportedData, format.mimeType)) {
+                            is FileSaveResult.Success -> {
+                                Logger.getLogger("Export").info("Файл успешно сохранен: ${saveResult.filePath}")
+                                _screeState.update {
+                                    it.copy(error = "Диалог экспортирован: ${saveResult.filePath}")
+                                }
+                            }
+                            is FileSaveResult.Cancelled -> {
+                                Logger.getLogger("Export").info("Пользователь отменил сохранение")
+                            }
+                            is FileSaveResult.Error -> {
+                                Logger.getLogger("Export").warning("Ошибка сохранения файла: ${saveResult.message}")
+                                _screeState.update {
+                                    it.copy(error = saveResult.message)
+                                }
+                            }
+                        }
+                    }
+                }
+                result.doActionIfError { domainError ->
+                    val errorMessage = domainError.toUserMessage()
+                    Logger.getLogger("Export").warning("Ошибка экспорта: $errorMessage")
+                    _screeState.update {
+                        it.copy(error = "Ошибка экспорта: $errorMessage")
+                    }
+                }
+            }
+        }
     }
 
     /**

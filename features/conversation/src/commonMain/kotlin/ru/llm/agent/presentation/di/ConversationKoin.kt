@@ -7,6 +7,7 @@ import org.koin.dsl.module
 import ru.llm.agent.presentation.viewmodel.ConversationViewModel
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase
+import ru.llm.agent.usecase.ExportConversationUseCase
 import ru.llm.agent.usecase.GetMessagesWithExpertOpinionsUseCase
 import ru.llm.agent.usecase.GetMessageTokenCountUseCase
 import ru.llm.agent.usecase.GetSelectedProviderUseCase
@@ -29,7 +30,8 @@ internal fun conversationKoinModule(): Module {
                 getTokenUsageUseCase = get<GetTokenUsageUseCase>(),
                 getMessageTokenCountUseCase = get<GetMessageTokenCountUseCase>(),
                 summarizeHistoryUseCase = get<SummarizeHistoryUseCase>(),
-                getSummarizationInfoUseCase = get<GetSummarizationInfoUseCase>()
+                getSummarizationInfoUseCase = get<GetSummarizationInfoUseCase>(),
+                exportConversationUseCase = get<ExportConversationUseCase>()
             )
         }
     }
