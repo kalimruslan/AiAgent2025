@@ -22,6 +22,7 @@ import ru.llm.agent.usecase.ExecuteCommitteeUseCase
 import ru.llm.agent.usecase.GetMessagesWithExpertOpinionsUseCase
 import ru.llm.agent.usecase.GetMessageTokenCountUseCase
 import ru.llm.agent.usecase.GetSelectedProviderUseCase
+import ru.llm.agent.usecase.GetSummarizationInfoUseCase
 import ru.llm.agent.usecase.GetTokenUsageUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
@@ -38,7 +39,7 @@ class ConversationViewModel(
     private val getTokenUsageUseCase: GetTokenUsageUseCase,
     private val getMessageTokenCountUseCase: GetMessageTokenCountUseCase,
     private val summarizeHistoryUseCase: SummarizeHistoryUseCase,
-    private val conversationRepository: ru.llm.agent.repository.ConversationRepository
+    private val getSummarizationInfoUseCase: GetSummarizationInfoUseCase
 ) : ViewModel() {
 
     private val _screeState = MutableStateFlow(ConversationUIState.State.empty())
@@ -77,7 +78,7 @@ class ConversationViewModel(
      */
     private fun loadSummarizationInfo() {
         viewModelScope.launch {
-            conversationRepository.getSummarizationInfo(conversationId).collect { summarizationInfo ->
+            getSummarizationInfoUseCase(conversationId).collect { summarizationInfo ->
                 _screeState.update {
                     it.copy(summarizationInfo = summarizationInfo)
                 }

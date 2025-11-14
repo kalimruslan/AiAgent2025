@@ -36,6 +36,9 @@ import ru.llm.agent.model.Expert
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.Role
 import ru.llm.agent.model.conversation.ConversationMessage
+import ru.llm.agent.presentation.ui.components.InputBar
+import ru.llm.agent.presentation.ui.components.MessageItem
+import ru.llm.agent.presentation.ui.components.TokenUsageProgressBar
 import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -130,7 +133,7 @@ fun ConversationScreen(
                             }
                         }
                     }
-                    BottomBar(
+                    InputBar(
                         isLoading = state.isLoading,
                         onSendMessage = {
                             viewModel.setEvent(

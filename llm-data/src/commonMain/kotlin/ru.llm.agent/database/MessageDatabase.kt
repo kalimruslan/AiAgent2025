@@ -8,10 +8,16 @@ import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import ru.llm.agent.database.messages.MessageDao
+import ru.llm.agent.database.messages.MessageReadDao
+import ru.llm.agent.database.messages.MessageWriteDao
 import ru.llm.agent.database.messages.MessageEntity
 import ru.llm.agent.database.context.ContextDao
+import ru.llm.agent.database.context.ContextReadDao
+import ru.llm.agent.database.context.ContextWriteDao
 import ru.llm.agent.database.context.ContextEntity
 import ru.llm.agent.database.expert.ExpertOpinionDao
+import ru.llm.agent.database.expert.ExpertOpinionReadDao
+import ru.llm.agent.database.expert.ExpertOpinionWriteDao
 import ru.llm.agent.database.expert.ExpertOpinionEntity
 
 @Database(
@@ -21,9 +27,18 @@ import ru.llm.agent.database.expert.ExpertOpinionEntity
 )
 @ConstructedBy(MessageDatabaseConstructor::class)
 public abstract class MessageDatabase : RoomDatabase() {
+    // Старые DAO (для обратной совместимости)
     public abstract fun messageDao(): MessageDao
     public abstract fun settingsDao(): ContextDao
     public abstract fun expertOpinionDao(): ExpertOpinionDao
+
+    // Новые разделённые DAO (read/write separation)
+    public abstract fun messageReadDao(): MessageReadDao
+    public abstract fun messageWriteDao(): MessageWriteDao
+    public abstract fun contextReadDao(): ContextReadDao
+    public abstract fun contextWriteDao(): ContextWriteDao
+    public abstract fun expertOpinionReadDao(): ExpertOpinionReadDao
+    public abstract fun expertOpinionWriteDao(): ExpertOpinionWriteDao
 
     public companion object {
         public const val DATABASE_NAME: String = "messages.db"
