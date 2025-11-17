@@ -1,13 +1,16 @@
 package ru.llm.agent.presentation.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.datetime.TimeZone
@@ -15,6 +18,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.module.rememberKoinModules
 import org.koin.compose.scope.KoinScope
 import org.koin.compose.viewmodel.koinViewModel
+import ru.llm.agent.model.mcp.McpToolInfo
 import ru.llm.agent.presentation.di.OPTIONS_SCOPE_ID
 import ru.llm.agent.presentation.di.optionsKoinModule
 import ru.llm.agent.presentation.di.optionsScopeQualifier
@@ -77,11 +81,15 @@ fun OptionsScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.BottomCenter,
             ) {
-                OptionsScreen(
+                OptionsScreenContent(
                     modifier = Modifier.padding(top = 8.dp),
                     systemPrompt = state.systemPrompt.orEmpty(),
                     temperature = state.temperature.toString(),
                     tokens = state.maxTokens.toString(),
+                    mcpTools = state.mcpTools,
+                    isToolsLoading = state.isToolsLoading,
+                    toolsError = state.toolsError,
+                    isToolsSectionExpanded = state.isToolsSectionExpanded,
                     onApplyClick = { systemPrompt, temperature, tokens ->
                         viewModel.setEvent(
                             OptionsUIState.Event.ApplyClick(
@@ -91,6 +99,12 @@ fun OptionsScreen(
                                 maxTokens = tokens
                             )
                         )
+                    },
+                    onLoadToolsClick = {
+                        viewModel.setEvent(OptionsUIState.Event.LoadMcpTools)
+                    },
+                    onToggleToolsSection = {
+                        viewModel.setEvent(OptionsUIState.Event.ToggleToolsSection)
                     }
                 )
             }
@@ -99,12 +113,18 @@ fun OptionsScreen(
 }
 
 @Composable
-private fun BoxScope.OptionsScreen(
+private fun BoxScope.OptionsScreenContent(
     modifier: Modifier = Modifier,
     systemPrompt: String,
     temperature: String,
     tokens: String,
-    onApplyClick: (String, String, String) -> Unit
+    mcpTools: List<McpToolInfo>,
+    isToolsLoading: Boolean,
+    toolsError: String?,
+    isToolsSectionExpanded: Boolean,
+    onApplyClick: (String, String, String) -> Unit,
+    onLoadToolsClick: () -> Unit,
+    onToggleToolsSection: () -> Unit
 ) {
 
     var systemPromptInput by remember { mutableStateOf(systemPrompt) }
@@ -123,6 +143,7 @@ private fun BoxScope.OptionsScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(16.dp).padding(horizontal = 8.dp),
+        contentPadding = PaddingValues(bottom = 64.dp)
     ) {
         item {
             TextField(
@@ -164,6 +185,20 @@ private fun BoxScope.OptionsScreen(
                 singleLine = true
             )
         }
+
+        item { Spacer(modifier = Modifier.height(32.dp)) }
+
+        // Секция MCP Tools
+        item {
+            McpToolsSection(
+                mcpTools = mcpTools,
+                isLoading = isToolsLoading,
+                error = toolsError,
+                isExpanded = isToolsSectionExpanded,
+                onLoadClick = onLoadToolsClick,
+                onToggleExpand = onToggleToolsSection
+            )
+        }
     }
 
     Button(
@@ -173,6 +208,126 @@ private fun BoxScope.OptionsScreen(
         },
     ) {
         Text("Применить")
+    }
+}
+
+@Composable
+private fun McpToolsSection(
+    mcpTools: List<McpToolInfo>,
+    isLoading: Boolean,
+    error: String?,
+    isExpanded: Boolean,
+    onLoadClick: () -> Unit,
+    onToggleExpand: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onToggleExpand() },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "MCP Инструменты",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = if (isExpanded) "▲" else "▼",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+
+            if (isExpanded) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (mcpTools.isEmpty() && !isLoading && error == null) {
+                    Button(
+                        onClick = onLoadClick,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Загрузить инструменты")
+                    }
+                }
+
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                error?.let {
+                    Text(
+                        text = "Ошибка: $it",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = onLoadClick,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Повторить")
+                    }
+                }
+
+                mcpTools.forEach { tool ->
+                    McpToolItem(tool = tool)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun McpToolItem(tool: McpToolInfo) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Text(
+                text = tool.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = tool.description,
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            if (tool.parameters.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Параметры:",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                tool.parameters.forEach { (name, info) ->
+                    val isRequired = name in tool.requiredParameters
+                    Text(
+                        text = "• $name (${info.type})${if (isRequired) " *" else ""}: ${info.description}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
     }
 }
 

@@ -19,7 +19,7 @@ import ru.llm.agent.data.jsonrpc.JsonRpcRequest
 import ru.llm.agent.data.jsonrpc.JsonRpcResponse
 
 fun main() {
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
+    embeddedServer(Netty, port = 8081, host = "0.0.0.0") {
         install(ContentNegotiation) {
             json(Json {
                 prettyPrint = true

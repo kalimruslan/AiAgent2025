@@ -1,6 +1,7 @@
 package ru.llm.agent.repository
 
 import kotlinx.serialization.json.JsonObject
+import ru.llm.agent.model.mcp.McpToolInfo
 import ru.llm.agent.model.mcp.YaGptTool
 
 /**
@@ -14,6 +15,13 @@ public interface McpRepository{
      * @return Список инструментов в формате YandexGPT tools
      */
     public suspend fun getMcpToolsList(): List<YaGptTool>
+
+    /**
+     * Получить информацию о доступных MCP инструментах для UI
+     *
+     * @return Список инструментов с детальной информацией
+     */
+    public suspend fun getToolsInfo(): List<McpToolInfo>
 
     /**
      * Вызвать MCP инструмент с указанными аргументами

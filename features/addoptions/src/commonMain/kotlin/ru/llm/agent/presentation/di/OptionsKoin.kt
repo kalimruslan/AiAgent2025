@@ -5,6 +5,7 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import ru.llm.agent.presentation.viewmodel.OptionsViewModel
+import ru.llm.agent.usecase.GetMcpToolsUseCase
 import ru.llm.agent.usecase.context.GetLocalContextUseCase
 import ru.llm.agent.usecase.context.RemoveLocalContextUseCase
 import ru.llm.agent.usecase.context.SaveLocalContextUseCase
@@ -15,7 +16,8 @@ internal fun optionsKoinModule(): Module {
             OptionsViewModel(
                 getLocalContextUseCase = get<GetLocalContextUseCase>(),
                 saveLocalContextUseCase = get<SaveLocalContextUseCase>(),
-                removeLocalContextUseCase = get<RemoveLocalContextUseCase>()
+                removeLocalContextUseCase = get<RemoveLocalContextUseCase>(),
+                getMcpToolsUseCase = get<GetMcpToolsUseCase>()
             )
         }
     }
