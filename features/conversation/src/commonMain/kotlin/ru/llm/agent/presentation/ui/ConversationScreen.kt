@@ -41,6 +41,7 @@ import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.presentation.ui.components.InputBar
 import ru.llm.agent.presentation.ui.components.MessageItem
 import ru.llm.agent.presentation.ui.components.TokenUsageProgressBar
+import ru.llm.agent.presentation.ui.components.ToolExecutionIndicator
 import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -199,7 +200,7 @@ fun ConversationScreen(
                         modifier = Modifier.padding(top = 8.dp),
                         messages = state.messages,
                         error = state.error,
-                        isLoading = state.isLoading,
+                        isLoading = state.isLoading, currentToolExecution = state.currentToolExecution,
                         onClearError = {
                             viewModel.setEvent(
                                 ConversationUIState.Event.ClearError
@@ -219,6 +220,7 @@ private fun BoxScope.MessagesContent(
     onClearError: () -> Unit,
     error: String,
     isLoading: Boolean,
+    currentToolExecution: ConversationUIState.ToolExecutionStatus? = null,
 ) {
     val messagesListState = rememberLazyListState()
 
@@ -238,6 +240,16 @@ private fun BoxScope.MessagesContent(
 
         items(items = messages, key = { it.id }) { message ->
             MessageItem(message)
+        }
+
+        // Показываем индикатор выполнения tool (если есть)
+        if (currentToolExecution != null) {
+            item {
+                ToolExecutionIndicator(
+                    toolStatus = currentToolExecution,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
         }
 
         if (isLoading) {

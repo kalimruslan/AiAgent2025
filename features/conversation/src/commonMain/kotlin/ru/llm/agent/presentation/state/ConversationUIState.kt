@@ -6,6 +6,7 @@ import ru.llm.agent.model.ExportFormat
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.SummarizationInfo
 import ru.llm.agent.model.conversation.ConversationMessage
+import ru.llm.agent.model.mcp.McpToolInfo
 
 internal class ConversationUIState {
     data class State(
@@ -30,7 +31,12 @@ internal class ConversationUIState {
         /** Информация о суммаризации истории */
         val summarizationInfo: SummarizationInfo? = null,
         /** Флаг процесса суммаризации */
-        val isSummarizing: Boolean = false
+        val isSummarizing: Boolean = false,
+
+        val availableTools: List<McpToolInfo>,
+
+        /** Текущий выполняемый MCP tool (null если не выполняется) */
+        val currentToolExecution: ToolExecutionStatus? = null
     ) {
         companion object {
             fun empty() = State(
@@ -41,7 +47,9 @@ internal class ConversationUIState {
                 selectedProvider = LlmProvider.default(),
                 selectedMode = ConversationMode.default(),
                 selectedExperts = Expert.getPredefinedExperts().take(3),
-                availableExperts = Expert.getPredefinedExperts()
+                availableExperts = Expert.getPredefinedExperts(),
+                availableTools = emptyList(),
+                currentToolExecution = null
             )
         }
     }
@@ -60,4 +68,13 @@ internal class ConversationUIState {
         /** Экспортировать диалог в указанном формате */
         data class ExportConversation(val format: ExportFormat) : Event
     }
+
+    /**
+     * Статус выполнения MCP tool
+     */
+    data class ToolExecutionStatus(
+        val toolName: String,
+        val description: String,
+        val isExecuting: Boolean = true
+    )
 }

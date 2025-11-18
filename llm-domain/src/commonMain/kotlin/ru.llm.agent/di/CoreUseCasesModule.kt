@@ -8,7 +8,6 @@ import ru.llm.agent.error.ErrorLogger
 import ru.llm.agent.repository.LlmRepository
 import ru.llm.agent.repository.McpRepository
 import ru.llm.agent.usecase.ExecuteChainTwoAgentsUseCase
-import ru.llm.agent.usecase.GetMcpToolsUseCase
 import ru.llm.agent.usecase.ParseAssistantResponseUseCase
 import ru.llm.agent.usecase.SystemPromptBuilder
 
@@ -47,13 +46,6 @@ public val coreUseCasesModule: Module = module {
             llmRepository = get<LlmRepository>(),
             mcpRepository = get<McpRepository>(),
             logger = createLogger("McpService")
-        )
-    }
-
-    // Use case для получения списка MCP инструментов
-    single<GetMcpToolsUseCase> {
-        GetMcpToolsUseCase(
-            mcpRepository = get<McpRepository>()
         )
     }
 }

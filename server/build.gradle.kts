@@ -1,3 +1,4 @@
+import java.util.Properties
 import kotlin.text.set
 
 plugins {
@@ -5,6 +6,14 @@ plugins {
     alias(libs.plugins.ktor)
     alias(libs.plugins.jetbrains.kotlin.serialization)
     application
+}
+
+// Загружаем local.properties
+val localProperties = Properties().apply {
+    val localPropsFile = rootProject.file("local.properties")
+    if (localPropsFile.exists()) {
+        load(localPropsFile.inputStream())
+    }
 }
 
 application {
@@ -21,6 +30,11 @@ dependencies {
     implementation(libs.ktor.server.contentNegotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.ktor.server.websockets)
+
+    // Ktor Client для внешних API запросов
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.engine.cio)
+    implementation(libs.ktor.client.contentNegotiation)
 
     // Логирование
     implementation(libs.server.logback)
