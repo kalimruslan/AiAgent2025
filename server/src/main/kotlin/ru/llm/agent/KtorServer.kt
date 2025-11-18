@@ -18,6 +18,10 @@ import ru.llm.agent.data.McpServer
 import ru.llm.agent.data.jsonrpc.JsonRpcRequest
 import ru.llm.agent.data.jsonrpc.JsonRpcResponse
 
+/**
+ * Главная точка входа MCP сервера.
+ * Использует Ktor для HTTP транспорта.
+ */
 fun main() {
     embeddedServer(Netty, port = 8081, host = "0.0.0.0") {
         install(ContentNegotiation) {
@@ -43,6 +47,7 @@ fun main() {
                     call.respond(response)
                 } catch (e: Exception) {
                     println("Error: ${e.message}")
+                    e.printStackTrace()
                     call.respond(
                         HttpStatusCode.BadRequest,
                         JsonRpcResponse(

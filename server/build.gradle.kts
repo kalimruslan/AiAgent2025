@@ -12,6 +12,9 @@ application {
 }
 
 dependencies {
+    // MCP Kotlin SDK
+    implementation(libs.mcp.kotlin.sdk)
+
     // Ktor Server
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
