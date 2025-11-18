@@ -6,8 +6,8 @@ import ru.llm.agent.model.mcp.ToolResultList
 public sealed class MessageModel(public open val role: Role, public open val text: String) {
     public data class PromtMessage(
         override val role: Role,
-        override val text: String
-    ) : MessageModel(role,text)
+        override val text: String,
+    ) : MessageModel(role, text)
 
     public data class UserMessage(
         override val role: Role,
@@ -16,7 +16,7 @@ public sealed class MessageModel(public open val role: Role, public open val tex
         val isCompressed: Boolean = false,
         val notCompressedTokens: Int = 0,
         val parsedFormats: Map<String, String> = emptyMap(),
-    ) : MessageModel(role,content)
+    ) : MessageModel(role, content)
 
     public data class ResponseMessage(
         override val role: Role,
@@ -27,18 +27,19 @@ public sealed class MessageModel(public open val role: Role, public open val tex
         val tokenUsed: String = "",
         val duration: String = "",
         val toolCallList: ToolCallList? = null,
-        val toolResultList: ToolResultList? = null
-    ) : MessageModel(role,content)
+        val toolResultList: ToolResultList? = null,
+    ) : MessageModel(role, content)
 
     public data class ToolsMessage(
         override val role: Role,
-        val toolResultList: ToolResultList
-    ) : MessageModel(role,"")
+        override val text: String,
+        val toolResultList: ToolResultList,
+    ) : MessageModel(role, text)
 
     public data class NoneMessage(
         override val role: Role,
-        val message: String
-    ) : MessageModel(role,message)
+        val message: String,
+    ) : MessageModel(role, message)
 }
 
 public enum class PromtFormat {

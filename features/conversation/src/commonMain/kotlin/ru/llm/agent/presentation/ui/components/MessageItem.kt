@@ -1,5 +1,6 @@
 package ru.llm.agent.presentation.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,12 +8,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -67,6 +72,33 @@ public fun MessageItem(message: ConversationMessage) {
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
+                    // Badge для сообщений с tool calls
+                    if (!isUser && message.isContinue) {
+                        Row(
+                            modifier = Modifier
+                                .background(
+                                    color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
+                                    shape = RoundedCornerShape(4.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Build,
+                                contentDescription = "Tool call",
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = "Tool Call",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
                     Text(
                         text = message.text,
                         style = MaterialTheme.typography.bodyLarge,

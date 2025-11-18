@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ru.llm.agent.InteractYaGptWithMcpService
 import ru.llm.agent.doActionIfError
 import ru.llm.agent.doActionIfLoading
 import ru.llm.agent.doActionIfSuccess
@@ -19,10 +20,12 @@ import ru.llm.agent.presentation.state.ConversationUIState
 import ru.llm.agent.core.utils.FileSaveResult
 import ru.llm.agent.core.utils.getFileManager
 import ru.llm.agent.model.ExportFormat
+import ru.llm.agent.usecase.ChatWithMcpToolsUseCase
 import ru.llm.agent.usecase.CommitteeResult
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase
 import ru.llm.agent.usecase.ExportConversationUseCase
+import ru.llm.agent.usecase.GetMcpToolsUseCase
 import ru.llm.agent.usecase.GetMessagesWithExpertOpinionsUseCase
 import ru.llm.agent.usecase.GetMessageTokenCountUseCase
 import ru.llm.agent.usecase.GetSelectedProviderUseCase
@@ -44,7 +47,10 @@ class ConversationViewModel(
     private val getMessageTokenCountUseCase: GetMessageTokenCountUseCase,
     private val summarizeHistoryUseCase: SummarizeHistoryUseCase,
     private val getSummarizationInfoUseCase: GetSummarizationInfoUseCase,
-    private val exportConversationUseCase: ExportConversationUseCase
+    private val exportConversationUseCase: ExportConversationUseCase,
+    private val getMcpToolsUseCase: GetMcpToolsUseCase,
+    private val interactYaGptWithMcpService: InteractYaGptWithMcpService,
+    private val chatWithMcpToolsUseCase: ChatWithMcpToolsUseCase
 ) : ViewModel() {
 
     private val fileManager = getFileManager()
@@ -56,6 +62,11 @@ class ConversationViewModel(
     val conversationId = "default_conversation"
 
     init {
+        viewModelScope.launch {
+            val availableTools = getMcpToolsUseCase.invoke()
+            _screeState.update { it.copy(availableTools = availableTools) }
+        }
+
         viewModelScope.launch {
             _events.collect {
                 handleEvent(it)
@@ -169,8 +180,101 @@ class ConversationViewModel(
         if (message.isBlank() || _screeState.value.isLoading) return
 
         when (_screeState.value.selectedMode) {
-            ConversationMode.SINGLE -> sendMessageToSingleAi(message)
+            ConversationMode.SINGLE -> {
+                //sendMessageToSingleAi(message)
+                sendMessageWithMcpTools(message)
+            }
             ConversationMode.COMMITTEE -> sendMessageToCommittee(message)
+        }
+    }
+
+    /**
+     * Отправка сообщения с полным циклом MCP tool calling
+     * Использует новый ChatWithMcpToolsUseCase для автоматической обработки tool calls
+     */
+    private fun sendMessageWithMcpTools(message: String) {
+        viewModelScope.launch {
+            chatWithMcpToolsUseCase(
+                conversationId = conversationId,
+                message = message,
+                provider = _screeState.value.selectedProvider
+            ).collect { result ->
+                result.doActionIfLoading {
+                    _screeState.update { it.copy(isLoading = true, error = "") }
+                }
+                result.doActionIfSuccess { conversationMessage ->
+                    // Если это промежуточный результат tool call, обновляем статус выполнения
+                    if (conversationMessage.isContinue) {
+                        Logger.getLogger("MCP").info("Tool execution: ${conversationMessage.text}")
+
+                        // Извлекаем название инструмента из текста сообщения
+                        val toolName = extractToolNameFromMessage(conversationMessage.text)
+
+                        _screeState.update { state ->
+                            state.copy(
+                                isLoading = false,
+                                isConversationComplete = false,
+                                requestTokens = null,
+                                currentToolExecution = ConversationUIState.ToolExecutionStatus(
+                                    toolName = toolName,
+                                    description = "Обработка запроса...",
+                                    isExecuting = true
+                                )
+                            )
+                        }
+                    } else {
+                        // Финальный ответ - очищаем статус выполнения инструмента
+                        _screeState.update { state ->
+                            state.copy(
+                                isLoading = false,
+                                isConversationComplete = false,
+                                requestTokens = null,
+                                currentToolExecution = null
+                            )
+                        }
+                    }
+                }
+                result.doActionIfError { domainError ->
+                    _screeState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = mapErrorToUserMessage(domainError),
+                            requestTokens = null
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Старый метод отправки через InteractYaGptWithMcpService (для справки)
+     */
+    private fun sendMessageWithMcpToolsOld(message: String) {
+        viewModelScope.launch {
+            interactYaGptWithMcpService.chat(message, _screeState.value.availableTools).collect { result ->
+                result.doActionIfLoading {
+                    _screeState.update { it.copy(isLoading = true, error = "") }
+                }
+                result.doActionIfSuccess {
+                    _screeState.update { state ->
+                        state.copy(
+                            isLoading = false,
+                            isConversationComplete = false,
+                            requestTokens = null // Сбрасываем после отправки
+                        )
+                    }
+                }
+                result.doActionIfError { domainError ->
+                    _screeState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = mapErrorToUserMessage(domainError),
+                            requestTokens = null // Сбрасываем при ошибке
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -245,7 +349,7 @@ class ConversationViewModel(
             sendConversationMessageUseCase.invoke(
                 conversationId = conversationId,
                 message = message,
-                provider = _screeState.value.selectedProvider
+                provider = _screeState.value.selectedProvider,
             ).collect { result ->
                 result.doActionIfLoading {
                     _screeState.update { it.copy(isLoading = true, error = "") }
@@ -420,6 +524,21 @@ class ConversationViewModel(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Извлечь название инструмента из текста сообщения
+     * Формат: "Выполнение инструмента: tool_name\nРезультат: ..."
+     */
+    private fun extractToolNameFromMessage(messageText: String): String {
+        return try {
+            // Пытаемся найти паттерн "Выполнение инструмента: название"
+            val pattern = "Выполнение инструмента: ([^\\n]+)".toRegex()
+            val match = pattern.find(messageText)
+            match?.groupValues?.getOrNull(1)?.trim() ?: "Инструмент"
+        } catch (e: Exception) {
+            "Инструмент"
         }
     }
 

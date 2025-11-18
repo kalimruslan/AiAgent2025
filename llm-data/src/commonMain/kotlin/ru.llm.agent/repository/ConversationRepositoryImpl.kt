@@ -110,6 +110,12 @@ public class ConversationRepositoryImpl(
         message: String,
         provider: LlmProvider
     ): Long {
+        // Не сохраняем пустые сообщения
+        if (message.isBlank()) {
+            logger.info("Пропускаем сохранение пустого пользовательского сообщения")
+            return -1L
+        }
+
         // Сохраняем выбранный провайдер
         providerConfigRepository.saveSelectedProvider(conversationId, provider)
 
@@ -130,6 +136,12 @@ public class ConversationRepositoryImpl(
     override suspend fun saveAssistantMessage(
         conversationMessage: ConversationMessage
     ): Long {
+        // Не сохраняем пустые сообщения
+        if (conversationMessage.text.isBlank()) {
+            logger.info("Пропускаем сохранение пустого сообщения ассистента")
+            return -1L
+        }
+
         val assistantEntity = MessageEntity(
             conversationId = conversationMessage.conversationId,
             role = "assistant",
@@ -226,6 +238,12 @@ public class ConversationRepositoryImpl(
         isSummarized: Boolean,
         totalTokens: Int?
     ): Long {
+        // Не сохраняем пустые сообщения
+        if (text.isBlank()) {
+            logger.info("Пропускаем сохранение пустого системного сообщения")
+            return -1L
+        }
+
         val message = MessageEntity(
             conversationId = conversationId,
             role = "system",

@@ -1,17 +1,18 @@
 package ru.llm.agent
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
 import ru.llm.agent.core.utils.Logger
 import ru.llm.agent.error.DomainError
 import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.Role
 import ru.llm.agent.model.mcp.FunctionResult
+import ru.llm.agent.model.mcp.McpToolInfo
 import ru.llm.agent.model.mcp.ToolResult
-import ru.llm.agent.model.mcp.ToolResultList
+import ru.llm.agent.model.mcp.YaGptFunction
 import ru.llm.agent.model.mcp.YaGptTool
 import ru.llm.agent.repository.LlmRepository
 import ru.llm.agent.repository.McpRepository
@@ -61,7 +62,7 @@ public class InteractYaGptWithMcpService(
      * @param userMessage Сообщение пользователя
      * @return Flow с результатом обработки сообщения
      */
-    public fun chat(userMessage: String): Flow<NetworkResult<MessageModel>> {
+    public fun chat(userMessage: String, availableTools: List<McpToolInfo>): Flow<NetworkResult<MessageModel>> {
         return flow {
             conversationHistory.add(
                 MessageModel.UserMessage(
@@ -74,7 +75,9 @@ public class InteractYaGptWithMcpService(
             while (maxIteration-- > 0) {
                 llmRepository.sendMessagesToYandexGptWithMcp(
                     messages = conversationHistory,
-                    availableTools = availableTools
+                    availableTools = availableTools.map {
+                        it.toYaGptTool()
+                    }
                 ).collect { result ->
                     when (result) {
                         is NetworkResult.Loading -> emit(NetworkResult.Loading())
@@ -162,6 +165,33 @@ public class InteractYaGptWithMcpService(
                 )
             }
         }
+    }
+
+    private fun McpToolInfo.toYaGptTool(): YaGptTool {
+        return YaGptTool(
+            function = YaGptFunction(
+                name = this.name,
+                description = this.description,
+                parameters = buildJsonObject {
+                    put("type", JsonPrimitive("object"))
+                    put("properties", buildJsonObject {
+                        this@toYaGptTool.parameters.forEach { (paramName, paramInfo) ->
+                            put(paramName, buildJsonObject {
+                                put("type", JsonPrimitive(paramInfo.type))
+                                put("description", JsonPrimitive(paramInfo.description))
+                            })
+                        }
+                    })
+                    if (this@toYaGptTool.requiredParameters.isNotEmpty()) {
+                        put("required", buildJsonArray {
+                            this@toYaGptTool.requiredParameters.forEach { paramName ->
+                                add(JsonPrimitive(paramName))
+                            }
+                        })
+                    }
+                }
+            )
+        )
     }
 
     public fun getHistory(): List<MessageModel> {

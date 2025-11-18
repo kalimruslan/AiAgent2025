@@ -33,6 +33,19 @@ public class SendConversationMessageUseCase(
         emit(NetworkResult.Loading())
 
         try {
+            // Валидация: не отправляем пустые сообщения
+            if (message.isBlank()) {
+                emit(
+                    NetworkResult.Error(
+                        DomainError.ValidationError(
+                            field = "message",
+                            message = "Сообщение не может быть пустым"
+                        )
+                    )
+                )
+                return@flow
+            }
+
             // 1. Сохраняем сообщение пользователя
             conversationRepository.saveUserMessage(conversationId, message, provider)
 
