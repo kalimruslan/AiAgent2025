@@ -36,8 +36,6 @@ public class MonitorBoardSummaryUseCase(
     ): Flow<String> = flow {
         while (true) {
             try {
-                logger.info("Получение саммари доски $boardId")
-
                 // Вызываем MCP инструмент для получения саммари
                 val summary = mcpRepository.callTool(
                     name = "trello_getSummary",
@@ -46,18 +44,14 @@ public class MonitorBoardSummaryUseCase(
                     }
                 )
 
-                logger.info("Саммари получен: $summary")
-
                 // Эмитим результат
                 emit(summary)
 
                 // Ждём перед следующей проверкой
                 val delayMs = intervalMinutes * 60 * 1000L
-                logger.info("Ожидание $intervalMinutes минут до следующей проверки")
                 delay(delayMs)
 
             } catch (e: Exception) {
-                logger.info("Ошибка при получении саммари: ${e.message}")
                 // Продолжаем работу даже при ошибке, через intervalMinutes повторим попытку
                 delay(intervalMinutes * 60 * 1000L)
             }

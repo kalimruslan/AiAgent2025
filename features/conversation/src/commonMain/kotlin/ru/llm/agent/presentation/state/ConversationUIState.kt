@@ -32,6 +32,7 @@ internal class ConversationUIState {
         val summarizationInfo: SummarizationInfo? = null,
         /** Флаг процесса суммаризации */
         val isSummarizing: Boolean = false,
+        val isUsedMcpTools: Boolean = false,
 
         val availableTools: List<McpToolInfo>,
 
@@ -70,6 +71,8 @@ internal class ConversationUIState {
         data class ToggleExpert(val expert: Expert) : Event
         /** Экспортировать диалог в указанном формате */
         data class ExportConversation(val format: ExportFormat) : Event
+        /** Используем ли инструменты MCP */
+        data class SwitchNeedMcpTools(val useTools: Boolean) : Event
     }
 
     /**

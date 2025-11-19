@@ -31,12 +31,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import ru.llm.agent.model.ExpertOpinion
 import ru.llm.agent.model.Role
 import ru.llm.agent.model.conversation.ConversationMessage
-import kotlin.time.Instant
+import ru.llm.agent.presentation.ui.formatResponseTime
+import ru.llm.agent.presentation.ui.formatTimestamp
 
 /**
  * Компонент для отображения одного сообщения в диалоге
@@ -372,30 +371,4 @@ public fun hasMetadata(message: ConversationMessage): Boolean {
            message.inputTokens != null ||
            message.completionTokens != null ||
            message.responseTimeMs != null
-}
-
-/**
- * Форматирование временной метки
- */
-public fun formatTimestamp(timestamp: Long): String {
-    val instant = Instant.fromEpochMilliseconds(timestamp)
-    val dateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-    return "${dateTime.hour.toString().padStart(2, '0')}:${
-        dateTime.minute.toString().padStart(2, '0')
-    }"
-}
-
-/**
- * Форматирование времени ответа
- */
-public fun formatResponseTime(milliseconds: Long): String {
-    return when {
-        milliseconds < 1000 -> "${milliseconds} мс"
-        milliseconds < 60000 -> String.format("%.1f сек", milliseconds / 1000.0)
-        else -> {
-            val minutes = milliseconds / 60000
-            val seconds = (milliseconds % 60000) / 1000
-            "${minutes} мин ${seconds} сек"
-        }
-    }
 }
