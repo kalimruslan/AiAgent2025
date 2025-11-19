@@ -36,7 +36,10 @@ internal class ConversationUIState {
         val availableTools: List<McpToolInfo>,
 
         /** Текущий выполняемый MCP tool (null если не выполняется) */
-        val currentToolExecution: ToolExecutionStatus? = null
+        val currentToolExecution: ToolExecutionStatus? = null,
+
+        /** Последнее саммари доски Trello */
+        val boardSummary: BoardSummary? = null
     ) {
         companion object {
             fun empty() = State(
@@ -76,5 +79,18 @@ internal class ConversationUIState {
         val toolName: String,
         val description: String,
         val isExecuting: Boolean = true
+    )
+
+    /**
+     * Саммари доски Trello
+     */
+    data class BoardSummary(
+        val text: String,
+        val timestamp: Long = System.currentTimeMillis(),
+        val isLoading: Boolean = false,
+        /** Анализ ассистента по саммари доски */
+        val assistantAnalysis: String? = null,
+        /** Флаг загрузки анализа */
+        val isAnalysisLoading: Boolean = false
     )
 }

@@ -10,6 +10,7 @@ import ru.llm.agent.database.expert.ExpertOpinionDao
 import ru.llm.agent.database.messages.MessageDao
 import ru.llm.agent.database.messages.MessageEntity
 import ru.llm.agent.model.LlmProvider
+import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.Role
 import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.toModel
@@ -227,6 +228,10 @@ public class ConversationRepositoryImpl(
         if (messageIds.isNotEmpty()) {
             messageDao.deleteMessagesByIds(messageIds)
         }
+    }
+
+    override suspend fun deleteMessageById(messageId: Long) {
+        messageDao.deleMessageById(messageId)
     }
 
     /**

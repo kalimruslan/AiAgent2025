@@ -59,7 +59,6 @@ class McpServerSdk {
      */
     private val weatherClient: OpenWeatherMapClient? by lazy {
         val apiKey = System.getenv("OPENWEATHER_API_KEY")
-            "2e35cd4c8f78321391bf0b821be02145"
         if (apiKey != null) {
             OpenWeatherMapClient(apiKey)
         } else {

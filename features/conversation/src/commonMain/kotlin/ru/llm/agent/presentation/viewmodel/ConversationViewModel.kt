@@ -31,10 +31,12 @@ import ru.llm.agent.usecase.GetMessageTokenCountUseCase
 import ru.llm.agent.usecase.GetSelectedProviderUseCase
 import ru.llm.agent.usecase.GetSummarizationInfoUseCase
 import ru.llm.agent.usecase.GetTokenUsageUseCase
+import ru.llm.agent.usecase.MonitorBoardSummaryUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 import ru.llm.agent.usecase.SummarizeHistoryUseCase
 import java.util.logging.Logger
+import kotlinx.coroutines.Job
 
 class ConversationViewModel(
     private val conversationUseCase: ConversationUseCase,
@@ -50,7 +52,8 @@ class ConversationViewModel(
     private val exportConversationUseCase: ExportConversationUseCase,
     private val getMcpToolsUseCase: GetMcpToolsUseCase,
     private val interactYaGptWithMcpService: InteractYaGptWithMcpService,
-    private val chatWithMcpToolsUseCase: ChatWithMcpToolsUseCase
+    private val chatWithMcpToolsUseCase: ChatWithMcpToolsUseCase,
+    private val monitorBoardSummaryUseCase: MonitorBoardSummaryUseCase
 ) : ViewModel() {
 
     private val fileManager = getFileManager()
@@ -60,6 +63,9 @@ class ConversationViewModel(
 
     private val _events = MutableSharedFlow<ConversationUIState.Event>()
     val conversationId = "default_conversation"
+
+    // Job для мониторинга Trello доски
+    private var monitoringJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -88,6 +94,9 @@ class ConversationViewModel(
 
             // Загружаем информацию о суммаризации
             loadSummarizationInfo()
+
+            // Запускаем мониторинг Trello доски
+            startBoardMonitoring()
         }
     }
 
@@ -192,12 +201,13 @@ class ConversationViewModel(
      * Отправка сообщения с полным циклом MCP tool calling
      * Использует новый ChatWithMcpToolsUseCase для автоматической обработки tool calls
      */
-    private fun sendMessageWithMcpTools(message: String) {
+    private fun sendMessageWithMcpTools(message: String, needAddToHistory: Boolean = true) {
         viewModelScope.launch {
-            chatWithMcpToolsUseCase(
+            chatWithMcpToolsUseCase.invoke(
                 conversationId = conversationId,
                 message = message,
-                provider = _screeState.value.selectedProvider
+                provider = _screeState.value.selectedProvider,
+                needAddToHistory = needAddToHistory
             ).collect { result ->
                 result.doActionIfLoading {
                     _screeState.update { it.copy(isLoading = true, error = "") }
@@ -525,6 +535,112 @@ class ConversationViewModel(
                 }
             }
         }
+    }
+
+    /**
+     * Запустить мониторинг Trello доски
+     * Каждые 5 минут получает саммари и отправляет агенту для анализа
+     */
+    private fun startBoardMonitoring() {
+        // Останавливаем предыдущий мониторинг, если он был запущен
+        monitoringJob?.cancel()
+
+        // ID доски Trello (можно сделать настраиваемым позже)
+        val boardId = "691da04e5be13a45aeb63b0a"
+
+        monitoringJob = viewModelScope.launch {
+            Logger.getLogger("BoardMonitoring").info("Запуск мониторинга доски $boardId")
+
+            // Показываем индикатор загрузки
+            _screeState.update {
+                it.copy(boardSummary = ConversationUIState.BoardSummary(
+                    text = "Загрузка саммари доски...",
+                    isLoading = true
+                ))
+            }
+
+            monitorBoardSummaryUseCase.invoke(
+                boardId = boardId,
+                intervalMinutes = 5
+            ).collect { summary ->
+                Logger.getLogger("BoardMonitoring").info("Получен саммари доски: $summary")
+
+                // Обновляем state с полученным саммари
+                _screeState.update {
+                    it.copy(boardSummary = ConversationUIState.BoardSummary(
+                        text = summary,
+                        timestamp = System.currentTimeMillis(),
+                        isLoading = false,
+                        isAnalysisLoading = true
+                    ))
+                }
+
+                // Отправляем саммари агенту для анализа
+                analyzeBoardSummary(summary)
+            }
+        }
+    }
+
+    /**
+     * Отправить саммари агенту для анализа
+     * Ответ сохраняется в BoardSummary, а не добавляется в чат
+     */
+    private fun analyzeBoardSummary(summary: String) {
+        viewModelScope.launch {
+            val agentPrompt = buildString {
+                appendLine("📊 Периодический отчёт по доске Trello:")
+                appendLine()
+                appendLine(summary)
+                appendLine()
+                appendLine("Пожалуйста, проанализируй изменения и предоставь краткий обзор.")
+            }
+
+            chatWithMcpToolsUseCase.invoke(
+                conversationId = conversationId,
+                message = agentPrompt,
+                provider = _screeState.value.selectedProvider,
+                needAddToHistory = false
+            ).collect { result ->
+                result.doActionIfSuccess { conversationMessage ->
+                    // Игнорируем промежуточные результаты tool calls
+                    if (!conversationMessage.isContinue) {
+                        Logger.getLogger("BoardMonitoring").info("Получен анализ от ассистента: ${conversationMessage.text}")
+
+                        // Сохраняем анализ в BoardSummary
+                        _screeState.update { state ->
+                            state.copy(
+                                boardSummary = state.boardSummary?.copy(
+                                    assistantAnalysis = conversationMessage.text,
+                                    isAnalysisLoading = false
+                                )
+                            )
+                        }
+                    }
+                }
+                result.doActionIfError { domainError ->
+                    Logger.getLogger("BoardMonitoring").warning("Ошибка анализа саммари: ${domainError.toUserMessage()}")
+
+                    // Убираем индикатор загрузки при ошибке
+                    _screeState.update { state ->
+                        state.copy(
+                            boardSummary = state.boardSummary?.copy(
+                                assistantAnalysis = "Ошибка анализа: ${domainError.toUserMessage()}",
+                                isAnalysisLoading = false
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Остановить мониторинг доски
+     */
+    private fun stopBoardMonitoring() {
+        monitoringJob?.cancel()
+        monitoringJob = null
+        Logger.getLogger("BoardMonitoring").info("Мониторинг доски остановлен")
     }
 
     /**

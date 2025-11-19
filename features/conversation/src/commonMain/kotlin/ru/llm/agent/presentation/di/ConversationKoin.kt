@@ -16,6 +16,7 @@ import ru.llm.agent.usecase.GetMessageTokenCountUseCase
 import ru.llm.agent.usecase.GetSelectedProviderUseCase
 import ru.llm.agent.usecase.GetSummarizationInfoUseCase
 import ru.llm.agent.usecase.GetTokenUsageUseCase
+import ru.llm.agent.usecase.MonitorBoardSummaryUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 import ru.llm.agent.usecase.SummarizeHistoryUseCase
@@ -37,7 +38,8 @@ internal fun conversationKoinModule(): Module {
                 exportConversationUseCase = get<ExportConversationUseCase>(),
                 getMcpToolsUseCase = get<GetMcpToolsUseCase>(),
                 interactYaGptWithMcpService = get<InteractYaGptWithMcpService>(),
-                chatWithMcpToolsUseCase = get<ChatWithMcpToolsUseCase>()
+                chatWithMcpToolsUseCase = get<ChatWithMcpToolsUseCase>(),
+                monitorBoardSummaryUseCase = get<MonitorBoardSummaryUseCase>()
             )
         }
     }

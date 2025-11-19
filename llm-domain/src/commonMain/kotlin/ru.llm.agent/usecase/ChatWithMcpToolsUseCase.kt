@@ -55,6 +55,7 @@ public class ChatWithMcpToolsUseCase(
         message: String,
         provider: LlmProvider = LlmProvider.YANDEX_GPT,
         maxIterations: Int = 3,
+        needAddToHistory: Boolean = true,
     ): Flow<NetworkResult<ConversationMessage>> = flow {
         emit(NetworkResult.Loading())
 
@@ -90,13 +91,18 @@ public class ChatWithMcpToolsUseCase(
             logger.info("Получено ${availableTools.size} MCP инструментов")
 
             // 2. Сохраняем сообщение пользователя
-            conversationRepository.saveUserMessage(conversationId, message, provider)
+            val messageId =
+                conversationRepository.saveUserMessage(conversationId, message, provider)
 
             // 3. Получаем историю диалога и конвертируем в MessageModel
             val conversationMessages =
                 conversationRepository.getMessagesByConversationSync(conversationId)
                     .filter { it.role == Role.USER }
             val messageHistory = convertToMessageModels(conversationMessages)
+
+            if (!needAddToHistory) {
+                conversationRepository.deleteMessageById(messageId)
+            }
 
             // 4. Запускаем итеративный процесс tool calling
             var iteration = 0
@@ -131,7 +137,7 @@ public class ChatWithMcpToolsUseCase(
                             when (responseMessage) {
                                 is MessageModel.ResponseMessage -> {
                                     // Добавляем ответ в историю
-                                    if(responseMessage.content.isNotEmpty()){
+                                    if (responseMessage.content.isNotEmpty()) {
                                         currentHistory.add(responseMessage)
                                     }
 
@@ -149,14 +155,21 @@ public class ChatWithMcpToolsUseCase(
                                             provider = provider
                                         )
 
-                                        val savedId = conversationRepository.saveAssistantMessage(
-                                            conversationMessage
-                                        )
+                                        val savedId =
+                                            if (needAddToHistory) conversationRepository.saveAssistantMessage(
+                                                conversationMessage
+                                            ) else 0
 
                                         emit(
-                                            NetworkResult.Success(
-                                                conversationMessage.copy(id = savedId)
-                                            )
+                                            if (savedId > 0) {
+                                                NetworkResult.Success(
+                                                    conversationMessage.copy(id = savedId)
+                                                )
+                                            } else {
+                                                NetworkResult.Success(
+                                                    conversationMessage
+                                                )
+                                            }
                                         )
                                         shouldContinue = false
                                     } else {

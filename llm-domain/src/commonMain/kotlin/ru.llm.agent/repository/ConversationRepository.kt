@@ -2,6 +2,7 @@ package ru.llm.agent.repository
 
 import kotlinx.coroutines.flow.Flow
 import ru.llm.agent.model.LlmProvider
+import ru.llm.agent.model.MessageModel
 import ru.llm.agent.model.conversation.ConversationMessage
 
 /**
@@ -99,4 +100,6 @@ public interface ConversationRepository {
         isSummarized: Boolean = false,
         totalTokens: Int? = null
     ): Long
+
+    public suspend fun deleteMessageById(messageId: Long)
 }
