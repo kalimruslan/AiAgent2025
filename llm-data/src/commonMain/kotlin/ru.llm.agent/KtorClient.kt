@@ -6,6 +6,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.header
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
@@ -46,6 +47,13 @@ private fun frameHttpClient(
                     println("🌐 KTOR: $message")
                 }
             }
+        }
+
+        // Настройка таймаутов для долгих запросов к LLM API
+        install(HttpTimeout) {
+            requestTimeoutMillis = 120_000 // 2 минуты на весь запрос
+            connectTimeoutMillis = 30_000  // 30 секунд на подключение
+            socketTimeoutMillis = 120_000  // 2 минуты на чтение данных из сокета
         }
 
         defaultRequest {
