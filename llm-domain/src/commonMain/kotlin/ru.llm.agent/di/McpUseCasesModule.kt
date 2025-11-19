@@ -8,6 +8,7 @@ import ru.llm.agent.repository.McpRepository
 import ru.llm.agent.service.MessageSendingService
 import ru.llm.agent.usecase.ChatWithMcpToolsUseCase
 import ru.llm.agent.usecase.GetMcpToolsUseCase
+import ru.llm.agent.usecase.MonitorBoardSummaryUseCase
 
 /**
  * Модуль Koin для MCP Use Cases
@@ -27,6 +28,14 @@ public val mcpUseCasesModule: Module = module {
             llmRepository = get<ru.llm.agent.repository.LlmRepository>(),
             mcpRepository = get<McpRepository>(),
             logger = createLogger("ChatWithMcpToolsUseCase")
+        )
+    }
+
+    // Use case для периодического мониторинга Trello доски
+    single<MonitorBoardSummaryUseCase> {
+        MonitorBoardSummaryUseCase(
+            mcpRepository = get<McpRepository>(),
+            logger = createLogger("MonitorBoardSummaryUseCase")
         )
     }
 }

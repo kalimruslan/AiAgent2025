@@ -53,6 +53,9 @@ public interface MessageDao {
     @Query("DELETE FROM messages WHERE id IN (:messageIds)")
     public suspend fun deleteMessagesByIds(messageIds: List<Long>)
 
+    @Query("DELETE FROM messages WHERE id = :messageId")
+    public suspend fun deleMessageById(messageId: Long)
+
     /**
      * Получить количество суммаризированных сообщений в диалоге
      */

@@ -36,6 +36,9 @@ dependencies {
     implementation(libs.ktor.client.engine.cio)
     implementation(libs.ktor.client.contentNegotiation)
 
+    // Kotlinx Datetime для работы с датами
+    implementation(libs.kotlinx.datetime)
+
     // Логирование
     implementation(libs.server.logback)
 }

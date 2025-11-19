@@ -4,7 +4,7 @@ import io.modelcontextprotocol.kotlin.sdk.*
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import kotlinx.serialization.json.*
-import ru.llm.agent.api.YandexTrackerClient
+import ru.llm.agent.api.TrelloClient
 import ru.llm.agent.api.OpenWeatherMapClient
 
 /**
@@ -40,16 +40,16 @@ class McpServerSdk {
     }
 
     /**
-     * Клиент для работы с Яндекс.Трекером (lazy initialization)
+     * Клиент для работы с Trello (lazy initialization)
      */
-    private val trackerClient: YandexTrackerClient? by lazy {
-        val orgId = System.getenv("YANDEX_TRACKER_ORG_ID")
-        val token = System.getenv("YANDEX_TRACKER_TOKEN")
+    private val trelloClient: TrelloClient? by lazy {
+        val apiKey = System.getenv("TRELLO_API_KEY")
+        val token = System.getenv("TRELLO_TOKEN")
 
-        if (orgId != null && token != null) {
-            YandexTrackerClient(orgId, token)
+        if (apiKey != null && token != null) {
+            TrelloClient(apiKey, token)
         } else {
-            println("WARN: Яндекс.Трекер не настроен. Установите YANDEX_TRACKER_ORG_ID и YANDEX_TRACKER_TOKEN")
+            println("WARN: Trello не настроен. Установите TRELLO_API_KEY и TRELLO_TOKEN")
             null
         }
     }
@@ -58,7 +58,7 @@ class McpServerSdk {
      * Клиент для работы с OpenWeatherMap (lazy initialization)
      */
     private val weatherClient: OpenWeatherMapClient? by lazy {
-        val apiKey = "2e35cd4c8f78321391bf0b821be02145"
+        val apiKey = System.getenv("OPENWEATHER_API_KEY")
         if (apiKey != null) {
             OpenWeatherMapClient(apiKey)
         } else {
@@ -72,16 +72,12 @@ class McpServerSdk {
      */
     private fun registerTools() {
         // Базовые инструменты
-        registerEchoTool()
-        registerAddTool()
-        registerGetCurrentTimeTool()
         registerGetWeatherTool()
-        registerCalculateTool()
-
-        // Яндекс.Трекер инструменты
-        registerTrackerGetIssues()
-        registerTrackerCreateIssue()
-        registerTrackerGetIssue()
+        // Trello инструменты
+        registerTrelloGetCards()
+        registerTrelloCreateCard()
+        registerTrelloGetCard()
+        registerTrelloGetSummary()
     }
 
     /**
@@ -128,93 +124,6 @@ class McpServerSdk {
     }
 
     /**
-     * Инструмент для возврата введенного текста
-     */
-    private fun registerEchoTool() {
-        registerTool(
-            name = "echo",
-            description = "Возвращает введенный текст",
-            inputSchema = Tool.Input(
-                properties = buildJsonObject {
-                    putJsonObject("text") {
-                        put("type", "string")
-                        put("description", "Текст для echo")
-                    }
-                },
-                required = listOf("text")
-            )
-        ) { arguments ->
-            val text = arguments["text"]?.jsonPrimitive?.content ?: ""
-            CallToolResult(
-                content = listOf(
-                    TextContent(text = "Echo: $text")
-                )
-            )
-        }
-    }
-
-    /**
-     * Инструмент для сложения двух чисел
-     */
-    private fun registerAddTool() {
-        registerTool(
-            name = "add",
-            description = "Складывает два числа",
-            inputSchema = Tool.Input(
-                properties = buildJsonObject {
-                    putJsonObject("text") {
-                        put("type", "string")
-                        put("description", "Введите выражение")
-                    }
-                },
-                required = listOf("text")
-            )
-        ) { arguments ->
-            val text = arguments["text"]?.jsonPrimitive?.content
-                ?: throw IllegalArgumentException("Missing 'text' in arguments")
-
-            val cleanText = text.replace(" ", "")
-            val parts = cleanText.split("+")
-
-            if (parts.size != 2) {
-                throw IllegalArgumentException("Invalid format. Expected 'a + b', got: $text")
-            }
-
-            val a = parts[0].toDoubleOrNull()
-            val b = parts[1].toDoubleOrNull()
-
-            if (a == null || b == null) {
-                throw IllegalArgumentException("Invalid numbers: $text")
-            }
-
-            CallToolResult(
-                content = listOf(
-                    TextContent(text = "Result: ${a + b}")
-                )
-            )
-        }
-    }
-
-    /**
-     * Инструмент для получения текущего времени
-     */
-    private fun registerGetCurrentTimeTool() {
-        registerTool(
-            name = "getCurrentTime",
-            description = "Возвращает текущее время",
-            inputSchema = Tool.Input(
-                properties = buildJsonObject {}
-            )
-        ) { _ ->
-            CallToolResult(
-                content = listOf(
-                    TextContent(text = "Current time: ${System.currentTimeMillis()}")
-                )
-            )
-        }
-    }
-
-    /**
      * Инструмент для получения погоды
      */
     private fun registerGetWeatherTool() {
@@ -243,34 +152,6 @@ class McpServerSdk {
         }
     }
 
-    /**
-     * Инструмент для вычисления математических выражений
-     */
-    private fun registerCalculateTool() {
-        registerTool(
-            name = "calculate",
-            description = "Вычисляет математическое выражение. Поддерживает +, -, *, /, скобки и числа с плавающей точкой",
-            inputSchema = Tool.Input(
-                properties = buildJsonObject {
-                    putJsonObject("expression") {
-                        put("type", "string")
-                        put("description", "Математическое выражение для вычисления (например: '2 + 2', '(10 - 5) * 3', '15.5 / 2.5')")
-                    }
-                },
-                required = listOf("expression")
-            )
-        ) { arguments ->
-            val expression = arguments["expression"]?.jsonPrimitive?.content
-                ?: throw IllegalArgumentException("Missing 'expression' in arguments")
-
-            val result = calculate(expression)
-            CallToolResult(
-                content = listOf(
-                    TextContent(text = result)
-                )
-            )
-        }
-    }
 
     /**
      * Получает реальную погоду для города через OpenWeatherMap API
@@ -314,135 +195,62 @@ class McpServerSdk {
     }
 
     /**
-     * Вычисляет математическое выражение.
-     * Поддерживает +, -, *, /, скобки и числа с плавающей точкой.
+     * Инструмент для получения списка карточек из Trello
      */
-    private fun calculate(expression: String): String {
-        return try {
-            val result = evaluateExpression(expression.replace(" ", ""))
-            "Результат вычисления '$expression' = $result"
-        } catch (e: Exception) {
-            "Ошибка при вычислении выражения '$expression': ${e.message}"
-        }
-    }
-
-    /**
-     * Вычисляет математическое выражение с использованием алгоритма с двумя стеками.
-     */
-    private fun evaluateExpression(expr: String): Double {
-        val values = mutableListOf<Double>()
-        val ops = mutableListOf<Char>()
-        var i = 0
-
-        while (i < expr.length) {
-            when {
-                expr[i].isWhitespace() -> i++
-
-                expr[i].isDigit() || expr[i] == '.' -> {
-                    val sb = StringBuilder()
-                    while (i < expr.length && (expr[i].isDigit() || expr[i] == '.')) {
-                        sb.append(expr[i])
-                        i++
-                    }
-                    values.add(sb.toString().toDouble())
-                }
-
-                expr[i] == '(' -> {
-                    ops.add(expr[i])
-                    i++
-                }
-
-                expr[i] == ')' -> {
-                    while (ops.isNotEmpty() && ops.last() != '(') {
-                        values.add(applyOp(ops.removeLast(), values.removeLast(), values.removeLast()))
-                    }
-                    if (ops.isNotEmpty()) {
-                        ops.removeLast() // Remove '('
-                    }
-                    i++
-                }
-
-                expr[i] in "+-*/" -> {
-                    while (ops.isNotEmpty() && hasPrecedence(expr[i], ops.last())) {
-                        values.add(applyOp(ops.removeLast(), values.removeLast(), values.removeLast()))
-                    }
-                    ops.add(expr[i])
-                    i++
-                }
-
-                else -> throw IllegalArgumentException("Недопустимый символ: ${expr[i]}")
-            }
-        }
-
-        while (ops.isNotEmpty()) {
-            values.add(applyOp(ops.removeLast(), values.removeLast(), values.removeLast()))
-        }
-
-        return values.last()
-    }
-
-    private fun hasPrecedence(op1: Char, op2: Char): Boolean {
-        if (op2 == '(' || op2 == ')') return false
-        if ((op1 == '*' || op1 == '/') && (op2 == '+' || op2 == '-')) return false
-        return true
-    }
-
-    private fun applyOp(op: Char, b: Double, a: Double): Double {
-        return when (op) {
-            '+' -> a + b
-            '-' -> a - b
-            '*' -> a * b
-            '/' -> {
-                if (b == 0.0) throw ArithmeticException("Деление на ноль")
-                a / b
-            }
-            else -> throw IllegalArgumentException("Неизвестная операция: $op")
-        }
-    }
-
-    /**
-     * Инструмент для получения списка задач из Яндекс.Трекера
-     */
-    private fun registerTrackerGetIssues() {
+    private fun registerTrelloGetCards() {
         registerTool(
-            name = "tracker_getIssues",
-            description = "Получает список задач из Яндекс.Трекера. Можно фильтровать по очереди.",
+            name = "trello_getCards",
+            description = "Получает список карточек с доски Trello. Можно фильтровать по статусу.",
             inputSchema = Tool.Input(
                 properties = buildJsonObject {
-                    putJsonObject("queue") {
+                    putJsonObject("boardId") {
                         put("type", "string")
-                        put("description", "Ключ очереди (например: QUEUE, TEST). Необязательный параметр.")
+                        put("description", "ID доски Trello (обязательный параметр)")
+                    }
+                    putJsonObject("filter") {
+                        put("type", "string")
+                        put("description", "Фильтр: open (активные), closed (архивные), all (все). По умолчанию: open")
                     }
                     putJsonObject("limit") {
                         put("type", "number")
-                        put("description", "Количество задач для получения (по умолчанию 10, макс 50)")
+                        put("description", "Количество карточек для получения")
                     }
-                }
+                },
+                required = listOf("boardId")
             )
         ) { arguments ->
-            val client = trackerClient
+            val client = trelloClient
                 ?: return@registerTool CallToolResult(
                     content = listOf(
-                        TextContent(text = "Ошибка: Яндекс.Трекер не настроен. Установите переменные окружения YANDEX_TRACKER_ORG_ID и YANDEX_TRACKER_TOKEN")
+                        TextContent(text = "Ошибка: Trello не настроен. Установите переменные окружения TRELLO_API_KEY и TRELLO_TOKEN")
                     )
                 )
 
-            val queue = arguments["queue"]?.jsonPrimitive?.content
-            val limit = arguments["limit"]?.jsonPrimitive?.int ?: 10
+            val boardId = arguments["boardId"]?.jsonPrimitive?.content
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: не указан ID доски"))
+                )
 
-            val issues = client.getIssues(queue = queue, limit = limit.coerceIn(1, 50))
+            val filter = arguments["filter"]?.jsonPrimitive?.content ?: "open"
+            val limit = arguments["limit"]?.jsonPrimitive?.int
 
-            val resultText = if (issues.isEmpty()) {
-                "Задачи не найдены"
+            val cards = client.getCards(boardId = boardId, filter = filter, limit = limit)
+
+            val resultText = if (cards.isEmpty()) {
+                "Карточки не найдены"
             } else {
                 buildString {
-                    appendLine("Найдено задач: ${issues.size}")
+                    appendLine("Найдено карточек: ${cards.size}")
                     appendLine()
-                    issues.forEach { issue ->
-                        appendLine("🔸 ${issue.key}: ${issue.summary}")
-                        issue.status?.let { appendLine("   Статус: ${it.display}") }
-                        issue.assignee?.let { appendLine("   Исполнитель: ${it.display}") }
-                        issue.priority?.let { appendLine("   Приоритет: ${it.display}") }
+                    cards.forEach { card ->
+                        appendLine("🔹 ${card.name}")
+                        card.desc?.takeIf { it.isNotEmpty() }?.let { appendLine("   Описание: $it") }
+                        card.due?.let { appendLine("   Дедлайн: $it") }
+                        card.dueComplete?.let { appendLine("   Выполнено: ${if (it) "✅" else "⏳"}") }
+                        card.labels?.takeIf { it.isNotEmpty() }?.let { labels ->
+                            appendLine("   Метки: ${labels.joinToString { it.name ?: it.color ?: "?" }}")
+                        }
+                        card.url?.let { appendLine("   URL: $it") }
                         appendLine()
                     }
                 }
@@ -457,80 +265,73 @@ class McpServerSdk {
     }
 
     /**
-     * Инструмент для создания новой задачи в Яндекс.Трекере
+     * Инструмент для создания новой карточки в Trello
      */
-    private fun registerTrackerCreateIssue() {
+    private fun registerTrelloCreateCard() {
         registerTool(
-            name = "tracker_createIssue",
-            description = "Создает новую задачу в Яндекс.Трекере",
+            name = "trello_createCard",
+            description = "Создает новую карточку в Trello",
             inputSchema = Tool.Input(
                 properties = buildJsonObject {
-                    putJsonObject("queue") {
+                    putJsonObject("idList") {
                         put("type", "string")
-                        put("description", "Ключ очереди, в которой будет создана задача (например: QUEUE, TEST)")
+                        put("description", "ID списка (колонки), в который будет добавлена карточка")
                     }
-                    putJsonObject("summary") {
+                    putJsonObject("name") {
                         put("type", "string")
-                        put("description", "Название задачи (краткое описание)")
+                        put("description", "Название карточки")
                     }
-                    putJsonObject("description") {
+                    putJsonObject("desc") {
                         put("type", "string")
-                        put("description", "Подробное описание задачи. Необязательный параметр.")
+                        put("description", "Описание карточки. Необязательный параметр.")
                     }
-                    putJsonObject("type") {
+                    putJsonObject("due") {
                         put("type", "string")
-                        put("description", "Тип задачи: task, bug, epic и т.д. По умолчанию: task")
-                    }
-                    putJsonObject("priority") {
-                        put("type", "string")
-                        put("description", "Приоритет: minor, normal, major, critical, blocker")
+                        put("description", "Дедлайн в формате ISO 8601 (например: 2025-11-20T12:00:00Z)")
                     }
                 },
-                required = listOf("queue", "summary")
+                required = listOf("idList", "name")
             )
         ) { arguments ->
-            val client = trackerClient
+            val client = trelloClient
                 ?: return@registerTool CallToolResult(
                     content = listOf(
-                        TextContent(text = "Ошибка: Яндекс.Трекер не настроен. Установите переменные окружения YANDEX_TRACKER_ORG_ID и YANDEX_TRACKER_TOKEN")
+                        TextContent(text = "Ошибка: Trello не настроен. Установите переменные окружения TRELLO_API_KEY и TRELLO_TOKEN")
                     )
                 )
 
-            val queue = arguments["queue"]?.jsonPrimitive?.content
+            val idList = arguments["idList"]?.jsonPrimitive?.content
                 ?: return@registerTool CallToolResult(
-                    content = listOf(TextContent(text = "Ошибка: не указана очередь"))
+                    content = listOf(TextContent(text = "Ошибка: не указан ID списка"))
                 )
 
-            val summary = arguments["summary"]?.jsonPrimitive?.content
+            val name = arguments["name"]?.jsonPrimitive?.content
                 ?: return@registerTool CallToolResult(
-                    content = listOf(TextContent(text = "Ошибка: не указано название задачи"))
+                    content = listOf(TextContent(text = "Ошибка: не указано название карточки"))
                 )
 
-            val description = arguments["description"]?.jsonPrimitive?.content
-            val type = arguments["type"]?.jsonPrimitive?.content ?: "task"
-            val priority = arguments["priority"]?.jsonPrimitive?.content
+            val desc = arguments["desc"]?.jsonPrimitive?.content
+            val due = arguments["due"]?.jsonPrimitive?.content
 
-            val issue = client.createIssue(
-                queue = queue,
-                summary = summary,
-                description = description,
-                type = type,
-                priority = priority
+            val card = client.createCard(
+                idList = idList,
+                name = name,
+                desc = desc,
+                due = due
             )
 
-            val resultText = if (issue != null) {
+            val resultText = if (card != null) {
                 buildString {
-                    appendLine("✅ Задача успешно создана!")
+                    appendLine("✅ Карточка успешно создана!")
                     appendLine()
-                    appendLine("Ключ: ${issue.key}")
-                    appendLine("Название: ${issue.summary}")
-                    issue.description?.let { appendLine("Описание: $it") }
-                    issue.status?.let { appendLine("Статус: ${it.display}") }
-                    issue.type?.let { appendLine("Тип: ${it.display}") }
-                    issue.priority?.let { appendLine("Приоритет: ${it.display}") }
+                    appendLine("Название: ${card.name}")
+                    card.desc?.let { appendLine("Описание: $it") }
+                    card.due?.let { appendLine("Дедлайн: $it") }
+                    card.url?.let { appendLine("URL: $it") }
+                    card.shortUrl?.let { appendLine("Короткая ссылка: $it") }
                 }
             } else {
-                "❌ Ошибка при создании задачи. Проверьте параметры и права доступа."
+                "❌ Ошибка при создании карточки. Проверьте параметры и права доступа."
             }
 
             CallToolResult(
@@ -542,57 +343,120 @@ class McpServerSdk {
     }
 
     /**
-     * Инструмент для получения информации о конкретной задаче
+     * Инструмент для получения информации о конкретной карточке
      */
-    private fun registerTrackerGetIssue() {
+    private fun registerTrelloGetCard() {
         registerTool(
-            name = "tracker_getIssue",
-            description = "Получает подробную информацию о задаче из Яндекс.Трекера по её ключу",
+            name = "trello_getCard",
+            description = "Получает подробную информацию о карточке Trello по её ID",
             inputSchema = Tool.Input(
                 properties = buildJsonObject {
-                    putJsonObject("issueKey") {
+                    putJsonObject("cardId") {
                         put("type", "string")
-                        put("description", "Ключ задачи (например: QUEUE-123, TEST-42)")
+                        put("description", "ID карточки Trello")
                     }
                 },
-                required = listOf("issueKey")
+                required = listOf("cardId")
             )
         ) { arguments ->
-            val client = trackerClient
+            val client = trelloClient
                 ?: return@registerTool CallToolResult(
                     content = listOf(
-                        TextContent(text = "Ошибка: Яндекс.Трекер не настроен. Установите переменные окружения YANDEX_TRACKER_ORG_ID и YANDEX_TRACKER_TOKEN")
+                        TextContent(text = "Ошибка: Trello не настроен. Установите переменные окружения TRELLO_API_KEY и TRELLO_TOKEN")
                     )
                 )
 
-            val issueKey = arguments["issueKey"]?.jsonPrimitive?.content
+            val cardId = arguments["cardId"]?.jsonPrimitive?.content
                 ?: return@registerTool CallToolResult(
-                    content = listOf(TextContent(text = "Ошибка: не указан ключ задачи"))
+                    content = listOf(TextContent(text = "Ошибка: не указан ID карточки"))
                 )
 
-            val issue = client.getIssue(issueKey)
+            val card = client.getCard(cardId)
 
-            val resultText = if (issue != null) {
+            val resultText = if (card != null) {
                 buildString {
-                    appendLine("📋 Задача: ${issue.key}")
+                    appendLine("📋 Карточка: ${card.name}")
                     appendLine()
-                    appendLine("Название: ${issue.summary}")
-                    issue.description?.let {
-                        appendLine()
+                    card.desc?.takeIf { it.isNotEmpty() }?.let {
                         appendLine("Описание:")
                         appendLine(it)
+                        appendLine()
                     }
-                    appendLine()
-                    issue.status?.let { appendLine("Статус: ${it.display}") }
-                    issue.type?.let { appendLine("Тип: ${it.display}") }
-                    issue.priority?.let { appendLine("Приоритет: ${it.display}") }
-                    issue.assignee?.let { appendLine("Исполнитель: ${it.display}") }
-                    issue.createdBy?.let { appendLine("Автор: ${it.display}") }
-                    issue.createdAt?.let { appendLine("Создана: $it") }
-                    issue.updatedAt?.let { appendLine("Обновлена: $it") }
+                    card.due?.let { appendLine("Дедлайн: $it") }
+                    card.dueComplete?.let { appendLine("Статус выполнения: ${if (it) "✅ Завершено" else "⏳ В процессе"}") }
+                    card.labels?.takeIf { it.isNotEmpty() }?.let { labels ->
+                        appendLine("Метки: ${labels.joinToString { it.name ?: it.color ?: "?" }}")
+                    }
+                    card.dateLastActivity?.let { appendLine("Последняя активность: $it") }
+                    card.url?.let { appendLine("URL: $it") }
+                    appendLine("Закрыта: ${if (card.closed) "Да" else "Нет"}")
                 }
             } else {
-                "❌ Задача с ключом '$issueKey' не найдена или нет доступа"
+                "❌ Карточка с ID '$cardId' не найдена или нет доступа"
+            }
+
+            CallToolResult(
+                content = listOf(
+                    TextContent(text = resultText)
+                )
+            )
+        }
+    }
+
+    /**
+     * Инструмент для получения статистики по доске Trello
+     */
+    private fun registerTrelloGetSummary() {
+        registerTool(
+            name = "trello_getSummary",
+            description = "Получает статистику по доске Trello: карточки на сегодня, выполненные, просроченные, активность",
+            inputSchema = Tool.Input(
+                properties = buildJsonObject {
+                    putJsonObject("boardId") {
+                        put("type", "string")
+                        put("description", "ID доски Trello")
+                    }
+                },
+                required = listOf("boardId")
+            )
+        ) { arguments ->
+            val client = trelloClient
+                ?: return@registerTool CallToolResult(
+                    content = listOf(
+                        TextContent(text = "Ошибка: Trello не настроен. Установите переменные окружения TRELLO_API_KEY и TRELLO_TOKEN")
+                    )
+                )
+
+            val boardId = arguments["boardId"]?.jsonPrimitive?.content
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: не указан ID доски"))
+                )
+
+            val summary = client.getBoardSummary(boardId)
+
+            val resultText = buildString {
+                appendLine("📊 Статистика по доске")
+                appendLine()
+                appendLine("📋 Всего активных карточек: ${summary.totalCards}")
+                appendLine()
+                appendLine("📅 Задачи на сегодня:")
+                appendLine("  • Всего: ${summary.dueTodayTotal}")
+                appendLine("  • Выполнено: ${summary.dueTodayCompleted}")
+                appendLine("  • Осталось: ${summary.dueTodayTotal - summary.dueTodayCompleted}")
+                appendLine()
+                if (summary.overdueCount > 0) {
+                    appendLine("⚠️ Просрочено: ${summary.overdueCount} карточек")
+                    appendLine()
+                }
+                appendLine("🔥 Активность за сегодня: ${summary.updatedTodayCount} карточек")
+                appendLine()
+                if (summary.cardsByList.isNotEmpty()) {
+                    appendLine("📋 По спискам:")
+                    summary.cardsByList.forEach { (listId, count) ->
+                        val listName = summary.listNames[listId] ?: listId
+                        appendLine("  • $listName: $count карточек")
+                    }
+                }
             }
 
             CallToolResult(

@@ -42,6 +42,7 @@ import ru.llm.agent.presentation.ui.components.InputBar
 import ru.llm.agent.presentation.ui.components.MessageItem
 import ru.llm.agent.presentation.ui.components.TokenUsageProgressBar
 import ru.llm.agent.presentation.ui.components.ToolExecutionIndicator
+import ru.llm.agent.presentation.ui.components.BoardSummaryCard
 import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -175,6 +176,11 @@ fun ConversationScreen(
                     summarizationInfo = state.summarizationInfo,
                     isSummarizing = state.isSummarizing
                 )
+
+                // Карточка с саммари доски Trello (если есть)
+                state.boardSummary?.let { summary ->
+                    BoardSummaryCard(boardSummary = summary)
+                }
 
                 // Показываем выбор экспертов только в режиме Committee
                 if (state.selectedMode == ConversationMode.COMMITTEE) {
