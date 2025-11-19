@@ -95,8 +95,10 @@ class ConversationViewModel(
             // Загружаем информацию о суммаризации
             loadSummarizationInfo()
 
-            // Запускаем мониторинг Trello доски
-            startBoardMonitoring()
+            // Запускаем мониторинг Trello доски только если MCP инструменты включены
+            if (_screeState.value.isUsedMcpTools) {
+                startBoardMonitoring()
+            }
         }
     }
 
@@ -178,6 +180,21 @@ class ConversationViewModel(
             is ConversationUIState.Event.SelectMode -> selectMode(event.mode)
             is ConversationUIState.Event.ToggleExpert -> toggleExpert(event.expert)
             is ConversationUIState.Event.ExportConversation -> exportConversation(event.format)
+            is ConversationUIState.Event.SwitchNeedMcpTools -> switchNeedMcpTools(event.useTools)
+        }
+    }
+
+    /**
+     * Переключить использование MCP инструментов
+     */
+    private fun switchNeedMcpTools(useTools: Boolean) {
+        _screeState.update { it.copy(isUsedMcpTools = useTools) }
+
+        // Управляем мониторингом доски в зависимости от флага
+        if (useTools) {
+            startBoardMonitoring()
+        } else {
+            stopBoardMonitoring()
         }
     }
 
@@ -190,8 +207,11 @@ class ConversationViewModel(
 
         when (_screeState.value.selectedMode) {
             ConversationMode.SINGLE -> {
-                //sendMessageToSingleAi(message)
-                sendMessageWithMcpTools(message)
+                if(_screeState.value.isUsedMcpTools){
+                    sendMessageWithMcpTools(message)
+                } else{
+                    sendMessageToSingleAi(message)
+                }
             }
             ConversationMode.COMMITTEE -> sendMessageToCommittee(message)
         }
@@ -549,7 +569,6 @@ class ConversationViewModel(
         val boardId = "691da04e5be13a45aeb63b0a"
 
         monitoringJob = viewModelScope.launch {
-            Logger.getLogger("BoardMonitoring").info("Запуск мониторинга доски $boardId")
 
             // Показываем индикатор загрузки
             _screeState.update {
@@ -563,8 +582,6 @@ class ConversationViewModel(
                 boardId = boardId,
                 intervalMinutes = 5
             ).collect { summary ->
-                Logger.getLogger("BoardMonitoring").info("Получен саммари доски: $summary")
-
                 // Обновляем state с полученным саммари
                 _screeState.update {
                     it.copy(boardSummary = ConversationUIState.BoardSummary(
