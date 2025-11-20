@@ -307,9 +307,141 @@ class TrelloClient(
         }
     }
 
+    /**
+     * Массовое создание карточек за один запрос
+     * Использует последовательные запросы для надёжности
+     */
+    suspend fun batchCreateCards(
+        cards: List<CardCreationData>
+    ): BatchOperationResult {
+        val results = mutableListOf<TrelloCard?>()
+        val errors = mutableListOf<String>()
+
+        cards.forEach { cardData ->
+            try {
+                val card = createCard(
+                    idList = cardData.idList,
+                    name = cardData.name,
+                    desc = cardData.desc,
+                    due = cardData.due,
+                    pos = cardData.pos ?: "bottom"
+                )
+                results.add(card)
+            } catch (e: Exception) {
+                errors.add("Ошибка создания '${cardData.name}': ${e.message}")
+                results.add(null)
+            }
+        }
+
+        return BatchOperationResult(
+            successCount = results.count { it != null },
+            failureCount = errors.size,
+            errors = errors,
+            createdCards = results.filterNotNull()
+        )
+    }
+
+    /**
+     * Массовое обновление карточек
+     */
+    suspend fun bulkUpdateCards(
+        updates: List<CardUpdateData>
+    ): BatchOperationResult {
+        val results = mutableListOf<TrelloCard?>()
+        val errors = mutableListOf<String>()
+
+        updates.forEach { updateData ->
+            try {
+                val card = updateCard(
+                    cardId = updateData.cardId,
+                    name = updateData.name,
+                    desc = updateData.desc,
+                    idList = updateData.idList,
+                    due = updateData.due,
+                    dueComplete = updateData.dueComplete
+                )
+                results.add(card)
+            } catch (e: Exception) {
+                errors.add("Ошибка обновления карточки ${updateData.cardId}: ${e.message}")
+                results.add(null)
+            }
+        }
+
+        return BatchOperationResult(
+            successCount = results.count { it != null },
+            failureCount = errors.size,
+            errors = errors,
+            createdCards = results.filterNotNull()
+        )
+    }
+
+    /**
+     * Массовое перемещение карточек в другой список
+     */
+    suspend fun bulkMoveCards(
+        cardIds: List<String>,
+        targetListId: String
+    ): BatchOperationResult {
+        val results = mutableListOf<TrelloCard?>()
+        val errors = mutableListOf<String>()
+
+        cardIds.forEach { cardId ->
+            try {
+                val card = updateCard(
+                    cardId = cardId,
+                    idList = targetListId
+                )
+                results.add(card)
+            } catch (e: Exception) {
+                errors.add("Ошибка перемещения карточки $cardId: ${e.message}")
+                results.add(null)
+            }
+        }
+
+        return BatchOperationResult(
+            successCount = results.count { it != null },
+            failureCount = errors.size,
+            errors = errors,
+            createdCards = results.filterNotNull()
+        )
+    }
+
     fun close() {
         client.close()
     }
+
+    /**
+     * Данные для создания одной карточки в batch операции
+     */
+    data class CardCreationData(
+        val idList: String,
+        val name: String,
+        val desc: String? = null,
+        val due: String? = null,
+        val pos: String? = null
+    )
+
+    /**
+     * Данные для обновления одной карточки в batch операции
+     */
+    data class CardUpdateData(
+        val cardId: String,
+        val name: String? = null,
+        val desc: String? = null,
+        val idList: String? = null,
+        val due: String? = null,
+        val dueComplete: Boolean? = null
+    )
+
+    /**
+     * Результат batch операции
+     */
+    data class BatchOperationResult(
+        val successCount: Int,
+        val failureCount: Int,
+        val errors: List<String>,
+        val createdCards: List<TrelloCard>
+    )
 
     /**
      * Модель данных карточки Trello

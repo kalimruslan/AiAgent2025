@@ -84,6 +84,10 @@ class McpServerSdk {
         registerTrelloMoveCard()
         registerTrelloUpdateCard()
         registerTrelloSearchCards()
+        // Batch Trello инструменты
+        registerTrelloBatchCreateCards()
+        registerTrelloBulkUpdate()
+        registerTrelloBulkMove()
     }
 
     /**
@@ -831,6 +835,244 @@ class McpServerSdk {
                         appendLine("... и ещё ${cards.size - 20} карточек")
                     }
                 }
+            }
+
+            CallToolResult(
+                content = listOf(TextContent(text = resultText))
+            )
+        }
+    }
+
+    /**
+     * Batch инструмент для массового создания карточек
+     */
+    private fun registerTrelloBatchCreateCards() {
+        registerTool(
+            name = "trello_batchCreateCards",
+            description = "Массовое создание нескольких карточек за один запрос. Полезно для добавления списка задач. Формат: JSON массив с объектами карточек.",
+            inputSchema = Tool.Input(
+                properties = buildJsonObject {
+                    putJsonObject("boardId") {
+                        put("type", "string")
+                        put("description", "ID доски Trello")
+                    }
+                    putJsonObject("listId") {
+                        put("type", "string")
+                        put("description", "ID списка, куда добавляются все карточки")
+                    }
+                    putJsonObject("cards") {
+                        put("type", "string")
+                        put("description", "JSON массив карточек вида: [{\"name\": \"...\", \"desc\": \"...\", \"due\": \"...\"}]. Поля desc и due необязательны.")
+                    }
+                },
+                required = listOf("boardId", "listId", "cards")
+            )
+        ) { arguments ->
+            val client = trelloClient
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: Trello не настроен"))
+                )
+
+            val boardId = arguments["boardId"]?.jsonPrimitive?.content
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: не указан boardId"))
+                )
+
+            val listId = arguments["listId"]?.jsonPrimitive?.content
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: не указан listId"))
+                )
+
+            val cardsJson = arguments["cards"]?.jsonPrimitive?.content
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: не указан массив карточек"))
+                )
+
+            // Парсим JSON массив карточек
+            val cardsArray = try {
+                Json.parseToJsonElement(cardsJson).jsonArray
+            } catch (e: Exception) {
+                return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка парсинга JSON: ${e.message}"))
+                )
+            }
+
+            val cardsData = cardsArray.map { cardElement ->
+                val cardObj = cardElement.jsonObject
+                TrelloClient.CardCreationData(
+                    idList = listId,
+                    name = cardObj["name"]?.jsonPrimitive?.content ?: "Без названия",
+                    desc = cardObj["desc"]?.jsonPrimitive?.content,
+                    due = cardObj["due"]?.jsonPrimitive?.content,
+                    pos = "bottom"
+                )
+            }
+
+            val result = client.batchCreateCards(cardsData)
+
+            val resultText = buildString {
+                appendLine("📦 Результат массового создания:")
+                appendLine()
+                appendLine("✅ Успешно создано: ${result.successCount}")
+                if (result.failureCount > 0) {
+                    appendLine("❌ Ошибок: ${result.failureCount}")
+                    appendLine()
+                    appendLine("Детали ошибок:")
+                    result.errors.forEach { error ->
+                        appendLine("  • $error")
+                    }
+                }
+                appendLine()
+                appendLine("Созданные карточки:")
+                result.createdCards.take(10).forEach { card ->
+                    appendLine("  • ${card.name}")
+                    card.shortUrl?.let { appendLine("    🔗 $it") }
+                }
+                if (result.createdCards.size > 10) {
+                    appendLine("  ... и ещё ${result.createdCards.size - 10} карточек")
+                }
+            }
+
+            CallToolResult(
+                content = listOf(TextContent(text = resultText))
+            )
+        }
+    }
+
+    /**
+     * Batch инструмент для массового обновления карточек
+     */
+    private fun registerTrelloBulkUpdate() {
+        registerTool(
+            name = "trello_bulkUpdate",
+            description = "Массовое обновление нескольких карточек. Формат: JSON массив с объектами обновлений.",
+            inputSchema = Tool.Input(
+                properties = buildJsonObject {
+                    putJsonObject("updates") {
+                        put("type", "string")
+                        put("description", "JSON массив обновлений вида: [{\"cardId\": \"...\", \"name\": \"...\", \"due\": \"...\", \"dueComplete\": true}]. Все поля кроме cardId необязательны.")
+                    }
+                },
+                required = listOf("updates")
+            )
+        ) { arguments ->
+            val client = trelloClient
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: Trello не настроен"))
+                )
+
+            val updatesJson = arguments["updates"]?.jsonPrimitive?.content
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: не указан массив обновлений"))
+                )
+
+            // Парсим JSON массив обновлений
+            val updatesArray = try {
+                Json.parseToJsonElement(updatesJson).jsonArray
+            } catch (e: Exception) {
+                return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка парсинга JSON: ${e.message}"))
+                )
+            }
+
+            val updatesData = updatesArray.map { updateElement ->
+                val updateObj = updateElement.jsonObject
+                TrelloClient.CardUpdateData(
+                    cardId = updateObj["cardId"]?.jsonPrimitive?.content
+                        ?: throw IllegalArgumentException("cardId обязателен"),
+                    name = updateObj["name"]?.jsonPrimitive?.content,
+                    desc = updateObj["desc"]?.jsonPrimitive?.content,
+                    idList = updateObj["idList"]?.jsonPrimitive?.content,
+                    due = updateObj["due"]?.jsonPrimitive?.content,
+                    dueComplete = updateObj["dueComplete"]?.jsonPrimitive?.booleanOrNull
+                )
+            }
+
+            val result = client.bulkUpdateCards(updatesData)
+
+            val resultText = buildString {
+                appendLine("🔄 Результат массового обновления:")
+                appendLine()
+                appendLine("✅ Успешно обновлено: ${result.successCount}")
+                if (result.failureCount > 0) {
+                    appendLine("❌ Ошибок: ${result.failureCount}")
+                    appendLine()
+                    appendLine("Детали ошибок:")
+                    result.errors.forEach { error ->
+                        appendLine("  • $error")
+                    }
+                }
+            }
+
+            CallToolResult(
+                content = listOf(TextContent(text = resultText))
+            )
+        }
+    }
+
+    /**
+     * Batch инструмент для массового перемещения карточек
+     */
+    private fun registerTrelloBulkMove() {
+        registerTool(
+            name = "trello_bulkMove",
+            description = "Массовое перемещение карточек в другой список. Полезно для изменения статуса нескольких задач одновременно.",
+            inputSchema = Tool.Input(
+                properties = buildJsonObject {
+                    putJsonObject("cardIds") {
+                        put("type", "string")
+                        put("description", "JSON массив ID карточек для перемещения, например: [\"id1\", \"id2\", \"id3\"]")
+                    }
+                    putJsonObject("targetListId") {
+                        put("type", "string")
+                        put("description", "ID списка, в который перемещаются карточки")
+                    }
+                },
+                required = listOf("cardIds", "targetListId")
+            )
+        ) { arguments ->
+            val client = trelloClient
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: Trello не настроен"))
+                )
+
+            val cardIdsJson = arguments["cardIds"]?.jsonPrimitive?.content
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: не указан массив cardIds"))
+                )
+
+            val targetListId = arguments["targetListId"]?.jsonPrimitive?.content
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: не указан targetListId"))
+                )
+
+            // Парсим JSON массив ID карточек
+            val cardIdsArray = try {
+                Json.parseToJsonElement(cardIdsJson).jsonArray
+            } catch (e: Exception) {
+                return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка парсинга JSON: ${e.message}"))
+                )
+            }
+
+            val cardIds = cardIdsArray.map { it.jsonPrimitive.content }
+
+            val result = client.bulkMoveCards(cardIds, targetListId)
+
+            val resultText = buildString {
+                appendLine("↔️ Результат массового перемещения:")
+                appendLine()
+                appendLine("✅ Успешно перемещено: ${result.successCount}")
+                if (result.failureCount > 0) {
+                    appendLine("❌ Ошибок: ${result.failureCount}")
+                    appendLine()
+                    appendLine("Детали ошибок:")
+                    result.errors.forEach { error ->
+                        appendLine("  • $error")
+                    }
+                }
+                appendLine()
+                appendLine("📋 Перемещено в список: $targetListId")
             }
 
             CallToolResult(
