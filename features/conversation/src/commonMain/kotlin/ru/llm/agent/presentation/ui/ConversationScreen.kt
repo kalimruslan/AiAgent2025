@@ -29,6 +29,7 @@ import ru.llm.agent.presentation.ui.components.MessageItem
 import ru.llm.agent.presentation.ui.components.TokenUsageProgressBar
 import ru.llm.agent.presentation.ui.components.ToolExecutionIndicator
 import ru.llm.agent.presentation.ui.components.BoardSummaryCard
+import ru.llm.agent.presentation.ui.components.SmartPromptsBar
 import ru.llm.agent.presentation.ui.dropdowns.ConversationModeDropdown
 import ru.llm.agent.presentation.ui.dropdowns.LlmProviderDropdown
 import ru.llm.agent.presentation.ui.experts.ExpertsSelectionPanel
@@ -127,6 +128,18 @@ fun ConversationScreen(
                         },
                         enabled = !state.isLoading
                     )
+
+                    // Умные промпты для Trello (показываем только когда MCP инструменты включены)
+                    if (state.isUsedMcpTools) {
+                        SmartPromptsBar(
+                            onPromptClick = { prompt ->
+                                viewModel.setEvent(
+                                    ConversationUIState.Event.SendMessage(prompt)
+                                )
+                            },
+                            enabled = !state.isLoading
+                        )
+                    }
 
                     InputBar(
                         isLoading = state.isLoading,
