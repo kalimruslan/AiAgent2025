@@ -126,7 +126,13 @@ fun ConversationScreen(
                                 ConversationUIState.Event.SwitchNeedMcpTools(useTools)
                             )
                         },
-                        enabled = !state.isLoading
+                        enabled = !state.isLoading,
+                        boardId = state.trelloBoardId,
+                        onSetBoardId = { newBoardId ->
+                            viewModel.setEvent(
+                                ConversationUIState.Event.SetTrelloBoardId(newBoardId)
+                            )
+                        }
                     )
 
                     // Умные промпты для Trello (показываем только когда MCP инструменты включены)
@@ -137,7 +143,8 @@ fun ConversationScreen(
                                     ConversationUIState.Event.SendMessage(prompt)
                                 )
                             },
-                            enabled = !state.isLoading
+                            enabled = !state.isLoading,
+                            boardId = state.trelloBoardId
                         )
                     }
 
@@ -254,8 +261,12 @@ private fun ConversationCompleteCard(onRestart: () -> Unit) {
 private fun McpToolsCheckbox(
     isUsedMcpTools: Boolean,
     onToggle: (Boolean) -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    boardId: String? = null,
+    onSetBoardId: (String?) -> Unit = {}
 ) {
+    var showBoardIdDialog by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -264,25 +275,106 @@ private fun McpToolsCheckbox(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
-            Text(
-                text = "Использовать инструменты MCP",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Checkbox(
-                checked = isUsedMcpTools,
-                onCheckedChange = { if (enabled) onToggle(it) },
-                enabled = enabled
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Использовать инструменты MCP",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Checkbox(
+                    checked = isUsedMcpTools,
+                    onCheckedChange = { if (enabled) onToggle(it) },
+                    enabled = enabled
+                )
+            }
+
+            // Кнопка для настройки Board ID (показываем только когда MCP включен)
+            if (isUsedMcpTools) {
+                TextButton(
+                    onClick = { showBoardIdDialog = true },
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Text(
+                        text = if (boardId != null) {
+                            "Board ID: ${boardId.take(12)}..."
+                        } else {
+                            "⚙️ Настроить Board ID"
+                        },
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
         }
     }
+
+    // Диалог для ввода Board ID
+    if (showBoardIdDialog) {
+        BoardIdDialog(
+            currentBoardId = boardId,
+            onDismiss = { showBoardIdDialog = false },
+            onConfirm = { newBoardId ->
+                onSetBoardId(newBoardId)
+                showBoardIdDialog = false
+            }
+        )
+    }
+}
+
+/**
+ * Диалог для настройки Board ID Trello
+ */
+@Composable
+private fun BoardIdDialog(
+    currentBoardId: String?,
+    onDismiss: () -> Unit,
+    onConfirm: (String?) -> Unit
+) {
+    var boardId by remember { mutableStateOf(currentBoardId ?: "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Настройка Trello Board ID") },
+        text = {
+            Column {
+                Text(
+                    text = "Введите ID вашей доски Trello для автоматической подстановки в промпты:",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = boardId,
+                    onValueChange = { boardId = it },
+                    label = { Text("Board ID") },
+                    placeholder = { Text("например: 5f8a1b2c3d4e5f6g7h8i9j0k") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Найти Board ID можно в URL доски Trello после /b/",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(boardId.ifBlank { null }) }) {
+                Text("Сохранить")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
 }
 
 /**

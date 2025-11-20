@@ -40,7 +40,10 @@ internal class ConversationUIState {
         val currentToolExecution: ToolExecutionStatus? = null,
 
         /** Последнее саммари доски Trello */
-        val boardSummary: BoardSummary? = null
+        val boardSummary: BoardSummary? = null,
+
+        /** ID доски Trello для умных промптов (null если не настроен) */
+        val trelloBoardId: String? = null
     ) {
         companion object {
             fun empty() = State(
@@ -73,6 +76,8 @@ internal class ConversationUIState {
         data class ExportConversation(val format: ExportFormat) : Event
         /** Используем ли инструменты MCP */
         data class SwitchNeedMcpTools(val useTools: Boolean) : Event
+        /** Установить ID доски Trello для умных промптов */
+        data class SetTrelloBoardId(val boardId: String?) : Event
     }
 
     /**

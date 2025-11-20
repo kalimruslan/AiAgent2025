@@ -3,23 +3,28 @@ package ru.llm.agent.presentation.ui.components
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import ru.llm.agent.presentation.model.SmartPromptTemplate
+import ru.llm.agent.presentation.model.PromptVariablesContext
+import ru.llm.agent.presentation.model.fillTemplate
 
 /**
- * Умные промпты для быстрого взаимодействия с Trello
+ * Умные промпты для быстрого взаимодействия с Trello с поддержкой переменных
  */
 @Composable
 public fun SmartPromptsBar(
     onPromptClick: (String) -> Unit,
     enabled: Boolean = true,
+    boardId: String? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = PromptVariablesContext(boardId = boardId)
+    val templates = SmartPromptTemplate.TRELLO_TEMPLATES
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -31,12 +36,27 @@ public fun SmartPromptsBar(
         Column(
             modifier = Modifier.padding(8.dp)
         ) {
-            Text(
-                text = "⚡ Быстрые действия",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 8.dp, end = 8.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "⚡ Быстрые действия",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // Показываем индикатор, если boardId настроен
+                if (boardId != null) {
+                    Text(
+                        text = "Board ID: ${boardId.take(8)}...",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
             Row(
                 modifier = Modifier
@@ -44,50 +64,20 @@ public fun SmartPromptsBar(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                SmartPromptChip(
-                    label = "Что на сегодня?",
-                    icon = Icons.Default.DateRange,
-                    onClick = {
-                        onPromptClick("Покажи все задачи на сегодня из Trello")
-                    },
-                    enabled = enabled
-                )
+                templates.forEach { template ->
+                    val canUse = !template.requiresBoardId || boardId != null
 
-                SmartPromptChip(
-                    label = "Что просрочено?",
-                    icon = Icons.Default.Warning,
-                    onClick = {
-                        onPromptClick("Покажи все просроченные задачи из Trello")
-                    },
-                    enabled = enabled
-                )
-
-                SmartPromptChip(
-                    label = "Создать задачу",
-                    icon = Icons.Default.Add,
-                    onClick = {
-                        onPromptClick("Создай быструю задачу в Trello")
-                    },
-                    enabled = enabled
-                )
-
-                SmartPromptChip(
-                    label = "Статистика доски",
-                    icon = Icons.Default.Info,
-                    onClick = {
-                        onPromptClick("Покажи статистику по моей Trello доске")
-                    },
-                    enabled = enabled
-                )
-
-                SmartPromptChip(
-                    label = "Поиск задач",
-                    icon = Icons.Default.Search,
-                    onClick = {
-                        onPromptClick("Найди задачи в Trello по ключевому слову")
-                    },
-                    enabled = enabled
-                )
+                    SmartPromptChip(
+                        label = template.label,
+                        icon = template.icon,
+                        onClick = {
+                            val filledPrompt = template.fillTemplate(context)
+                            onPromptClick(filledPrompt)
+                        },
+                        enabled = enabled && canUse,
+                        tooltip = template.description
+                    )
+                }
             }
         }
     }
@@ -101,7 +91,8 @@ private fun SmartPromptChip(
     label: String,
     icon: ImageVector,
     onClick: () -> Unit,
-    enabled: Boolean
+    enabled: Boolean,
+    tooltip: String? = null
 ) {
     FilterChip(
         selected = false,
@@ -110,14 +101,20 @@ private fun SmartPromptChip(
         leadingIcon = {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = tooltip,
                 modifier = Modifier.size(18.dp)
             )
         },
         enabled = enabled,
         colors = FilterChipDefaults.filterChipColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            labelColor = MaterialTheme.colorScheme.onSurface
+            containerColor = if (enabled) {
+                MaterialTheme.colorScheme.surface
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            },
+            labelColor = MaterialTheme.colorScheme.onSurface,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            disabledLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
         )
     )
 }

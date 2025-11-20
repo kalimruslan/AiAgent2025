@@ -12,6 +12,8 @@ import ru.llm.agent.di.domainKoinModule
 import ru.llm.agent.di.databaseModule
 import ru.llm.agent.di.exportersModule
 import ru.llm.agent.di.platformDatabaseModule
+import ru.llm.agent.di.settingsModule
+import ru.llm.agent.di.platformSettingsModule
 
 internal expect fun defaultKoinLogger(level: Level): Logger
 
@@ -27,6 +29,8 @@ fun KoinApplication.initKoinApp(
 
     modules(
         platformKoinModule(platformContext),
+        platformSettingsModule,
+        settingsModule,
         platformDatabaseModule,
         databaseModule,
         networkModule,

@@ -35,6 +35,7 @@ import ru.llm.agent.usecase.MonitorBoardSummaryUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 import ru.llm.agent.usecase.SummarizeHistoryUseCase
+import ru.llm.agent.utils.settings.AppSettings
 import java.util.logging.Logger
 import kotlinx.coroutines.Job
 
@@ -53,7 +54,8 @@ class ConversationViewModel(
     private val getMcpToolsUseCase: GetMcpToolsUseCase,
     private val interactYaGptWithMcpService: InteractYaGptWithMcpService,
     private val chatWithMcpToolsUseCase: ChatWithMcpToolsUseCase,
-    private val monitorBoardSummaryUseCase: MonitorBoardSummaryUseCase
+    private val monitorBoardSummaryUseCase: MonitorBoardSummaryUseCase,
+    private val appSettings: AppSettings
 ) : ViewModel() {
 
     private val fileManager = getFileManager()
@@ -82,6 +84,9 @@ class ConversationViewModel(
 
     fun start(){
         viewModelScope.launch {
+            // Загружаем настройки приложения
+            loadSettings()
+
             // Загружаем сохраненный провайдер
             val savedProvider = getSelectedProviderUseCase(conversationId)
             _screeState.update { it.copy(selectedProvider = savedProvider) }
@@ -181,6 +186,27 @@ class ConversationViewModel(
             is ConversationUIState.Event.ToggleExpert -> toggleExpert(event.expert)
             is ConversationUIState.Event.ExportConversation -> exportConversation(event.format)
             is ConversationUIState.Event.SwitchNeedMcpTools -> switchNeedMcpTools(event.useTools)
+            is ConversationUIState.Event.SetTrelloBoardId -> setTrelloBoardId(event.boardId)
+        }
+    }
+
+    /**
+     * Установить ID доски Trello
+     */
+    private fun setTrelloBoardId(boardId: String?) {
+        _screeState.value = _screeState.value.copy(trelloBoardId = boardId)
+        // Сохраняем в настройки
+        appSettings.trelloBoardId = boardId
+    }
+
+    /**
+     * Загрузить настройки при старте
+     */
+    private fun loadSettings() {
+        // Загружаем сохранённый Board ID
+        val savedBoardId = appSettings.trelloBoardId
+        if (savedBoardId != null) {
+            _screeState.value = _screeState.value.copy(trelloBoardId = savedBoardId)
         }
     }
 
