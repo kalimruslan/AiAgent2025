@@ -87,7 +87,7 @@ data class SmartPromptTemplate(
                 id = "search_tasks",
                 label = "Поиск задач",
                 icon = Icons.Default.Search,
-                template = "Найди задачи в Trello на доске {boardId} по ключевому слову",
+                template = "Найди задачи в Trello на доске {boardId} по ключевому слову '{query}'",
                 description = "Поиск задач по ключевым словам",
                 requiresBoardId = true
             )
@@ -103,7 +103,8 @@ data class PromptVariablesContext(
     val date: String = getCurrentDate(),
     val tomorrow: String = getTomorrowDate(),
     val weekStart: String = getWeekStartDate(),
-    val weekEnd: String = getWeekEndDate()
+    val weekEnd: String = getWeekEndDate(),
+    val query: String = ""
 ) {
     companion object {
         /**
@@ -151,6 +152,7 @@ fun SmartPromptTemplate.fillTemplate(context: PromptVariablesContext): String {
     result = result.replace("{tomorrow}", context.tomorrow)
     result = result.replace("{weekStart}", context.weekStart)
     result = result.replace("{weekEnd}", context.weekEnd)
+    result = result.replace("{query}", context.query)
 
     return result
 }

@@ -1,5 +1,6 @@
 package ru.llm.agent.usecase
 
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import ru.llm.agent.NetworkResult
@@ -11,11 +12,15 @@ import ru.llm.agent.model.PromtFormat
 import ru.llm.agent.model.Role
 import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.model.mcp.FunctionResult
+import ru.llm.agent.model.mcp.McpToolInfo
 import ru.llm.agent.model.mcp.ToolResult
 import ru.llm.agent.model.mcp.ToolResultList
+import ru.llm.agent.model.mcp.YaGptFunction
+import ru.llm.agent.model.mcp.YaGptTool
 import ru.llm.agent.repository.ConversationRepository
 import ru.llm.agent.repository.LlmRepository
 import ru.llm.agent.repository.McpRepository
+import ru.llm.agent.toYaGptTool
 
 /**
  * Use case для чата с поддержкой MCP tool calling.
@@ -56,6 +61,7 @@ public class ChatWithMcpToolsUseCase(
         provider: LlmProvider = LlmProvider.YANDEX_GPT,
         maxIterations: Int = 3,
         needAddToHistory: Boolean = true,
+        availableTools: List<McpToolInfo> = emptyList(),
     ): Flow<NetworkResult<ConversationMessage>> = flow {
         emit(NetworkResult.Loading())
 
@@ -87,7 +93,9 @@ public class ChatWithMcpToolsUseCase(
             }
 
             // 1. Получаем доступные инструменты
-            val availableTools = mcpRepository.getMcpToolsList()
+            val availableTools = availableTools.map {
+                it.toYaGptTool()
+            }.ifEmpty { mcpRepository.getMcpToolsList() }
             logger.info("Получено ${availableTools.size} MCP инструментов")
 
             // 2. Сохраняем сообщение пользователя
@@ -173,14 +181,9 @@ public class ChatWithMcpToolsUseCase(
                                         )
                                         shouldContinue = false
                                     } else {
-                                        // Обрабатываем tool calls
-                                        logger.info("Обнаружено ${toolCalls.size} tool calls")
-
                                         val toolResults = mutableListOf<ToolResult>()
 
                                         for (toolCall in toolCalls) {
-                                            logger.info("Выполнение tool: ${toolCall.functionCall.name}")
-
                                             try {
                                                 val result = mcpRepository.callTool(
                                                     name = toolCall.functionCall.name,
@@ -196,8 +199,6 @@ public class ChatWithMcpToolsUseCase(
                                                     )
                                                 )
 
-                                                logger.info("Tool ${toolCall.functionCall.name} выполнен успешно")
-
                                                 // Эмитим промежуточный результат для UI
                                                 val toolMessage = convertToConversationMessage(
                                                     conversationId = conversationId,
@@ -208,7 +209,15 @@ public class ChatWithMcpToolsUseCase(
                                                     isToolCall = true
                                                 )
                                                 emit(NetworkResult.Success(toolMessage))
-
+                                                conversationRepository.saveAssistantMessage(
+                                                    ConversationMessage(
+                                                        conversationId = conversationId,
+                                                        role = Role.ASSISTANT,
+                                                        text = result,
+                                                        model = provider.displayName
+                                                    )
+                                                )
+                                                delay(5000)
                                                 // Добавляем результаты tools в историю
                                                 currentHistory.add(
                                                     MessageModel.ToolsMessage(

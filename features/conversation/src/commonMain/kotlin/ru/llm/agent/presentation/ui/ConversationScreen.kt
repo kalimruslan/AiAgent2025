@@ -109,6 +109,8 @@ fun ConversationScreen(
             },
             bottomBar = {
                 Column {
+                    var text by remember { mutableStateOf("") }
+
                     if (state.isConversationComplete) {
                         ConversationCompleteCard(
                             onRestart = {
@@ -144,7 +146,8 @@ fun ConversationScreen(
                                 )
                             },
                             enabled = !state.isLoading,
-                            boardId = state.trelloBoardId
+                            boardId = state.trelloBoardId,
+                            text = text
                         )
                     }
 
@@ -155,7 +158,9 @@ fun ConversationScreen(
                                 ConversationUIState.Event.SendMessage(it)
                             )
                         },
-                        onSettingsClick = { onNavigateToOptions.invoke(viewModel.conversationId) }
+                        onSettingsClick = { onNavigateToOptions.invoke(viewModel.conversationId) },
+                        text = text,
+                        onTextChange = { text = it }
                     )
                 }
             }
@@ -263,7 +268,7 @@ private fun McpToolsCheckbox(
     onToggle: (Boolean) -> Unit,
     enabled: Boolean = true,
     boardId: String? = null,
-    onSetBoardId: (String?) -> Unit = {}
+    onSetBoardId: (String?) -> Unit = {},
 ) {
     var showBoardIdDialog by remember { mutableStateOf(false) }
 
@@ -334,7 +339,7 @@ private fun McpToolsCheckbox(
 private fun BoardIdDialog(
     currentBoardId: String?,
     onDismiss: () -> Unit,
-    onConfirm: (String?) -> Unit
+    onConfirm: (String?) -> Unit,
 ) {
     var boardId by remember { mutableStateOf(currentBoardId ?: "") }
 
@@ -473,7 +478,7 @@ private fun LoadingIndicator() {
 @Composable
 private fun BoxScope.ErrorSnackbar(
     error: String,
-    onClearError: () -> Unit
+    onClearError: () -> Unit,
 ) {
     Snackbar(
         modifier = Modifier

@@ -37,12 +37,13 @@ public fun InputBar(
     isLoading: Boolean,
     onSendMessage: (String) -> Unit,
     onSettingsClick: () -> Unit,
+    text: String,
+    onTextChange: (String) -> Unit
 ) {
     Row(
         modifier = Modifier.padding(8.dp).height(48.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        var text by remember { mutableStateOf("") }
         IconButton(
             onClick = onSettingsClick,
             enabled = !isLoading
@@ -52,7 +53,7 @@ public fun InputBar(
         TextField(
             value = text,
             onValueChange = {
-                text = it
+                onTextChange(it)
             },
             placeholder = {
                 Text(
@@ -70,7 +71,7 @@ public fun InputBar(
         IconButton(
             onClick = {
                 onSendMessage.invoke(text)
-                text = "" // Очищаем поле после отправки
+                onTextChange("") // Очищаем поле после отправки
             },
             enabled = !isLoading && text.isNotBlank()
         ) {

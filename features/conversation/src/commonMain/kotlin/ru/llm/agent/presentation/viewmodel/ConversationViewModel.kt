@@ -101,9 +101,9 @@ class ConversationViewModel(
             loadSummarizationInfo()
 
             // Запускаем мониторинг Trello доски только если MCP инструменты включены
-            if (_screeState.value.isUsedMcpTools) {
-                startBoardMonitoring()
-            }
+//            if (_screeState.value.isUsedMcpTools) {
+//                startBoardMonitoring()
+//            }
         }
     }
 
@@ -217,11 +217,11 @@ class ConversationViewModel(
         _screeState.update { it.copy(isUsedMcpTools = useTools) }
 
         // Управляем мониторингом доски в зависимости от флага
-        if (useTools) {
-            startBoardMonitoring()
-        } else {
-            stopBoardMonitoring()
-        }
+//        if (useTools) {
+//            startBoardMonitoring()
+//        } else {
+//            stopBoardMonitoring()
+//        }
     }
 
     /**
@@ -253,7 +253,8 @@ class ConversationViewModel(
                 conversationId = conversationId,
                 message = message,
                 provider = _screeState.value.selectedProvider,
-                needAddToHistory = needAddToHistory
+                needAddToHistory = needAddToHistory,
+                availableTools = _screeState.value.availableTools
             ).collect { result ->
                 result.doActionIfLoading {
                     _screeState.update { it.copy(isLoading = true, error = "") }
@@ -265,6 +266,7 @@ class ConversationViewModel(
 
                         // Извлекаем название инструмента из текста сообщения
                         val toolName = extractToolNameFromMessage(conversationMessage.text)
+                        val result = extractToolResultFromMessage(conversationMessage.text)
 
                         _screeState.update { state ->
                             state.copy(
@@ -273,7 +275,7 @@ class ConversationViewModel(
                                 requestTokens = null,
                                 currentToolExecution = ConversationUIState.ToolExecutionStatus(
                                     toolName = toolName,
-                                    description = "Обработка запроса...",
+                                    description = "Обработка запроса...\n$result",
                                     isExecuting = true
                                 )
                             )
@@ -296,37 +298,6 @@ class ConversationViewModel(
                             isLoading = false,
                             error = mapErrorToUserMessage(domainError),
                             requestTokens = null
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Старый метод отправки через InteractYaGptWithMcpService (для справки)
-     */
-    private fun sendMessageWithMcpToolsOld(message: String) {
-        viewModelScope.launch {
-            interactYaGptWithMcpService.chat(message, _screeState.value.availableTools).collect { result ->
-                result.doActionIfLoading {
-                    _screeState.update { it.copy(isLoading = true, error = "") }
-                }
-                result.doActionIfSuccess {
-                    _screeState.update { state ->
-                        state.copy(
-                            isLoading = false,
-                            isConversationComplete = false,
-                            requestTokens = null // Сбрасываем после отправки
-                        )
-                    }
-                }
-                result.doActionIfError { domainError ->
-                    _screeState.update {
-                        it.copy(
-                            isLoading = false,
-                            error = mapErrorToUserMessage(domainError),
-                            requestTokens = null // Сбрасываем при ошибке
                         )
                     }
                 }
@@ -642,7 +613,8 @@ class ConversationViewModel(
                 conversationId = conversationId,
                 message = agentPrompt,
                 provider = _screeState.value.selectedProvider,
-                needAddToHistory = false
+                needAddToHistory = false,
+                availableTools = _screeState.value.availableTools
             ).collect { result ->
                 result.doActionIfSuccess { conversationMessage ->
                     // Игнорируем промежуточные результаты tool calls
@@ -698,6 +670,17 @@ class ConversationViewModel(
             match?.groupValues?.getOrNull(1)?.trim() ?: "Инструмент"
         } catch (e: Exception) {
             "Инструмент"
+        }
+    }
+
+    private fun extractToolResultFromMessage(messageText: String): String {
+        return try {
+            // Пытаемся найти паттерн "Выполнение инструмента: название"
+            val pattern = "Результат: ([^\\n]+)".toRegex()
+            val match = pattern.find(messageText)
+            match?.groupValues?.getOrNull(1)?.trim() ?: ""
+        } catch (e: Exception) {
+            ""
         }
     }
 

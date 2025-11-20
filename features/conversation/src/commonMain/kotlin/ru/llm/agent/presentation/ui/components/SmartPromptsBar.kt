@@ -20,9 +20,10 @@ public fun SmartPromptsBar(
     onPromptClick: (String) -> Unit,
     enabled: Boolean = true,
     boardId: String? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    text: String
 ) {
-    val context = PromptVariablesContext(boardId = boardId)
+    val context = PromptVariablesContext(boardId = boardId, query = text)
     val templates = SmartPromptTemplate.TRELLO_TEMPLATES
 
     Card(
