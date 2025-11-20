@@ -6,6 +6,7 @@ import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import kotlinx.serialization.json.*
 import ru.llm.agent.api.TrelloClient
 import ru.llm.agent.api.OpenWeatherMapClient
+import java.time.LocalDate
 
 /**
  * MCP Сервер на основе официального Kotlin SDK.
@@ -78,6 +79,11 @@ class McpServerSdk {
         registerTrelloCreateCard()
         registerTrelloGetCard()
         registerTrelloGetSummary()
+        // Композитные Trello инструменты
+        registerTrelloQuickTask()
+        registerTrelloMoveCard()
+        registerTrelloUpdateCard()
+        registerTrelloSearchCards()
     }
 
     /**
@@ -463,6 +469,372 @@ class McpServerSdk {
                 content = listOf(
                     TextContent(text = resultText)
                 )
+            )
+        }
+    }
+
+    /**
+     * Инструмент для быстрого создания задачи с минимумом параметров
+     */
+    private fun registerTrelloQuickTask() {
+        registerTool(
+            name = "trello_quickTask",
+            description = "Быстро создает задачу в Trello с минимумом параметров. Автоматически ставит дедлайн на 'сегодня', 'завтра' или конкретную дату. Ищет первый открытый список для добавления.",
+            inputSchema = Tool.Input(
+                properties = buildJsonObject {
+                    putJsonObject("boardId") {
+                        put("type", "string")
+                        put("description", "ID доски Trello")
+                    }
+                    putJsonObject("task") {
+                        put("type", "string")
+                        put("description", "Название задачи")
+                    }
+                    putJsonObject("when") {
+                        put("type", "string")
+                        put("description", "Когда выполнить: 'today' (сегодня), 'tomorrow' (завтра), или дата в формате ISO 8601")
+                    }
+                    putJsonObject("description") {
+                        put("type", "string")
+                        put("description", "Необязательное описание задачи")
+                    }
+                },
+                required = listOf("boardId", "task")
+            )
+        ) { arguments ->
+            val client = trelloClient
+                ?: return@registerTool CallToolResult(
+                    content = listOf(
+                        TextContent(text = "Ошибка: Trello не настроен")
+                    )
+                )
+
+            val boardId = arguments["boardId"]?.jsonPrimitive?.content
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: не указан boardId"))
+                )
+
+            val task = arguments["task"]?.jsonPrimitive?.content
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: не указана задача"))
+                )
+
+            val whenParam = arguments["when"]?.jsonPrimitive?.content
+            val description = arguments["description"]?.jsonPrimitive?.content
+
+            // Получаем списки доски
+            val lists = client.getLists(boardId)
+            if (lists.isEmpty()) {
+                return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: на доске нет списков"))
+                )
+            }
+
+            // Берём первый открытый список
+            val targetList = lists.firstOrNull { !it.closed }
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: нет открытых списков"))
+                )
+
+            // Парсим дедлайн
+            val dueDate = when (whenParam?.lowercase()) {
+                "today", "сегодня" -> {
+                    val today = LocalDate.now()
+                    "${today}T23:59:59Z"
+                }
+                "tomorrow", "завтра" -> {
+                    val tomorrow = LocalDate.now().plusDays(1)
+                    "${tomorrow}T23:59:59Z"
+                }
+                null -> null
+                else -> whenParam // Предполагаем, что это ISO 8601 формат
+            }
+
+            val card = client.createCard(
+                idList = targetList.id,
+                name = task,
+                desc = description,
+                due = dueDate
+            )
+
+            val resultText = if (card != null) {
+                buildString {
+                    appendLine("✅ Быстрая задача создана!")
+                    appendLine()
+                    appendLine("📝 ${card.name}")
+                    card.desc?.let { appendLine("💬 $it") }
+                    card.due?.let { appendLine("📅 Дедлайн: $it") }
+                    appendLine("📋 Список: ${targetList.name}")
+                    card.shortUrl?.let { appendLine("🔗 $it") }
+                }
+            } else {
+                "❌ Не удалось создать быструю задачу"
+            }
+
+            CallToolResult(
+                content = listOf(TextContent(text = resultText))
+            )
+        }
+    }
+
+    /**
+     * Инструмент для перемещения карточки между списками
+     */
+    private fun registerTrelloMoveCard() {
+        registerTool(
+            name = "trello_moveCard",
+            description = "Перемещает карточку в другой список на доске. Можно указать название списка или его ID.",
+            inputSchema = Tool.Input(
+                properties = buildJsonObject {
+                    putJsonObject("cardId") {
+                        put("type", "string")
+                        put("description", "ID карточки для перемещения")
+                    }
+                    putJsonObject("targetList") {
+                        put("type", "string")
+                        put("description", "Название или ID целевого списка")
+                    }
+                    putJsonObject("boardId") {
+                        put("type", "string")
+                        put("description", "ID доски (нужен если targetList - это название)")
+                    }
+                },
+                required = listOf("cardId", "targetList")
+            )
+        ) { arguments ->
+            val client = trelloClient
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: Trello не настроен"))
+                )
+
+            val cardId = arguments["cardId"]?.jsonPrimitive?.content
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: не указан cardId"))
+                )
+
+            val targetList = arguments["targetList"]?.jsonPrimitive?.content
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: не указан targetList"))
+                )
+
+            val boardId = arguments["boardId"]?.jsonPrimitive?.content
+
+            // Определяем, это ID или название списка
+            val targetListId = if (targetList.length == 24) {
+                // Скорее всего это ID Trello (24 символа)
+                targetList
+            } else {
+                // Это название - нужно найти список
+                if (boardId == null) {
+                    return@registerTool CallToolResult(
+                        content = listOf(TextContent(text = "Ошибка: для поиска по названию нужен boardId"))
+                    )
+                }
+
+                val lists = client.getLists(boardId)
+                val foundList = lists.firstOrNull {
+                    it.name.equals(targetList, ignoreCase = true)
+                }
+
+                foundList?.id ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: список '$targetList' не найден"))
+                )
+            }
+
+            val updatedCard = client.updateCard(
+                cardId = cardId,
+                idList = targetListId
+            )
+
+            val resultText = if (updatedCard != null) {
+                buildString {
+                    appendLine("✅ Карточка перемещена!")
+                    appendLine()
+                    appendLine("📝 ${updatedCard.name}")
+                    appendLine("📋 Новый список: ID = ${updatedCard.idList}")
+                    updatedCard.url?.let { appendLine("🔗 $it") }
+                }
+            } else {
+                "❌ Не удалось переместить карточку"
+            }
+
+            CallToolResult(
+                content = listOf(TextContent(text = resultText))
+            )
+        }
+    }
+
+    /**
+     * Инструмент для обновления карточки
+     */
+    private fun registerTrelloUpdateCard() {
+        registerTool(
+            name = "trello_updateCard",
+            description = "Обновляет существующую карточку: название, описание, дедлайн, статус выполнения",
+            inputSchema = Tool.Input(
+                properties = buildJsonObject {
+                    putJsonObject("cardId") {
+                        put("type", "string")
+                        put("description", "ID карточки для обновления")
+                    }
+                    putJsonObject("name") {
+                        put("type", "string")
+                        put("description", "Новое название карточки")
+                    }
+                    putJsonObject("description") {
+                        put("type", "string")
+                        put("description", "Новое описание карточки")
+                    }
+                    putJsonObject("due") {
+                        put("type", "string")
+                        put("description", "Новый дедлайн в формате ISO 8601 или 'today', 'tomorrow'")
+                    }
+                    putJsonObject("dueComplete") {
+                        put("type", "boolean")
+                        put("description", "Отметить дедлайн как выполненный (true) или невыполненный (false)")
+                    }
+                },
+                required = listOf("cardId")
+            )
+        ) { arguments ->
+            val client = trelloClient
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: Trello не настроен"))
+                )
+
+            val cardId = arguments["cardId"]?.jsonPrimitive?.content
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: не указан cardId"))
+                )
+
+            val name = arguments["name"]?.jsonPrimitive?.content
+            val description = arguments["description"]?.jsonPrimitive?.content
+            val dueParam = arguments["due"]?.jsonPrimitive?.content
+            val dueComplete = arguments["dueComplete"]?.jsonPrimitive?.booleanOrNull
+
+            // Парсим дедлайн
+            val due = when (dueParam?.lowercase()) {
+                "today", "сегодня" -> {
+                    val today = LocalDate.now()
+                    "${today}T23:59:59Z"
+                }
+                "tomorrow", "завтра" -> {
+                    val tomorrow = LocalDate.now().plusDays(1)
+                    "${tomorrow}T23:59:59Z"
+                }
+                null -> null
+                else -> dueParam
+            }
+
+            val updatedCard = client.updateCard(
+                cardId = cardId,
+                name = name,
+                desc = description,
+                due = due,
+                dueComplete = dueComplete
+            )
+
+            val resultText = if (updatedCard != null) {
+                buildString {
+                    appendLine("✅ Карточка обновлена!")
+                    appendLine()
+                    appendLine("📝 ${updatedCard.name}")
+                    updatedCard.desc?.let { appendLine("💬 $it") }
+                    updatedCard.due?.let { appendLine("📅 Дедлайн: $it") }
+                    updatedCard.dueComplete?.let {
+                        appendLine("✔️ Выполнено: ${if (it) "Да" else "Нет"}")
+                    }
+                    updatedCard.url?.let { appendLine("🔗 $it") }
+                }
+            } else {
+                "❌ Не удалось обновить карточку"
+            }
+
+            CallToolResult(
+                content = listOf(TextContent(text = resultText))
+            )
+        }
+    }
+
+    /**
+     * Инструмент для поиска карточек
+     */
+    private fun registerTrelloSearchCards() {
+        registerTool(
+            name = "trello_searchCards",
+            description = "Поиск карточек на доске по тексту, дедлайнам, меткам. Мощный инструмент для фильтрации задач.",
+            inputSchema = Tool.Input(
+                properties = buildJsonObject {
+                    putJsonObject("boardId") {
+                        put("type", "string")
+                        put("description", "ID доски Trello")
+                    }
+                    putJsonObject("query") {
+                        put("type", "string")
+                        put("description", "Текст для поиска в названии или описании карточки")
+                    }
+                    putJsonObject("dueFilter") {
+                        put("type", "string")
+                        put("description", "Фильтр по дедлайну: 'today' (сегодня), 'week' (неделя), 'overdue' (просрочено)")
+                    }
+                    putJsonObject("labels") {
+                        put("type", "string")
+                        put("description", "Метки для поиска (через запятую)")
+                    }
+                },
+                required = listOf("boardId")
+            )
+        ) { arguments ->
+            val client = trelloClient
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: Trello не настроен"))
+                )
+
+            val boardId = arguments["boardId"]?.jsonPrimitive?.content
+                ?: return@registerTool CallToolResult(
+                    content = listOf(TextContent(text = "Ошибка: не указан boardId"))
+                )
+
+            val query = arguments["query"]?.jsonPrimitive?.content
+            val dueFilter = arguments["dueFilter"]?.jsonPrimitive?.content
+            val labelsStr = arguments["labels"]?.jsonPrimitive?.content
+            val labels = labelsStr?.split(",")?.map { it.trim() }
+
+            val cards = client.searchCards(
+                boardId = boardId,
+                query = query,
+                dueFilter = dueFilter,
+                labels = labels
+            )
+
+            val resultText = if (cards.isEmpty()) {
+                "🔍 Карточки не найдены по заданным критериям"
+            } else {
+                buildString {
+                    appendLine("🔍 Найдено карточек: ${cards.size}")
+                    appendLine()
+                    cards.take(20).forEach { card ->
+                        appendLine("🔹 ${card.name}")
+                        card.desc?.takeIf { it.isNotEmpty() }?.let {
+                            val preview = if (it.length > 100) it.take(100) + "..." else it
+                            appendLine("   💬 $preview")
+                        }
+                        card.due?.let { appendLine("   📅 $it") }
+                        card.labels?.takeIf { it.isNotEmpty() }?.let { labels ->
+                            appendLine("   🏷️ ${labels.joinToString { it.name ?: it.color ?: "?" }}")
+                        }
+                        card.shortUrl?.let { appendLine("   🔗 $it") }
+                        appendLine()
+                    }
+
+                    if (cards.size > 20) {
+                        appendLine("... и ещё ${cards.size - 20} карточек")
+                    }
+                }
+            }
+
+            CallToolResult(
+                content = listOf(TextContent(text = resultText))
             )
         }
     }

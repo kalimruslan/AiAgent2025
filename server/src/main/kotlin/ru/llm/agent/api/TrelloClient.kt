@@ -194,6 +194,119 @@ class TrelloClient(
         )
     }
 
+    /**
+     * Обновляет карточку (перемещение в другой список, изменение названия, описания, дедлайна)
+     */
+    suspend fun updateCard(
+        cardId: String,
+        name: String? = null,
+        desc: String? = null,
+        idList: String? = null,
+        due: String? = null,
+        dueComplete: Boolean? = null
+    ): TrelloCard? {
+        return try {
+            val response = client.put("$baseUrl/cards/$cardId") {
+                parameter("key", apiKey)
+                parameter("token", token)
+                name?.let { parameter("name", it) }
+                desc?.let { parameter("desc", it) }
+                idList?.let { parameter("idList", it) }
+                due?.let { parameter("due", it) }
+                dueComplete?.let { parameter("dueComplete", it) }
+            }
+
+            response.body<TrelloCard>()
+        } catch (e: Exception) {
+            println("Ошибка при обновлении карточки $cardId: ${e.message}")
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * Поиск карточек на доске по различным критериям
+     */
+    suspend fun searchCards(
+        boardId: String,
+        query: String? = null,
+        dueFilter: String? = null,
+        labels: List<String>? = null
+    ): List<TrelloCard> {
+        return try {
+            val allCards = getCards(boardId, filter = "open")
+
+            allCards.filter { card ->
+                var matches = true
+
+                // Фильтр по текстовому запросу (в названии или описании)
+                if (!query.isNullOrBlank()) {
+                    matches = matches && (
+                        card.name.contains(query, ignoreCase = true) ||
+                        card.desc?.contains(query, ignoreCase = true) == true
+                    )
+                }
+
+                // Фильтр по дедлайнам
+                if (!dueFilter.isNullOrBlank()) {
+                    matches = matches && when (dueFilter) {
+                        "today" -> card.due?.let { dueDate ->
+                            try {
+                                val cardDate = Instant.parse(dueDate)
+                                    .atZone(ZoneId.systemDefault())
+                                    .toLocalDate()
+                                cardDate == LocalDate.now()
+                            } catch (e: Exception) {
+                                false
+                            }
+                        } ?: false
+
+                        "overdue" -> card.due?.let { dueDate ->
+                            try {
+                                val cardDate = Instant.parse(dueDate)
+                                    .atZone(ZoneId.systemDefault())
+                                    .toLocalDate()
+                                cardDate.isBefore(LocalDate.now()) && card.dueComplete != true
+                            } catch (e: Exception) {
+                                false
+                            }
+                        } ?: false
+
+                        "week" -> card.due?.let { dueDate ->
+                            try {
+                                val cardDate = Instant.parse(dueDate)
+                                    .atZone(ZoneId.systemDefault())
+                                    .toLocalDate()
+                                val weekLater = LocalDate.now().plusWeeks(1)
+                                cardDate.isAfter(LocalDate.now()) && cardDate.isBefore(weekLater)
+                            } catch (e: Exception) {
+                                false
+                            }
+                        } ?: false
+
+                        else -> true
+                    }
+                }
+
+                // Фильтр по меткам
+                if (!labels.isNullOrEmpty()) {
+                    matches = matches && card.labels?.any { label ->
+                        labels.any { searchLabel ->
+                            label.name?.contains(searchLabel, ignoreCase = true) == true ||
+                            label.color?.equals(searchLabel, ignoreCase = true) == true
+                        }
+                    } ?: false
+                }
+
+                matches
+            }
+        } catch (e: Exception) {
+            println("Ошибка при поиске карточек: ${e.message}")
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
     fun close() {
         client.close()
     }
