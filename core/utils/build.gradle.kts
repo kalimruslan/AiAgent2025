@@ -4,6 +4,9 @@ plugins {
 
 kotlin {
     sourceSets {
+        commonMain.dependencies {
+            implementation(libs.multiplatform.settings.noarg)
+        }
     }
 
     explicitApi()

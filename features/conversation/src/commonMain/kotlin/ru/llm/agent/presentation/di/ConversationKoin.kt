@@ -20,6 +20,7 @@ import ru.llm.agent.usecase.MonitorBoardSummaryUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 import ru.llm.agent.usecase.SummarizeHistoryUseCase
+import ru.llm.agent.utils.settings.AppSettings
 
 internal fun conversationKoinModule(): Module {
     return module {
@@ -39,7 +40,8 @@ internal fun conversationKoinModule(): Module {
                 getMcpToolsUseCase = get<GetMcpToolsUseCase>(),
                 interactYaGptWithMcpService = get<InteractYaGptWithMcpService>(),
                 chatWithMcpToolsUseCase = get<ChatWithMcpToolsUseCase>(),
-                monitorBoardSummaryUseCase = get<MonitorBoardSummaryUseCase>()
+                monitorBoardSummaryUseCase = get<MonitorBoardSummaryUseCase>(),
+                appSettings = get<AppSettings>()
             )
         }
     }

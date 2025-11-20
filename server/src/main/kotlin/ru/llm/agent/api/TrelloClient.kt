@@ -194,9 +194,254 @@ class TrelloClient(
         )
     }
 
+    /**
+     * Обновляет карточку (перемещение в другой список, изменение названия, описания, дедлайна)
+     */
+    suspend fun updateCard(
+        cardId: String,
+        name: String? = null,
+        desc: String? = null,
+        idList: String? = null,
+        due: String? = null,
+        dueComplete: Boolean? = null
+    ): TrelloCard? {
+        return try {
+            val response = client.put("$baseUrl/cards/$cardId") {
+                parameter("key", apiKey)
+                parameter("token", token)
+                name?.let { parameter("name", it) }
+                desc?.let { parameter("desc", it) }
+                idList?.let { parameter("idList", it) }
+                due?.let { parameter("due", it) }
+                dueComplete?.let { parameter("dueComplete", it) }
+            }
+
+            response.body<TrelloCard>()
+        } catch (e: Exception) {
+            println("Ошибка при обновлении карточки $cardId: ${e.message}")
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * Поиск карточек на доске по различным критериям
+     */
+    suspend fun searchCards(
+        boardId: String,
+        query: String? = null,
+        dueFilter: String? = null,
+        labels: List<String>? = null
+    ): List<TrelloCard> {
+        return try {
+            val allCards = getCards(boardId, filter = "open")
+
+            allCards.filter { card ->
+                var matches = true
+
+                // Фильтр по текстовому запросу (в названии или описании)
+                if (!query.isNullOrBlank()) {
+                    matches = matches && (
+                        card.name.contains(query, ignoreCase = true) ||
+                        card.desc?.contains(query, ignoreCase = true) == true
+                    )
+                }
+
+                // Фильтр по дедлайнам
+                if (!dueFilter.isNullOrBlank()) {
+                    matches = matches && when (dueFilter) {
+                        "today" -> card.due?.let { dueDate ->
+                            try {
+                                val cardDate = Instant.parse(dueDate)
+                                    .atZone(ZoneId.systemDefault())
+                                    .toLocalDate()
+                                cardDate == LocalDate.now()
+                            } catch (e: Exception) {
+                                false
+                            }
+                        } ?: false
+
+                        "overdue" -> card.due?.let { dueDate ->
+                            try {
+                                val cardDate = Instant.parse(dueDate)
+                                    .atZone(ZoneId.systemDefault())
+                                    .toLocalDate()
+                                cardDate.isBefore(LocalDate.now()) && card.dueComplete != true
+                            } catch (e: Exception) {
+                                false
+                            }
+                        } ?: false
+
+                        "week" -> card.due?.let { dueDate ->
+                            try {
+                                val cardDate = Instant.parse(dueDate)
+                                    .atZone(ZoneId.systemDefault())
+                                    .toLocalDate()
+                                val weekLater = LocalDate.now().plusWeeks(1)
+                                cardDate.isAfter(LocalDate.now()) && cardDate.isBefore(weekLater)
+                            } catch (e: Exception) {
+                                false
+                            }
+                        } ?: false
+
+                        else -> true
+                    }
+                }
+
+                // Фильтр по меткам
+                if (!labels.isNullOrEmpty()) {
+                    matches = matches && card.labels?.any { label ->
+                        labels.any { searchLabel ->
+                            label.name?.contains(searchLabel, ignoreCase = true) == true ||
+                            label.color?.equals(searchLabel, ignoreCase = true) == true
+                        }
+                    } ?: false
+                }
+
+                matches
+            }
+        } catch (e: Exception) {
+            println("Ошибка при поиске карточек: ${e.message}")
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    /**
+     * Массовое создание карточек за один запрос
+     * Использует последовательные запросы для надёжности
+     */
+    suspend fun batchCreateCards(
+        cards: List<CardCreationData>
+    ): BatchOperationResult {
+        val results = mutableListOf<TrelloCard?>()
+        val errors = mutableListOf<String>()
+
+        cards.forEach { cardData ->
+            try {
+                val card = createCard(
+                    idList = cardData.idList,
+                    name = cardData.name,
+                    desc = cardData.desc,
+                    due = cardData.due,
+                    pos = cardData.pos ?: "bottom"
+                )
+                results.add(card)
+            } catch (e: Exception) {
+                errors.add("Ошибка создания '${cardData.name}': ${e.message}")
+                results.add(null)
+            }
+        }
+
+        return BatchOperationResult(
+            successCount = results.count { it != null },
+            failureCount = errors.size,
+            errors = errors,
+            createdCards = results.filterNotNull()
+        )
+    }
+
+    /**
+     * Массовое обновление карточек
+     */
+    suspend fun bulkUpdateCards(
+        updates: List<CardUpdateData>
+    ): BatchOperationResult {
+        val results = mutableListOf<TrelloCard?>()
+        val errors = mutableListOf<String>()
+
+        updates.forEach { updateData ->
+            try {
+                val card = updateCard(
+                    cardId = updateData.cardId,
+                    name = updateData.name,
+                    desc = updateData.desc,
+                    idList = updateData.idList,
+                    due = updateData.due,
+                    dueComplete = updateData.dueComplete
+                )
+                results.add(card)
+            } catch (e: Exception) {
+                errors.add("Ошибка обновления карточки ${updateData.cardId}: ${e.message}")
+                results.add(null)
+            }
+        }
+
+        return BatchOperationResult(
+            successCount = results.count { it != null },
+            failureCount = errors.size,
+            errors = errors,
+            createdCards = results.filterNotNull()
+        )
+    }
+
+    /**
+     * Массовое перемещение карточек в другой список
+     */
+    suspend fun bulkMoveCards(
+        cardIds: List<String>,
+        targetListId: String
+    ): BatchOperationResult {
+        val results = mutableListOf<TrelloCard?>()
+        val errors = mutableListOf<String>()
+
+        cardIds.forEach { cardId ->
+            try {
+                val card = updateCard(
+                    cardId = cardId,
+                    idList = targetListId
+                )
+                results.add(card)
+            } catch (e: Exception) {
+                errors.add("Ошибка перемещения карточки $cardId: ${e.message}")
+                results.add(null)
+            }
+        }
+
+        return BatchOperationResult(
+            successCount = results.count { it != null },
+            failureCount = errors.size,
+            errors = errors,
+            createdCards = results.filterNotNull()
+        )
+    }
+
     fun close() {
         client.close()
     }
+
+    /**
+     * Данные для создания одной карточки в batch операции
+     */
+    data class CardCreationData(
+        val idList: String,
+        val name: String,
+        val desc: String? = null,
+        val due: String? = null,
+        val pos: String? = null
+    )
+
+    /**
+     * Данные для обновления одной карточки в batch операции
+     */
+    data class CardUpdateData(
+        val cardId: String,
+        val name: String? = null,
+        val desc: String? = null,
+        val idList: String? = null,
+        val due: String? = null,
+        val dueComplete: Boolean? = null
+    )
+
+    /**
+     * Результат batch операции
+     */
+    data class BatchOperationResult(
+        val successCount: Int,
+        val failureCount: Int,
+        val errors: List<String>,
+        val createdCards: List<TrelloCard>
+    )
 
     /**
      * Модель данных карточки Trello
