@@ -1,24 +1,23 @@
 package ru.llm.agent.repository
 
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import ru.llm.agent.McpClient
+import ru.llm.agent.McpClientsManager
 import ru.llm.agent.model.mcp.McpToolInfo
 import ru.llm.agent.model.mcp.ParameterInfo
 import ru.llm.agent.model.mcp.YaGptFunction
 import ru.llm.agent.model.mcp.YaGptTool
 
 public class McpRepositoryImpl (
-    private val mcpClient: McpClient
+    private val mcpClientsManager: McpClientsManager
 ): McpRepository {
 
-    private var requestId = 0
-
     override suspend fun getMcpToolsList(): List<YaGptTool> {
-        // Получаем список инструментов с MCP сервера
-        val mcpTools = mcpClient.listTools()
+        // Получаем список инструментов со всех активных удаленных MCP серверов
+        val mcpTools = mcpClientsManager.getAllTools().first()
 
         // Конвертируем в формат YaGPT
         return mcpTools.map { mcpTool ->
@@ -33,7 +32,8 @@ public class McpRepositoryImpl (
     }
 
     override suspend fun getToolsInfo(): List<McpToolInfo> {
-        val mcpTools = mcpClient.listTools()
+        // Получаем список инструментов со всех активных удаленных MCP серверов
+        val mcpTools = mcpClientsManager.getAllTools().first()
 
         return mcpTools.map { mcpTool ->
             // Парсим параметры из inputSchema
@@ -62,9 +62,6 @@ public class McpRepositoryImpl (
         name: String,
         arguments: JsonObject,
     ): String {
-        return mcpClient.callTool(
-            name = name,
-            arguments = arguments
-        )
+        return mcpClientsManager.callTool(name, arguments)
     }
 }

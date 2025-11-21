@@ -11,5 +11,5 @@ public data class McpRequest(
     val id: Int,
     val method: String,
     @SerialName("params")
-    val params: JsonObject? = null
+    val params: JsonObject = JsonObject(emptyMap())
 )

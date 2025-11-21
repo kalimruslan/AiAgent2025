@@ -19,10 +19,14 @@ import ru.llm.agent.database.expert.ExpertOpinionDao
 import ru.llm.agent.database.expert.ExpertOpinionReadDao
 import ru.llm.agent.database.expert.ExpertOpinionWriteDao
 import ru.llm.agent.database.expert.ExpertOpinionEntity
+import ru.llm.agent.database.mcpserver.McpServerDao
+import ru.llm.agent.database.mcpserver.McpServerReadDao
+import ru.llm.agent.database.mcpserver.McpServerWriteDao
+import ru.llm.agent.database.mcpserver.McpServerEntity
 
 @Database(
-    entities = [MessageEntity::class, ContextEntity::class, ExpertOpinionEntity::class],
-    version = 5,
+    entities = [MessageEntity::class, ContextEntity::class, ExpertOpinionEntity::class, McpServerEntity::class],
+    version = 7,
     exportSchema = true
 )
 @ConstructedBy(MessageDatabaseConstructor::class)
@@ -39,6 +43,9 @@ public abstract class MessageDatabase : RoomDatabase() {
     public abstract fun contextWriteDao(): ContextWriteDao
     public abstract fun expertOpinionReadDao(): ExpertOpinionReadDao
     public abstract fun expertOpinionWriteDao(): ExpertOpinionWriteDao
+    public abstract fun mcpServerDao(): McpServerDao
+    public abstract fun mcpServerReadDao(): McpServerReadDao
+    public abstract fun mcpServerWriteDao(): McpServerWriteDao
 
     public companion object {
         public const val DATABASE_NAME: String = "messages.db"
@@ -97,6 +104,76 @@ public abstract class MessageDatabase : RoomDatabase() {
                 connection.execSQL(
                     "ALTER TABLE messages ADD COLUMN isSummarized INTEGER NOT NULL DEFAULT 0"
                 )
+            }
+        }
+
+        /** Миграция 5 -> 6: Добавление таблицы mcp_servers для хранения удаленных MCP серверов */
+        public val MIGRATION_5_6: Migration = object : Migration(5, 6) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS mcp_servers (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        url TEXT NOT NULL,
+                        description TEXT,
+                        isActive INTEGER NOT NULL DEFAULT 1,
+                        timestamp INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        /** Миграция 6 -> 7: Расширение таблицы mcp_servers для поддержки локальных серверов через stdio */
+        public val MIGRATION_6_7: Migration = object : Migration(6, 7) {
+            override fun migrate(connection: SQLiteConnection) {
+                // Добавляем поле type
+                connection.execSQL(
+                    "ALTER TABLE mcp_servers ADD COLUMN type TEXT NOT NULL DEFAULT 'REMOTE'"
+                )
+                // Добавляем поле command для локальных серверов
+                connection.execSQL(
+                    "ALTER TABLE mcp_servers ADD COLUMN command TEXT DEFAULT NULL"
+                )
+                // Добавляем поле args (JSON-encoded list) для локальных серверов
+                connection.execSQL(
+                    "ALTER TABLE mcp_servers ADD COLUMN args TEXT DEFAULT NULL"
+                )
+                // Добавляем поле env (JSON-encoded map) для локальных серверов
+                connection.execSQL(
+                    "ALTER TABLE mcp_servers ADD COLUMN env TEXT DEFAULT NULL"
+                )
+                // Делаем url nullable (теперь обязателен только для REMOTE серверов)
+                // SQLite не поддерживает ALTER COLUMN, поэтому пересоздаём таблицу
+                connection.execSQL(
+                    """
+                    CREATE TABLE mcp_servers_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        type TEXT NOT NULL DEFAULT 'REMOTE',
+                        url TEXT,
+                        command TEXT,
+                        args TEXT,
+                        env TEXT,
+                        description TEXT,
+                        isActive INTEGER NOT NULL DEFAULT 1,
+                        timestamp INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                // Копируем данные из старой таблицы
+                connection.execSQL(
+                    """
+                    INSERT INTO mcp_servers_new (id, name, type, url, description, isActive, timestamp)
+                    SELECT id, name, 'REMOTE', url, description, isActive, timestamp
+                    FROM mcp_servers
+                    """.trimIndent()
+                )
+                // Удаляем старую таблицу
+                connection.execSQL("DROP TABLE mcp_servers")
+                // Переименовываем новую таблицу
+                connection.execSQL("ALTER TABLE mcp_servers_new RENAME TO mcp_servers")
             }
         }
     }

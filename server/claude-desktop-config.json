@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "llm-agent-remote-proxy": {
+      "command": "/Users/ruslankalimullin/AndroidStudioProjects/kmp/LlmAgent2025/server/run-mcp-proxy.sh",
+      "env": {
+        "REMOTE_MCP_SERVER_URL": "https://kalimruslan-rt.ru"
+      }
+    }
+  }
+}

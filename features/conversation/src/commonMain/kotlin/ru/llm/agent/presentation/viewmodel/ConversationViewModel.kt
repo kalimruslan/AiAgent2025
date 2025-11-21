@@ -71,11 +71,6 @@ class ConversationViewModel(
 
     init {
         viewModelScope.launch {
-            val availableTools = getMcpToolsUseCase.invoke()
-            _screeState.update { it.copy(availableTools = availableTools) }
-        }
-
-        viewModelScope.launch {
             _events.collect {
                 handleEvent(it)
             }
@@ -266,7 +261,6 @@ class ConversationViewModel(
 
                         // Извлекаем название инструмента из текста сообщения
                         val toolName = extractToolNameFromMessage(conversationMessage.text)
-                        val result = extractToolResultFromMessage(conversationMessage.text)
 
                         _screeState.update { state ->
                             state.copy(
@@ -275,7 +269,7 @@ class ConversationViewModel(
                                 requestTokens = null,
                                 currentToolExecution = ConversationUIState.ToolExecutionStatus(
                                     toolName = toolName,
-                                    description = "Обработка запроса...\n$result",
+                                    description = "Обработка запроса...",
                                     isExecuting = true
                                 )
                             )
@@ -670,17 +664,6 @@ class ConversationViewModel(
             match?.groupValues?.getOrNull(1)?.trim() ?: "Инструмент"
         } catch (e: Exception) {
             "Инструмент"
-        }
-    }
-
-    private fun extractToolResultFromMessage(messageText: String): String {
-        return try {
-            // Пытаемся найти паттерн "Выполнение инструмента: название"
-            val pattern = "Результат: ([^\\n]+)".toRegex()
-            val match = pattern.find(messageText)
-            match?.groupValues?.getOrNull(1)?.trim() ?: ""
-        } catch (e: Exception) {
-            ""
         }
     }
 

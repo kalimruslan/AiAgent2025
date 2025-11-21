@@ -13,6 +13,7 @@ public val domainKoinModule: Module = module {
         conversationUseCasesModule,
         expertUseCasesModule,
         contextUseCasesModule,
-        mcpUseCasesModule
+        mcpUseCasesModule,
+        mcpServerUseCasesModule
     )
 }

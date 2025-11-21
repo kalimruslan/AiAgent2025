@@ -3,7 +3,6 @@ package ru.llm.agent.di
 import io.ktor.client.HttpClient
 import org.koin.core.module.Module
 import org.koin.dsl.module
-import ru.llm.agent.McpClient
 import ru.llm.agent.api.ProxyApi
 import ru.llm.agent.createHttpClient
 import ru.llm.agent.api.YandexApi
@@ -22,6 +21,8 @@ import ru.llm.agent.repository.LocalDbRepository
 import ru.llm.agent.repository.LocalDbRepositoryImpl
 import ru.llm.agent.repository.McpRepository
 import ru.llm.agent.repository.McpRepositoryImpl
+import ru.llm.agent.repository.McpServerRepository
+import ru.llm.agent.repository.McpServerRepositoryImpl
 import ru.llm.agent.repository.ProviderConfigRepository
 import ru.llm.agent.repository.ProviderConfigRepositoryImpl
 import ru.llm.agent.exporter.ConversationExporter
@@ -73,9 +74,16 @@ public val repositoriesModule: Module = module {
         )
     }
 
+    single<ru.llm.agent.McpClientsManager> {
+        ru.llm.agent.McpClientsManager(
+            mcpServerRepository = get(),
+            httpClient = get(HttpClientQualifier.Yandex)
+        )
+    }
+
     single<McpRepository> {
         McpRepositoryImpl(
-            mcpClient = get()
+            mcpClientsManager = get()
         )
     }
 
@@ -100,6 +108,12 @@ public val repositoriesModule: Module = module {
 
     single<ru.llm.agent.repository.SummarizationRepository> {
         ru.llm.agent.repository.SummarizationRepositoryImpl(
+            database = get<MessageDatabase>()
+        )
+    }
+
+    single<McpServerRepository> {
+        McpServerRepositoryImpl(
             database = get<MessageDatabase>()
         )
     }
@@ -153,19 +167,6 @@ public val networkModule: Module = module {
         ProxyApi(
             httpClientOpenAi = get(HttpClientQualifier.ProxyApiOpenAI),
             httpClientOpenRouter = get(HttpClientQualifier.ProxyApiOpenRouter)
-        )
-    }
-
-    // MCP клиент
-    // Для Android эмулятора: 10.0.2.2 = localhost хост-машины
-    // Для Desktop: localhost или 127.0.0.1
-    // Для физического устройства: IP хост-машины в локальной сети
-    single<McpClient> {
-        McpClient(
-            serverUrl = "https://kalimruslan-rt.ru/mcp",
-            //serverUrl = "http://0.0.0.0:8080/mcp", // Не работает из эмулятора
-//            serverUrl = "http://127.0.0.1:8080/mcp", // Для Desktop
-            client = get(HttpClientQualifier.Yandex)
         )
     }
 }

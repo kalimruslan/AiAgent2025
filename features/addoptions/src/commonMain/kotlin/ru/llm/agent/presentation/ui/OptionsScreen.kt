@@ -52,6 +52,25 @@ fun OptionsScreen(
         val state by viewModel.screeState.collectAsStateWithLifecycle()
         viewModel.start("default_conversation")
 
+        // Диалог добавления сервера
+        if (state.showAddServerDialog) {
+            AddServerDialog(
+                onDismiss = { viewModel.setEvent(OptionsUIState.Event.HideAddServerDialog) },
+                onAdd = { name, type, url, command, args, description ->
+                    viewModel.setEvent(
+                        OptionsUIState.Event.AddServer(
+                            name = name,
+                            type = type,
+                            url = url,
+                            command = command,
+                            args = args,
+                            description = description
+                        )
+                    )
+                }
+            )
+        }
+
         Scaffold(
             modifier = Modifier.fillMaxSize().imePadding(),
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -90,6 +109,8 @@ fun OptionsScreen(
                     isToolsLoading = state.isToolsLoading,
                     toolsError = state.toolsError,
                     isToolsSectionExpanded = state.isToolsSectionExpanded,
+                    mcpServers = state.mcpServers,
+                    isServersSectionExpanded = state.isServersSectionExpanded,
                     onApplyClick = { systemPrompt, temperature, tokens ->
                         viewModel.setEvent(
                             OptionsUIState.Event.ApplyClick(
@@ -105,6 +126,18 @@ fun OptionsScreen(
                     },
                     onToggleToolsSection = {
                         viewModel.setEvent(OptionsUIState.Event.ToggleToolsSection)
+                    },
+                    onToggleServersSection = {
+                        viewModel.setEvent(OptionsUIState.Event.ToggleServersSection)
+                    },
+                    onAddServer = {
+                        viewModel.setEvent(OptionsUIState.Event.ShowAddServerDialog)
+                    },
+                    onDeleteServer = { serverId ->
+                        viewModel.setEvent(OptionsUIState.Event.DeleteServer(serverId))
+                    },
+                    onToggleServerActive = { serverId, isActive ->
+                        viewModel.setEvent(OptionsUIState.Event.ToggleServerActive(serverId, isActive))
                     }
                 )
             }
@@ -122,9 +155,15 @@ private fun BoxScope.OptionsScreenContent(
     isToolsLoading: Boolean,
     toolsError: String?,
     isToolsSectionExpanded: Boolean,
+    mcpServers: List<ru.llm.agent.model.mcp.McpServer>,
+    isServersSectionExpanded: Boolean,
     onApplyClick: (String, String, String) -> Unit,
     onLoadToolsClick: () -> Unit,
-    onToggleToolsSection: () -> Unit
+    onToggleToolsSection: () -> Unit,
+    onToggleServersSection: () -> Unit,
+    onAddServer: () -> Unit,
+    onDeleteServer: (Long) -> Unit,
+    onToggleServerActive: (Long, Boolean) -> Unit
 ) {
 
     var systemPromptInput by remember { mutableStateOf(systemPrompt) }
@@ -187,6 +226,20 @@ private fun BoxScope.OptionsScreenContent(
         }
 
         item { Spacer(modifier = Modifier.height(32.dp)) }
+
+        // Секция MCP Серверов
+        item {
+            McpServersSection(
+                servers = mcpServers,
+                isExpanded = isServersSectionExpanded,
+                onToggleExpand = onToggleServersSection,
+                onAddServer = onAddServer,
+                onDeleteServer = onDeleteServer,
+                onToggleActive = onToggleServerActive
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(16.dp)) }
 
         // Секция MCP Tools
         item {
