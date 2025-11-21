@@ -42,8 +42,10 @@ class HttpToStdioProxy(
     }
 
     suspend fun start() {
-        System.err.println("HTTP-to-Stdio Proxy started")
-        System.err.println("Remote server: $remoteServerUrl")
+        // Логируем старт только в stderr (Claude Desktop игнорирует stderr)
+        System.err.println("[PROXY] HTTP-to-Stdio Proxy started")
+        System.err.println("[PROXY] Remote server: $remoteServerUrl")
+        System.err.println("[PROXY] Ready for requests")
 
         BufferedReader(InputStreamReader(System.`in`)).use { reader ->
             while (true){
@@ -51,7 +53,8 @@ class HttpToStdioProxy(
                 if (line.isBlank()) continue
 
                 try {
-                    System.err.println("Received from Claude: $line")
+                    // Логируем только в stderr
+                    System.err.println("[PROXY] Received: ${line.take(100)}...")
 
                     // Отправляем на удалённый сервер
                     val response = client.post("$remoteServerUrl/mcp") {
@@ -62,13 +65,15 @@ class HttpToStdioProxy(
                     // Читаем ответ
                     val responseBody = response.bodyAsText()
 
-                    System.err.println("Received from server: $responseBody")
+                    // Логируем только в stderr
+                    System.err.println("[PROXY] Response: ${responseBody.take(100)}...")
 
-                    // Отправляем обратно в stdout
+                    // Отправляем обратно в stdout (ТОЛЬКО JSON, без дополнительного текста)
                     println(responseBody)
                     System.out.flush()
                 } catch (e: Exception) {
-                    System.err.println("Error processing request: ${e.message}")
+                    // Ошибки тоже только в stderr
+                    System.err.println("[PROXY] Error: ${e.message}")
                     e.printStackTrace(System.err)
 
                     // Отправляем ошибку обратно клиенту

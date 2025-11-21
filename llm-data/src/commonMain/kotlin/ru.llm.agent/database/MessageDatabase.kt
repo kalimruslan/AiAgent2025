@@ -19,10 +19,14 @@ import ru.llm.agent.database.expert.ExpertOpinionDao
 import ru.llm.agent.database.expert.ExpertOpinionReadDao
 import ru.llm.agent.database.expert.ExpertOpinionWriteDao
 import ru.llm.agent.database.expert.ExpertOpinionEntity
+import ru.llm.agent.database.mcpserver.McpServerDao
+import ru.llm.agent.database.mcpserver.McpServerReadDao
+import ru.llm.agent.database.mcpserver.McpServerWriteDao
+import ru.llm.agent.database.mcpserver.McpServerEntity
 
 @Database(
-    entities = [MessageEntity::class, ContextEntity::class, ExpertOpinionEntity::class],
-    version = 5,
+    entities = [MessageEntity::class, ContextEntity::class, ExpertOpinionEntity::class, McpServerEntity::class],
+    version = 6,
     exportSchema = true
 )
 @ConstructedBy(MessageDatabaseConstructor::class)
@@ -39,6 +43,9 @@ public abstract class MessageDatabase : RoomDatabase() {
     public abstract fun contextWriteDao(): ContextWriteDao
     public abstract fun expertOpinionReadDao(): ExpertOpinionReadDao
     public abstract fun expertOpinionWriteDao(): ExpertOpinionWriteDao
+    public abstract fun mcpServerDao(): McpServerDao
+    public abstract fun mcpServerReadDao(): McpServerReadDao
+    public abstract fun mcpServerWriteDao(): McpServerWriteDao
 
     public companion object {
         public const val DATABASE_NAME: String = "messages.db"
@@ -96,6 +103,24 @@ public abstract class MessageDatabase : RoomDatabase() {
             override fun migrate(connection: SQLiteConnection) {
                 connection.execSQL(
                     "ALTER TABLE messages ADD COLUMN isSummarized INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        /** Миграция 5 -> 6: Добавление таблицы mcp_servers для хранения удаленных MCP серверов */
+        public val MIGRATION_5_6: Migration = object : Migration(5, 6) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS mcp_servers (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        url TEXT NOT NULL,
+                        description TEXT,
+                        isActive INTEGER NOT NULL DEFAULT 1,
+                        timestamp INTEGER NOT NULL
+                    )
+                    """.trimIndent()
                 )
             }
         }

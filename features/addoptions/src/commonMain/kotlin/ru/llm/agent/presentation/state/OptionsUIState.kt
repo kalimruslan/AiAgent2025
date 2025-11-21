@@ -1,5 +1,6 @@
 package ru.llm.agent.presentation.state
 
+import ru.llm.agent.model.mcp.McpServer
 import ru.llm.agent.model.mcp.McpToolInfo
 
 internal class OptionsUIState {
@@ -11,7 +12,10 @@ internal class OptionsUIState {
         val mcpTools: List<McpToolInfo> = emptyList(),
         val isToolsLoading: Boolean = false,
         val toolsError: String? = null,
-        val isToolsSectionExpanded: Boolean = false
+        val isToolsSectionExpanded: Boolean = false,
+        val mcpServers: List<McpServer> = emptyList(),
+        val isServersSectionExpanded: Boolean = false,
+        val showAddServerDialog: Boolean = false
     ) {
         companion object Companion {
             fun default(conversationId: String) = State(
@@ -50,6 +54,22 @@ internal class OptionsUIState {
         data object LoadMcpTools : Event
 
         data object ToggleToolsSection : Event
+
+        data object ToggleServersSection : Event
+
+        data object ShowAddServerDialog : Event
+
+        data object HideAddServerDialog : Event
+
+        data class AddServer(
+            val name: String,
+            val url: String,
+            val description: String
+        ) : Event
+
+        data class DeleteServer(val serverId: Long) : Event
+
+        data class ToggleServerActive(val serverId: Long, val isActive: Boolean) : Event
     }
 }
 

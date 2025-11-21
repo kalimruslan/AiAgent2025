@@ -44,7 +44,7 @@ public fun SmartPromptsBar(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "⚡ Быстрые действия",
+                    text = "⚡ Быстрые действия для работы с доской Trello",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

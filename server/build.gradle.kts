@@ -21,18 +21,21 @@ application {
     mainClass.set("ru.llm.agent.KtorServerKt")
 }
 
-// Дополнительная задача для запуска stdio сервера (для Claude Desktop)
-tasks.register<JavaExec>("runStdio") {
-    group = "application"
-    description = "Запускает MCP сервер в stdio режиме для подключения к Claude Desktop"
-    classpath = sourceSets["main"].runtimeClasspath
-    mainClass.set("ru.llm.agent.StdioServerKt")
-    standardInput = System.`in`
+// Создаём Fat JAR вручную
+tasks.register<Jar>("fatJarProxy") {
+    group = "build"
+    description = "Create fat JAR for Stdio Proxy"
+    archiveFileName.set("mcp-server-proxy.jar")
 
-    // Передаем переменные окружения из local.properties
-    environment("TRELLO_API_KEY", localProperties.getProperty("TRELLO_API_KEY") ?: "")
-    environment("TRELLO_TOKEN", localProperties.getProperty("TRELLO_TOKEN") ?: "")
-    environment("OPENWEATHER_API_KEY", localProperties.getProperty("OPENWEATHER_API_KEY") ?: "")
+    manifest {
+        attributes["Main-Class"] = "ru.llm.agent.HttpToStdioProxyKt"
+    }
+
+    // Включаем все зависимости
+    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
+    with(tasks.jar.get())
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 // Задача для запуска HTTP-to-Stdio прокси (для удалённого сервера)
@@ -42,6 +45,8 @@ tasks.register<JavaExec>("runProxy") {
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("ru.llm.agent.HttpToStdioProxyKt")
     standardInput = System.`in`
+    standardOutput = System.out
+    errorOutput = System.err
 
     // URL удалённого сервера
     environment("REMOTE_MCP_SERVER_URL", localProperties.getProperty("REMOTE_MCP_SERVER_URL") ?: "https://kalimruslan-rt.ru")

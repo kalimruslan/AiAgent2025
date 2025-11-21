@@ -13,7 +13,7 @@ echo ""
 
 # Запускаем сервер в фоне
 cd "$PROJECT_ROOT"
-./gradlew :server:runStdio --quiet > /tmp/mcp_server_output.txt 2>&1 &
+./gradlew :server:fatJarProxy --quiet > /tmp/mcp_server_output.txt 2>&1 &
 SERVER_PID=$!
 
 # Даём серверу время на запуск

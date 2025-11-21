@@ -184,6 +184,7 @@ public class ChatWithMcpToolsUseCase(
                                         val toolResults = mutableListOf<ToolResult>()
 
                                         for (toolCall in toolCalls) {
+                                            logger.info("Start call $toolCall")
                                             try {
                                                 val result = mcpRepository.callTool(
                                                     name = toolCall.functionCall.name,
