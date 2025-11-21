@@ -59,7 +59,7 @@ public class ChatWithMcpToolsUseCase(
         conversationId: String,
         message: String,
         provider: LlmProvider = LlmProvider.YANDEX_GPT,
-        maxIterations: Int = 3,
+        maxIterations: Int = 4,
         needAddToHistory: Boolean = true,
         availableTools: List<McpToolInfo> = emptyList(),
     ): Flow<NetworkResult<ConversationMessage>> = flow {
@@ -121,7 +121,10 @@ public class ChatWithMcpToolsUseCase(
                 iteration++
                 logger.info("MCP итерация $iteration/$maxIterations")
 
-                // Отправляем сообщение в LLM с tool definitions
+                // Шаг 1: Собираем ответ от LLM
+                var llmResponse: MessageModel.ResponseMessage? = null
+                var hasError = false
+
                 llmRepository.sendMessagesToYandexGptWithMcp(
                     messages = currentHistory,
                     availableTools = availableTools
@@ -138,114 +141,13 @@ public class ChatWithMcpToolsUseCase(
                                         )
                                     )
                                 )
-                                shouldContinue = false
+                                hasError = true
                                 return@collect
                             }
 
                             when (responseMessage) {
                                 is MessageModel.ResponseMessage -> {
-                                    // Добавляем ответ в историю
-                                    if (responseMessage.content.isNotEmpty()) {
-                                        currentHistory.add(responseMessage)
-                                    }
-
-                                    // Проверяем, есть ли tool calls
-                                    val toolCalls = responseMessage.toolCallList?.toolCalls
-
-                                    if (toolCalls.isNullOrEmpty()) {
-                                        // Финальный ответ без tool calls
-                                        logger.info("Получен финальный ответ от LLM")
-
-                                        // Конвертируем в ConversationMessage и сохраняем
-                                        val conversationMessage = convertToConversationMessage(
-                                            conversationId = conversationId,
-                                            responseMessage = responseMessage,
-                                            provider = provider
-                                        )
-
-                                        val savedId =
-                                            if (needAddToHistory) conversationRepository.saveAssistantMessage(
-                                                conversationMessage
-                                            ) else 0
-
-                                        emit(
-                                            if (savedId > 0) {
-                                                NetworkResult.Success(
-                                                    conversationMessage.copy(id = savedId)
-                                                )
-                                            } else {
-                                                NetworkResult.Success(
-                                                    conversationMessage
-                                                )
-                                            }
-                                        )
-                                        shouldContinue = false
-                                    } else {
-                                        val toolResults = mutableListOf<ToolResult>()
-
-                                        for (toolCall in toolCalls) {
-                                            logger.info("Start call $toolCall")
-                                            try {
-                                                val result = mcpRepository.callTool(
-                                                    name = toolCall.functionCall.name,
-                                                    arguments = toolCall.functionCall.arguments
-                                                )
-
-                                                toolResults.add(
-                                                    ToolResult(
-                                                        functionResult = FunctionResult(
-                                                            name = toolCall.functionCall.name,
-                                                            content = result
-                                                        )
-                                                    )
-                                                )
-
-                                                // Эмитим промежуточный результат для UI
-                                                val toolMessage = convertToConversationMessage(
-                                                    conversationId = conversationId,
-                                                    responseMessage = responseMessage.copy(
-                                                        content = "Выполнение инструмента: ${toolCall.functionCall.name}\nРезультат: $result"
-                                                    ),
-                                                    provider = provider,
-                                                    isToolCall = true
-                                                )
-                                                emit(NetworkResult.Success(toolMessage))
-                                                conversationRepository.saveAssistantMessage(
-                                                    ConversationMessage(
-                                                        conversationId = conversationId,
-                                                        role = Role.ASSISTANT,
-                                                        text = result,
-                                                        model = provider.displayName
-                                                    )
-                                                )
-                                                delay(5000)
-                                                // Добавляем результаты tools в историю
-                                                currentHistory.add(
-                                                    MessageModel.ToolsMessage(
-                                                        role = Role.USER,
-                                                        toolResultList = ToolResultList(toolResults),
-                                                        text = buildString {
-                                                            append("Результаты выполнения инструмента:")
-                                                            appendLine("${toolCall.functionCall.name}: $result")
-                                                        }
-                                                    )
-                                                )
-
-                                            } catch (e: Exception) {
-                                                logger.info("Ошибка при выполнении tool ${toolCall.functionCall.name}: ${e.message}")
-                                                toolResults.add(
-                                                    ToolResult(
-                                                        functionResult = FunctionResult(
-                                                            name = toolCall.functionCall.name,
-                                                            content = "Ошибка: ${e.message}"
-                                                        )
-                                                    )
-                                                )
-                                            }
-                                        }
-
-                                        // Продолжаем итерацию
-                                    }
+                                    llmResponse = responseMessage
                                 }
 
                                 else -> {
@@ -256,13 +158,155 @@ public class ChatWithMcpToolsUseCase(
 
                         is NetworkResult.Error -> {
                             emit(NetworkResult.Error(result.error))
-                            shouldContinue = false
+                            hasError = true
                         }
 
                         is NetworkResult.Loading -> {
                             emit(NetworkResult.Loading())
                         }
                     }
+                }
+
+                // Если была ошибка, прерываем цикл
+                if (hasError) {
+                    shouldContinue = false
+                    break
+                }
+
+                // Проверяем, получили ли ответ
+                val responseMessage = llmResponse
+                if (responseMessage == null) {
+                    emit(
+                        NetworkResult.Error(
+                            DomainError.UnknownError(
+                                message = "Не удалось получить ответ от LLM"
+                            )
+                        )
+                    )
+                    shouldContinue = false
+                    break
+                }
+
+                // Добавляем ответ в историю
+                if (responseMessage.content.isNotEmpty()) {
+                    currentHistory.add(responseMessage)
+                }
+
+                // Шаг 2: Проверяем, есть ли tool calls
+                val toolCalls = responseMessage.toolCallList?.toolCalls
+
+                if (toolCalls.isNullOrEmpty()) {
+                    // Финальный ответ без tool calls
+                    logger.info("Получен финальный ответ от LLM")
+
+                    // Конвертируем в ConversationMessage и сохраняем
+                    val conversationMessage = convertToConversationMessage(
+                        conversationId = conversationId,
+                        responseMessage = responseMessage,
+                        provider = provider
+                    )
+
+                    val savedId =
+                        if (needAddToHistory) conversationRepository.saveAssistantMessage(
+                            conversationMessage
+                        ) else 0
+
+                    emit(
+                        if (savedId > 0) {
+                            NetworkResult.Success(
+                                conversationMessage.copy(id = savedId)
+                            )
+                        } else {
+                            NetworkResult.Success(
+                                conversationMessage
+                            )
+                        }
+                    )
+                    shouldContinue = false
+                } else {
+                    // Шаг 3: Выполняем ВСЕ tool calls последовательно
+                    logger.info("Обнаружено ${toolCalls.size} tool calls, выполняем последовательно")
+                    val toolResults = mutableListOf<ToolResult>()
+
+                    for (toolCall in toolCalls) {
+                        logger.info("Выполнение инструмента: ${toolCall.functionCall.name}")
+
+                        try {
+                            // Эмитим промежуточное сообщение для UI
+                            val toolMessage = convertToConversationMessage(
+                                conversationId = conversationId,
+                                responseMessage = responseMessage.copy(
+                                    content = "Выполнение инструмента: ${toolCall.functionCall.name}..."
+                                ),
+                                provider = provider,
+                                isToolCall = true
+                            )
+                            emit(NetworkResult.Success(toolMessage))
+
+                            // Вызываем инструмент и ЖДЕМ результата
+                            val result = mcpRepository.callTool(
+                                name = toolCall.functionCall.name,
+                                arguments = toolCall.functionCall.arguments
+                            )
+
+                            logger.info("Инструмент ${toolCall.functionCall.name} выполнен успешно, результат: $result")
+
+                            // Добавляем результат в список
+                            toolResults.add(
+                                ToolResult(
+                                    functionResult = FunctionResult(
+                                        name = toolCall.functionCall.name,
+                                        content = result
+                                    )
+                                )
+                            )
+
+                            // Сохраняем результат выполнения инструмента
+                            conversationRepository.saveAssistantMessage(
+                                ConversationMessage(
+                                    conversationId = conversationId,
+                                    role = Role.ASSISTANT,
+                                    text = "Результат выполнения ${toolCall.functionCall.name}:\n$result",
+                                    model = provider.displayName
+                                )
+                            )
+
+                            // Небольшая задержка между вызовами
+                            delay(500)
+
+                        } catch (e: Exception) {
+                            logger.info("Ошибка при выполнении tool ${toolCall.functionCall.name}: ${e.message}")
+
+                            // Добавляем ошибку в результаты
+                            toolResults.add(
+                                ToolResult(
+                                    functionResult = FunctionResult(
+                                        name = toolCall.functionCall.name,
+                                        content = "Ошибка: ${e.message}"
+                                    )
+                                )
+                            )
+                        }
+                    }
+
+                    // Шаг 4: Добавляем ВСЕ результаты tools в историю
+                    logger.info("Все инструменты выполнены, добавляем ${toolResults.size} результатов в историю")
+
+                    currentHistory.add(
+                        MessageModel.ToolsMessage(
+                            role = Role.USER,
+                            toolResultList = ToolResultList(toolResults),
+                            text = buildString {
+                                appendLine("Результаты выполнения инструментов:")
+                                toolResults.forEach { toolResult ->
+                                    appendLine("- ${toolResult.functionResult.name}: ${toolResult.functionResult.content}")
+                                }
+                            }
+                        )
+                    )
+
+                    // Шаг 5: Продолжаем следующую итерацию с полной историей
+                    logger.info("Переход к следующей итерации с обновленной историей")
                 }
             }
 

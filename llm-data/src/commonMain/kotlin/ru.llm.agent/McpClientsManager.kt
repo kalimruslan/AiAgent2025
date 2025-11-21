@@ -28,12 +28,18 @@ public class McpClientsManager(
     // Кэш клиентов для локальных серверов
     private val stdioClients = mutableMapOf<Long, McpStdioClient>()
 
+    // Кэш маппинга "имя инструмента → ID сервера"
+    private val toolToServerMap = mutableMapOf<String, Long>()
+
     /**
      * Получить все инструменты со всех активных серверов (удаленных и локальных)
      */
     public suspend fun getAllTools(): Flow<List<McpTool>> {
         return mcpServerRepository.getActiveServers().map { activeServers ->
             val allTools = mutableListOf<McpTool>()
+
+            // Очищаем старый маппинг
+            toolToServerMap.clear()
 
             // Получаем инструменты со всех активных серверов
             activeServers.forEach { server ->
@@ -48,7 +54,16 @@ public class McpClientsManager(
                             client.listTools()
                         }
                     }
+
+                    // Добавляем инструменты в общий список
                     allTools.addAll(tools)
+
+                    // Сохраняем маппинг "инструмент → сервер"
+                    tools.forEach { tool ->
+                        toolToServerMap[tool.name] = server.id
+                        logger.info("Mapped tool '${tool.name}' to server '${server.name}' (id=${server.id})")
+                    }
+
                     logger.info("Loaded ${tools.size} tools from ${server.type} server: ${server.name}")
                 } catch (e: Exception) {
                     logger.warning("Failed to load tools from ${server.name}: ${e.message}")
@@ -63,13 +78,47 @@ public class McpClientsManager(
      * Вызвать инструмент на соответствующем сервере (удаленном или локальном)
      */
     public suspend fun callTool(name: String, arguments: JsonObject): String {
-        val activeServers = mcpServerRepository.getActiveServers().first()
-        logger.info("Active servers - $activeServers")
+        // Проверяем, есть ли маппинг для этого инструмента
+        val serverId = toolToServerMap[name]
 
-        // Пробуем вызвать инструмент на каждом сервере
+        if (serverId != null) {
+            // Инструмент найден в кэше, вызываем напрямую на нужном сервере
+            logger.info("Tool '$name' mapped to server with id=$serverId, calling directly")
+
+            val activeServers = mcpServerRepository.getActiveServers().first()
+            val server = activeServers.find { it.id == serverId }
+
+            if (server != null) {
+                try {
+                    logger.info("Calling tool '$name' on ${server.type} server: ${server.name}")
+
+                    val result = when (server.type) {
+                        McpServerType.REMOTE -> {
+                            val client = getOrCreateRemoteClient(server)
+                            client.callTool(name, arguments)
+                        }
+                        McpServerType.LOCAL -> {
+                            val client = getOrCreateStdioClient(server)
+                            client.callTool(name, arguments)
+                        }
+                    }
+
+                    logger.info("Successfully called tool '$name' on ${server.name}")
+                    return result
+                } catch (e: Exception) {
+                    logger.warning("Failed to call tool '$name' on server '${server.name}': ${e.message}")
+                    // Fallback: попробуем все серверы
+                }
+            }
+        }
+
+        // Fallback: если маппинга нет или вызов не удался, пробуем все серверы
+        logger.info("Tool '$name' not in cache or failed, trying all active servers")
+        val activeServers = mcpServerRepository.getActiveServers().first()
+
         for (server in activeServers) {
             try {
-                logger.info("Trying to call tool $name on ${server.type} server: ${server.name}")
+                logger.info("Trying to call tool '$name' on ${server.type} server: ${server.name}")
 
                 val result = when (server.type) {
                     McpServerType.REMOTE -> {
@@ -82,14 +131,18 @@ public class McpClientsManager(
                     }
                 }
 
-                logger.info("Successfully called tool $name on ${server.name}")
+                logger.info("Successfully called tool '$name' on ${server.name}")
+
+                // Обновляем маппинг, если нашли инструмент
+                toolToServerMap[name] = server.id
+
                 return result
             } catch (e: Exception) {
-                logger.info("Tool $name not found on ${server.name}, trying next server... Error: ${e.message}")
+                logger.info("Tool '$name' not found on ${server.name}, trying next server... Error: ${e.message}")
             }
         }
 
-        throw IllegalArgumentException("Tool $name not found on any active MCP server")
+        throw IllegalArgumentException("Tool '$name' not found on any active MCP server")
     }
 
     /**
@@ -143,6 +196,7 @@ public class McpClientsManager(
     public suspend fun clearCache() {
         remoteClients.clear()
         stopAllLocalServers()
-        logger.info("Cleared MCP clients cache")
+        toolToServerMap.clear()
+        logger.info("Cleared MCP clients cache and tool mappings")
     }
 }
