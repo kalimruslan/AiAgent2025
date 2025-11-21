@@ -56,24 +56,9 @@ class McpServerSdk {
     }
 
     /**
-     * Клиент для работы с OpenWeatherMap (lazy initialization)
-     */
-    private val weatherClient: OpenWeatherMapClient? by lazy {
-        val apiKey = System.getenv("OPENWEATHER_API_KEY")
-        if (apiKey != null) {
-            OpenWeatherMapClient(apiKey)
-        } else {
-            println("WARN: OpenWeatherMap не настроен. Установите OPENWEATHER_API_KEY")
-            null
-        }
-    }
-
-    /**
      * Регистрирует все доступные инструменты на сервере
      */
     private fun registerTools() {
-        // Базовые инструменты
-        registerGetWeatherTool()
         // Trello инструменты
         registerTrelloGetCards()
         registerTrelloCreateCard()
@@ -131,77 +116,6 @@ class McpServerSdk {
 
         // Регистрируем в HTTP реестре
         toolsRegistry[name] = RegisteredTool(name, description, inputSchema, handler)
-    }
-
-    /**
-     * Инструмент для получения погоды
-     */
-    private fun registerGetWeatherTool() {
-        registerTool(
-            name = "getWeather",
-            description = "Получает информацию о погоде для указанного города",
-            inputSchema = Tool.Input(
-                properties = buildJsonObject {
-                    putJsonObject("city") {
-                        put("type", "string")
-                        put("description", "Название города для получения погоды")
-                    }
-                },
-                required = listOf("city")
-            )
-        ) { arguments ->
-            val city = arguments["city"]?.jsonPrimitive?.content
-                ?: throw IllegalArgumentException("Missing 'city' in arguments")
-
-            val weatherResult = getWeather(city)
-            CallToolResult(
-                content = listOf(
-                    TextContent(text = weatherResult)
-                )
-            )
-        }
-    }
-
-
-    /**
-     * Получает реальную погоду для города через OpenWeatherMap API
-     */
-    private suspend fun getWeather(city: String): String {
-        val client = weatherClient
-            ?: return "❌ Ошибка: OpenWeatherMap не настроен. Установите переменную окружения OPENWEATHER_API_KEY"
-
-        val weather = client.getCurrentWeather(city)
-            ?: return "❌ Не удалось получить погоду для города '$city'. Проверьте название города."
-
-        return buildString {
-            appendLine("🌤️ Погода в городе ${weather.name}:")
-            appendLine()
-            appendLine("🌡️ Температура: ${weather.main.temp}°C")
-            appendLine("🌡️ Ощущается как: ${weather.main.feelsLike}°C")
-            weather.weather.firstOrNull()?.let {
-                appendLine("☁️ Условия: ${it.description}")
-            }
-            appendLine("💧 Влажность: ${weather.main.humidity}%")
-            appendLine("📊 Давление: ${weather.main.pressure} гПа")
-            weather.wind?.let {
-                appendLine("🌬️ Скорость ветра: ${it.speed} м/с")
-                it.deg?.let { deg -> appendLine("🧭 Направление ветра: ${deg}°") }
-            }
-            weather.clouds?.let {
-                appendLine("☁️ Облачность: ${it.all}%")
-            }
-            weather.rain?.let {
-                it.oneHour?.let { rain -> appendLine("🌧️ Дождь (1ч): $rain мм") }
-                it.threeHours?.let { rain -> appendLine("🌧️ Дождь (3ч): $rain мм") }
-            }
-            weather.snow?.let {
-                it.oneHour?.let { snow -> appendLine("❄️ Снег (1ч): $snow мм") }
-                it.threeHours?.let { snow -> appendLine("❄️ Снег (3ч): $snow мм") }
-            }
-            weather.sys?.country?.let {
-                appendLine("🌍 Страна: $it")
-            }
-        }.trimEnd()
     }
 
     /**

@@ -2,9 +2,13 @@ package ru.llm.agent.repository
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
 import ru.llm.agent.database.MessageDatabase
 import ru.llm.agent.database.mcpserver.McpServerEntity
 import ru.llm.agent.model.mcp.McpServer
+import ru.llm.agent.model.mcp.McpServerType
 
 /**
  * Реализация репозитория для управления удаленными MCP серверами
@@ -47,7 +51,11 @@ public class McpServerRepositoryImpl(
         return McpServer(
             id = id,
             name = name,
+            type = McpServerType.valueOf(type),
             url = url,
+            command = command,
+            args = args?.let { Json.decodeFromString<List<String>>(it) },
+            env = env?.let { Json.decodeFromString<Map<String, String>>(it) },
             description = description,
             isActive = isActive,
             timestamp = timestamp
@@ -58,7 +66,11 @@ public class McpServerRepositoryImpl(
         return McpServerEntity(
             id = id,
             name = name,
+            type = type.name,
             url = url,
+            command = command,
+            args = args?.let { Json.encodeToString(it) },
+            env = env?.let { Json.encodeToString(it) },
             description = description,
             isActive = isActive,
             timestamp = timestamp

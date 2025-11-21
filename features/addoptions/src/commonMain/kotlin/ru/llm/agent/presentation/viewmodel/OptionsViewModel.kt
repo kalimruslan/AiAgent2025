@@ -120,7 +120,10 @@ class OptionsViewModel(
             is OptionsUIState.Event.AddServer -> viewModelScope.launch {
                 val server = McpServer(
                     name = event.name,
+                    type = event.type,
                     url = event.url,
+                    command = event.command,
+                    args = event.args,
                     description = event.description
                 )
                 addMcpServerUseCase(server)

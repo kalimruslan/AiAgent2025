@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
- * Entity для хранения информации об удаленных MCP серверах
+ * Entity для хранения информации о MCP серверах (удаленных и локальных)
  */
 @Entity(tableName = "mcp_servers")
 public data class McpServerEntity(
@@ -14,8 +14,20 @@ public data class McpServerEntity(
     /** Название сервера (для отображения) */
     val name: String,
 
-    /** URL удаленного MCP сервера */
-    val url: String,
+    /** Тип сервера: REMOTE или LOCAL */
+    val type: String = "REMOTE",
+
+    /** URL удаленного MCP сервера (для REMOTE) */
+    val url: String? = null,
+
+    /** Команда запуска (для LOCAL) */
+    val command: String? = null,
+
+    /** Аргументы команды в формате JSON (для LOCAL) */
+    val args: String? = null,
+
+    /** Переменные окружения в формате JSON (для LOCAL) */
+    val env: String? = null,
 
     /** Описание сервера */
     val description: String? = null,

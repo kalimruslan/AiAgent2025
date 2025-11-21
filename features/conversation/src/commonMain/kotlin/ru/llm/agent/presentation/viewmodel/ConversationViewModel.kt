@@ -71,11 +71,6 @@ class ConversationViewModel(
 
     init {
         viewModelScope.launch {
-            val availableTools = getMcpToolsUseCase.invoke()
-            _screeState.update { it.copy(availableTools = availableTools) }
-        }
-
-        viewModelScope.launch {
             _events.collect {
                 handleEvent(it)
             }

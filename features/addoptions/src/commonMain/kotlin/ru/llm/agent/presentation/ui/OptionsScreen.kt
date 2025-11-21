@@ -56,8 +56,17 @@ fun OptionsScreen(
         if (state.showAddServerDialog) {
             AddServerDialog(
                 onDismiss = { viewModel.setEvent(OptionsUIState.Event.HideAddServerDialog) },
-                onAdd = { name, url, description ->
-                    viewModel.setEvent(OptionsUIState.Event.AddServer(name, url, description))
+                onAdd = { name, type, url, command, args, description ->
+                    viewModel.setEvent(
+                        OptionsUIState.Event.AddServer(
+                            name = name,
+                            type = type,
+                            url = url,
+                            command = command,
+                            args = args,
+                            description = description
+                        )
+                    )
                 }
             )
         }

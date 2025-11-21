@@ -1,6 +1,7 @@
 package ru.llm.agent.presentation.state
 
 import ru.llm.agent.model.mcp.McpServer
+import ru.llm.agent.model.mcp.McpServerType
 import ru.llm.agent.model.mcp.McpToolInfo
 
 internal class OptionsUIState {
@@ -63,7 +64,10 @@ internal class OptionsUIState {
 
         data class AddServer(
             val name: String,
-            val url: String,
+            val type: McpServerType,
+            val url: String?,
+            val command: String?,
+            val args: List<String>?,
             val description: String
         ) : Event
 

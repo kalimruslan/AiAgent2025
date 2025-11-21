@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import ru.llm.agent.model.mcp.McpServer
+import ru.llm.agent.model.mcp.McpServerType
 
 /**
  * Секция управления MCP серверами
@@ -115,17 +116,43 @@ private fun McpServerItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = server.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = server.name,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (server.type == McpServerType.REMOTE) "[Remote]" else "[Local]",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (server.type == McpServerType.REMOTE)
+                                MaterialTheme.colorScheme.secondary
+                            else
+                                MaterialTheme.colorScheme.tertiary
+                        )
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = server.url,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+
+                    when (server.type) {
+                        McpServerType.REMOTE -> {
+                            Text(
+                                text = server.url ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        McpServerType.LOCAL -> {
+                            Text(
+                                text = "${server.command} ${server.args?.joinToString(" ") ?: ""}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
                     server.description?.let { desc ->
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -163,10 +190,13 @@ private fun McpServerItem(
 @Composable
 internal fun AddServerDialog(
     onDismiss: () -> Unit,
-    onAdd: (name: String, url: String, description: String) -> Unit
+    onAdd: (name: String, type: McpServerType, url: String?, command: String?, args: List<String>?, description: String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
+    var serverType by remember { mutableStateOf(McpServerType.REMOTE) }
     var url by remember { mutableStateOf("") }
+    var command by remember { mutableStateOf("") }
+    var argsText by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -199,14 +229,61 @@ internal fun AddServerDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    label = { Text("URL") },
-                    placeholder = { Text("https://example.com/mcp") },
+                // Выбор типа сервера
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = serverType == McpServerType.REMOTE,
+                        onClick = { serverType = McpServerType.REMOTE },
+                        label = { Text("Remote (HTTP)") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = serverType == McpServerType.LOCAL,
+                        onClick = { serverType = McpServerType.LOCAL },
+                        label = { Text("Local (stdio)") },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Поля в зависимости от типа сервера
+                when (serverType) {
+                    McpServerType.REMOTE -> {
+                        OutlinedTextField(
+                            value = url,
+                            onValueChange = { url = it },
+                            label = { Text("URL") },
+                            placeholder = { Text("http://localhost:3000") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                    McpServerType.LOCAL -> {
+                        OutlinedTextField(
+                            value = command,
+                            onValueChange = { command = it },
+                            label = { Text("Команда") },
+                            placeholder = { Text("node, python, npx, ...") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        OutlinedTextField(
+                            value = argsText,
+                            onValueChange = { argsText = it },
+                            label = { Text("Аргументы (через пробел)") },
+                            placeholder = { Text("server.js или -m http.server") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -231,11 +308,31 @@ internal fun AddServerDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            if (name.isNotBlank() && url.isNotBlank()) {
-                                onAdd(name.trim(), url.trim(), description.trim())
+                            val isValid = when (serverType) {
+                                McpServerType.REMOTE -> name.isNotBlank() && url.isNotBlank()
+                                McpServerType.LOCAL -> name.isNotBlank() && command.isNotBlank()
+                            }
+
+                            if (isValid) {
+                                val args = if (argsText.isNotBlank())
+                                    argsText.trim().split(" ").filter { it.isNotBlank() }
+                                else
+                                    null
+
+                                onAdd(
+                                    name.trim(),
+                                    serverType,
+                                    url.trim().takeIf { it.isNotBlank() },
+                                    command.trim().takeIf { it.isNotBlank() },
+                                    args,
+                                    description.trim()
+                                )
                             }
                         },
-                        enabled = name.isNotBlank() && url.isNotBlank()
+                        enabled = when (serverType) {
+                            McpServerType.REMOTE -> name.isNotBlank() && url.isNotBlank()
+                            McpServerType.LOCAL -> name.isNotBlank() && command.isNotBlank()
+                        }
                     ) {
                         Text("Добавить")
                     }
