@@ -17,7 +17,34 @@ val localProperties = Properties().apply {
 }
 
 application {
+    // По умолчанию запускаем Ktor HTTP сервер
     mainClass.set("ru.llm.agent.KtorServerKt")
+}
+
+// Дополнительная задача для запуска stdio сервера (для Claude Desktop)
+tasks.register<JavaExec>("runStdio") {
+    group = "application"
+    description = "Запускает MCP сервер в stdio режиме для подключения к Claude Desktop"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("ru.llm.agent.StdioServerKt")
+    standardInput = System.`in`
+
+    // Передаем переменные окружения из local.properties
+    environment("TRELLO_API_KEY", localProperties.getProperty("TRELLO_API_KEY") ?: "")
+    environment("TRELLO_TOKEN", localProperties.getProperty("TRELLO_TOKEN") ?: "")
+    environment("OPENWEATHER_API_KEY", localProperties.getProperty("OPENWEATHER_API_KEY") ?: "")
+}
+
+// Задача для запуска HTTP-to-Stdio прокси (для удалённого сервера)
+tasks.register<JavaExec>("runProxy") {
+    group = "application"
+    description = "Запускает HTTP-to-Stdio прокси для подключения к удалённому MCP серверу"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("ru.llm.agent.HttpToStdioProxyKt")
+    standardInput = System.`in`
+
+    // URL удалённого сервера
+    environment("REMOTE_MCP_SERVER_URL", localProperties.getProperty("REMOTE_MCP_SERVER_URL") ?: "https://kalimruslan-rt.ru")
 }
 
 dependencies {
