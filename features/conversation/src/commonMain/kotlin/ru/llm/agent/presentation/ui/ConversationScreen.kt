@@ -30,6 +30,8 @@ import ru.llm.agent.presentation.ui.components.TokenUsageProgressBar
 import ru.llm.agent.presentation.ui.components.ToolExecutionIndicator
 import ru.llm.agent.presentation.ui.components.BoardSummaryCard
 import ru.llm.agent.presentation.ui.components.SmartPromptsBar
+import ru.llm.agent.presentation.ui.components.RagControlPanel
+import ru.llm.agent.presentation.ui.components.KnowledgeBaseDialog
 import ru.llm.agent.presentation.ui.dropdowns.ConversationModeDropdown
 import ru.llm.agent.presentation.ui.dropdowns.LlmProviderDropdown
 import ru.llm.agent.presentation.ui.experts.ExpertsSelectionPanel
@@ -136,6 +138,44 @@ fun ConversationScreen(
                             )
                         }
                     )
+
+                    // RAG панель управления
+                    RagControlPanel(
+                        isRagEnabled = state.isRagEnabled,
+                        indexedCount = state.ragIndexedCount,
+                        onToggleRag = { enabled ->
+                            viewModel.setEvent(
+                                ConversationUIState.Event.ToggleRag(enabled)
+                            )
+                        },
+                        onAddKnowledge = {
+                            viewModel.setEvent(
+                                ConversationUIState.Event.ShowKnowledgeBaseDialog
+                            )
+                        },
+                        onClearKnowledge = {
+                            viewModel.setEvent(
+                                ConversationUIState.Event.ClearKnowledgeBase
+                            )
+                        },
+                        enabled = !state.isLoading
+                    )
+
+                    // Диалог добавления знаний
+                    if (state.showKnowledgeBaseDialog) {
+                        KnowledgeBaseDialog(
+                            onDismiss = {
+                                viewModel.setEvent(
+                                    ConversationUIState.Event.HideKnowledgeBaseDialog
+                                )
+                            },
+                            onAddKnowledge = { text, sourceId ->
+                                viewModel.setEvent(
+                                    ConversationUIState.Event.AddToKnowledgeBase(text, sourceId)
+                                )
+                            }
+                        )
+                    }
 
                     // Умные промпты для Trello (показываем только когда MCP инструменты включены)
                     if (state.isUsedMcpTools) {

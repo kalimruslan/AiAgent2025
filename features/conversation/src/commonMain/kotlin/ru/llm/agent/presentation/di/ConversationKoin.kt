@@ -20,6 +20,10 @@ import ru.llm.agent.usecase.MonitorBoardSummaryUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 import ru.llm.agent.usecase.SummarizeHistoryUseCase
+import ru.llm.agent.usecase.rag.IndexTextUseCase
+import ru.llm.agent.usecase.rag.AskWithRagUseCase
+import ru.llm.agent.usecase.rag.GetRagIndexStatsUseCase
+import ru.llm.agent.usecase.rag.ClearRagIndexUseCase
 import ru.llm.agent.utils.settings.AppSettings
 
 internal fun conversationKoinModule(): Module {
@@ -41,7 +45,11 @@ internal fun conversationKoinModule(): Module {
                 interactYaGptWithMcpService = get<InteractYaGptWithMcpService>(),
                 chatWithMcpToolsUseCase = get<ChatWithMcpToolsUseCase>(),
                 monitorBoardSummaryUseCase = get<MonitorBoardSummaryUseCase>(),
-                appSettings = get<AppSettings>()
+                appSettings = get<AppSettings>(),
+                indexTextUseCase = get<IndexTextUseCase>(),
+                askWithRagUseCase = get<AskWithRagUseCase>(),
+                getRagIndexStatsUseCase = get<GetRagIndexStatsUseCase>(),
+                clearRagIndexUseCase = get<ClearRagIndexUseCase>()
             )
         }
     }

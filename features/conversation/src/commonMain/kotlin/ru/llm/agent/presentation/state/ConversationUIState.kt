@@ -43,7 +43,16 @@ internal class ConversationUIState {
         val boardSummary: BoardSummary? = null,
 
         /** ID доски Trello для умных промптов (null если не настроен) */
-        val trelloBoardId: String? = null
+        val trelloBoardId: String? = null,
+
+        /** Использовать ли RAG для поиска в базе знаний */
+        val isRagEnabled: Boolean = false,
+
+        /** Количество проиндексированных документов в RAG */
+        val ragIndexedCount: Int = 0,
+
+        /** Диалог для добавления текста в knowledge base */
+        val showKnowledgeBaseDialog: Boolean = false
     ) {
         companion object {
             fun empty() = State(
@@ -78,6 +87,16 @@ internal class ConversationUIState {
         data class SwitchNeedMcpTools(val useTools: Boolean) : Event
         /** Установить ID доски Trello для умных промптов */
         data class SetTrelloBoardId(val boardId: String?) : Event
+        /** Переключить использование RAG */
+        data class ToggleRag(val enabled: Boolean) : Event
+        /** Открыть диалог добавления знаний */
+        data object ShowKnowledgeBaseDialog : Event
+        /** Закрыть диалог добавления знаний */
+        data object HideKnowledgeBaseDialog : Event
+        /** Добавить текст в базу знаний */
+        data class AddToKnowledgeBase(val text: String, val sourceId: String) : Event
+        /** Очистить базу знаний */
+        data object ClearKnowledgeBase : Event
     }
 
     /**

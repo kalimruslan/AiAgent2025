@@ -19,10 +19,17 @@ import ru.llm.agent.database.expert.ExpertOpinionDao
 import ru.llm.agent.database.expert.ExpertOpinionReadDao
 import ru.llm.agent.database.expert.ExpertOpinionWriteDao
 import ru.llm.agent.database.expert.ExpertOpinionEntity
+import ru.llm.agent.database.rag.RagDocumentEntity
+import ru.llm.agent.database.rag.RagDocumentDao
 
 @Database(
-    entities = [MessageEntity::class, ContextEntity::class, ExpertOpinionEntity::class],
-    version = 5,
+    entities = [
+        MessageEntity::class,
+        ContextEntity::class,
+        ExpertOpinionEntity::class,
+        RagDocumentEntity::class
+    ],
+    version = 6,
     exportSchema = true
 )
 @ConstructedBy(MessageDatabaseConstructor::class)
@@ -39,6 +46,9 @@ public abstract class MessageDatabase : RoomDatabase() {
     public abstract fun contextWriteDao(): ContextWriteDao
     public abstract fun expertOpinionReadDao(): ExpertOpinionReadDao
     public abstract fun expertOpinionWriteDao(): ExpertOpinionWriteDao
+
+    // RAG DAO
+    public abstract fun ragDocumentDao(): RagDocumentDao
 
     public companion object {
         public const val DATABASE_NAME: String = "messages.db"
@@ -96,6 +106,25 @@ public abstract class MessageDatabase : RoomDatabase() {
             override fun migrate(connection: SQLiteConnection) {
                 connection.execSQL(
                     "ALTER TABLE messages ADD COLUMN isSummarized INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        /** Миграция 5 -> 6: Добавление таблицы rag_documents для хранения RAG индекса */
+        public val MIGRATION_5_6: Migration = object : Migration(5, 6) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS rag_documents (
+                        id TEXT PRIMARY KEY NOT NULL,
+                        text TEXT NOT NULL,
+                        embedding TEXT NOT NULL,
+                        sourceId TEXT NOT NULL,
+                        chunkIndex INTEGER NOT NULL,
+                        model TEXT NOT NULL,
+                        timestamp INTEGER NOT NULL
+                    )
+                    """.trimIndent()
                 )
             }
         }
