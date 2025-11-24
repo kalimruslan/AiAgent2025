@@ -55,7 +55,11 @@ class ConversationViewModel(
     private val interactYaGptWithMcpService: InteractYaGptWithMcpService,
     private val chatWithMcpToolsUseCase: ChatWithMcpToolsUseCase,
     private val monitorBoardSummaryUseCase: MonitorBoardSummaryUseCase,
-    private val appSettings: AppSettings
+    private val appSettings: AppSettings,
+    private val indexTextUseCase: ru.llm.agent.usecase.rag.IndexTextUseCase,
+    private val askWithRagUseCase: ru.llm.agent.usecase.rag.AskWithRagUseCase,
+    private val getRagIndexStatsUseCase: ru.llm.agent.usecase.rag.GetRagIndexStatsUseCase,
+    private val clearRagIndexUseCase: ru.llm.agent.usecase.rag.ClearRagIndexUseCase
 ) : ViewModel() {
 
     private val fileManager = getFileManager()
@@ -187,6 +191,11 @@ class ConversationViewModel(
             is ConversationUIState.Event.ExportConversation -> exportConversation(event.format)
             is ConversationUIState.Event.SwitchNeedMcpTools -> switchNeedMcpTools(event.useTools)
             is ConversationUIState.Event.SetTrelloBoardId -> setTrelloBoardId(event.boardId)
+            is ConversationUIState.Event.ToggleRag -> toggleRag(event.enabled)
+            ConversationUIState.Event.ShowKnowledgeBaseDialog -> showKnowledgeBaseDialog()
+            ConversationUIState.Event.HideKnowledgeBaseDialog -> hideKnowledgeBaseDialog()
+            is ConversationUIState.Event.AddToKnowledgeBase -> addToKnowledgeBase(event.text, event.sourceId)
+            ConversationUIState.Event.ClearKnowledgeBase -> clearKnowledgeBase()
         }
     }
 
@@ -372,12 +381,26 @@ class ConversationViewModel(
             // Проверяем и выполняем суммаризацию при необходимости
             checkAndSummarizeIfNeeded()
 
-            // Отправляем сообщение
-            sendConversationMessageUseCase.invoke(
-                conversationId = conversationId,
-                message = message,
-                provider = _screeState.value.selectedProvider,
-            ).collect { result ->
+            // Выбираем UseCase в зависимости от того, включен ли RAG
+            val useCaseFlow = if (_screeState.value.isRagEnabled) {
+                Logger.getLogger("RAG").info("Используем RAG для поиска релевантного контекста")
+                askWithRagUseCase.invoke(
+                    conversationId = conversationId,
+                    userMessage = message,
+                    provider = _screeState.value.selectedProvider,
+                    topK = 3,
+                    threshold = 0.3
+                )
+            } else {
+                sendConversationMessageUseCase.invoke(
+                    conversationId = conversationId,
+                    message = message,
+                    provider = _screeState.value.selectedProvider,
+                )
+            }
+
+            // Обрабатываем ответ
+            useCaseFlow.collect { result ->
                 result.doActionIfLoading {
                     _screeState.update { it.copy(isLoading = true, error = "") }
                 }
@@ -718,6 +741,95 @@ class ConversationViewModel(
             }
             is DomainError.UnknownError -> {
                 "Произошла неизвестная ошибка: ${error.message}"
+            }
+        }
+    }
+
+    // === RAG функции ===
+
+    /**
+     * Переключить использование RAG
+     */
+    private fun toggleRag(enabled: Boolean) {
+        _screeState.update { it.copy(isRagEnabled = enabled) }
+
+        // Загружаем статистику индекса при включении
+        if (enabled) {
+            viewModelScope.launch {
+                val count = getRagIndexStatsUseCase()
+                _screeState.update { it.copy(ragIndexedCount = count) }
+            }
+        }
+    }
+
+    /**
+     * Показать диалог добавления знаний
+     */
+    private fun showKnowledgeBaseDialog() {
+        _screeState.update { it.copy(showKnowledgeBaseDialog = true) }
+    }
+
+    /**
+     * Скрыть диалог добавления знаний
+     */
+    private fun hideKnowledgeBaseDialog() {
+        _screeState.update { it.copy(showKnowledgeBaseDialog = false) }
+    }
+
+    /**
+     * Добавить текст в базу знаний
+     */
+    private fun addToKnowledgeBase(text: String, sourceId: String) {
+        viewModelScope.launch {
+            try {
+                Logger.getLogger("RAG").info("Индексация текста: $sourceId")
+                _screeState.update { it.copy(isLoading = true, error = "") }
+
+                val result = indexTextUseCase.invoke(text, sourceId)
+
+                Logger.getLogger("RAG").info("Проиндексировано ${result.chunksIndexed} чанков")
+
+                // Обновляем счетчик документов
+                val count = getRagIndexStatsUseCase()
+                _screeState.update {
+                    it.copy(
+                        isLoading = false,
+                        ragIndexedCount = count,
+                        showKnowledgeBaseDialog = false,
+                        error = "✓ Добавлено ${result.chunksIndexed} фрагментов в базу знаний"
+                    )
+                }
+            } catch (e: Exception) {
+                Logger.getLogger("RAG").warning("Ошибка индексации: ${e.message}")
+                _screeState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Ошибка добавления в базу знаний: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Очистить базу знаний
+     */
+    private fun clearKnowledgeBase() {
+        viewModelScope.launch {
+            try {
+                Logger.getLogger("RAG").info("Очистка базы знаний")
+                clearRagIndexUseCase()
+                _screeState.update {
+                    it.copy(
+                        ragIndexedCount = 0,
+                        error = "✓ База знаний очищена"
+                    )
+                }
+            } catch (e: Exception) {
+                Logger.getLogger("RAG").warning("Ошибка очистки: ${e.message}")
+                _screeState.update {
+                    it.copy(error = "Ошибка очистки базы знаний: ${e.message}")
+                }
             }
         }
     }
