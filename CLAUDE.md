@@ -79,6 +79,7 @@ The project follows **Clean Architecture** with clear layer separation:
 ├── llm-data/             # Data layer: repository implementations, API clients, Room DB
 ├── features/             # Feature modules (UI + ViewModels)
 │   ├── conversation/     # Main chat interface with AI
+│   ├── mcp/              # MCP tools management (new!)
 │   └── addoptions/       # Settings and configuration
 ├── core/
 │   ├── uikit/            # Shared UI components & theme
@@ -164,6 +165,55 @@ PROXY_API_KEY=...
 - `ExecuteChainTwoAgentsUseCase`: Chain multiple agents together
 - Agent interaction patterns: one agent checks another's work
 - Each agent has independent conversation context
+
+### MCP Tools Integration
+
+**NEW:** Модульная система управления MCP инструментами реализована в `features/mcp/`:
+
+**Архитектура:**
+- `McpViewModel` (`features/mcp/presentation/viewmodel/`) - управляет состоянием инструментов и их выполнением
+- `McpState` - содержит:
+  - `availableTools: List<McpToolInfo>` - список доступных инструментов
+  - `isEnabled: Boolean` - флаг включения MCP
+  - `currentExecution: McpToolExecutionStatus?` - текущее выполнение
+  - `executionHistory: List<McpToolExecutionStatus>` - история выполнений
+  - `isPanelExpanded: Boolean` - состояние UI панели
+
+**UI Компоненты:**
+- `McpToolsPanel` - главная панель управления инструментами
+- `McpToolCard` - карточка отдельного инструмента
+- `McpToolExecutionStatusIndicator` - индикатор статуса выполнения
+
+**Интеграция с Conversation:**
+- `ConversationViewModel` инжектирует `McpViewModel` через Koin (ConversationViewModel.kt:63)
+- Проверка включения MCP: `mcpViewModel.isMcpEnabled()` (ConversationViewModel.kt:253)
+- Получение инструментов: `mcpViewModel.getAvailableTools()` (ConversationViewModel.kt:274)
+- Обновление статуса: `mcpViewModel.updateToolExecution()` (ConversationViewModel.kt:288-292)
+- Очистка статуса: `mcpViewModel.clearCurrentExecution()` (ConversationViewModel.kt:304, 317)
+
+**Утилиты парсинга** (`features/mcp/utils/McpMessageParser.kt`):
+```kotlin
+String.extractToolName()       // Извлечь название инструмента
+String.extractToolResult()     // Извлечь результат выполнения
+String.isToolExecutionMessage() // Проверить тип сообщения
+```
+
+**Use Cases:**
+- `ChatWithMcpToolsUseCase` - полный цикл MCP tool calling с автоматической обработкой
+- `GetMcpToolsUseCase` - загрузка списка доступных инструментов с MCP сервера
+
+**Пример использования в Compose:**
+```kotlin
+val mcpViewModel: McpViewModel = koinViewModel()
+val mcpState by mcpViewModel.state.collectAsStateWithLifecycle()
+
+if (mcpState.availableTools.isNotEmpty() || mcpState.isEnabled) {
+    McpToolsPanel(
+        viewModel = mcpViewModel,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+```
 
 ## Technology Stack
 

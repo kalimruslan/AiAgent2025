@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ru.llm.agent.InteractYaGptWithMcpService
 import ru.llm.agent.doActionIfError
 import ru.llm.agent.doActionIfLoading
 import ru.llm.agent.doActionIfSuccess
@@ -25,23 +24,24 @@ import ru.llm.agent.usecase.CommitteeResult
 import ru.llm.agent.usecase.ConversationUseCase
 import ru.llm.agent.usecase.ExecuteCommitteeUseCase
 import ru.llm.agent.usecase.ExportConversationUseCase
-import ru.llm.agent.usecase.GetMcpToolsUseCase
 import ru.llm.agent.usecase.GetMessagesWithExpertOpinionsUseCase
 import ru.llm.agent.usecase.GetMessageTokenCountUseCase
 import ru.llm.agent.usecase.GetSelectedProviderUseCase
 import ru.llm.agent.usecase.GetSummarizationInfoUseCase
 import ru.llm.agent.usecase.GetTokenUsageUseCase
-import ru.llm.agent.usecase.MonitorBoardSummaryUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 import ru.llm.agent.usecase.SummarizeHistoryUseCase
 import ru.llm.agent.utils.settings.AppSettings
 import java.util.logging.Logger
-import kotlinx.coroutines.Job
+import ru.llm.agent.mcp.presentation.viewmodel.McpViewModel
+import ru.llm.agent.mcp.utils.extractToolName
+import ru.llm.agent.mcp.utils.extractToolResult
 
 class ConversationViewModel(
     private val conversationUseCase: ConversationUseCase,
     private val sendConversationMessageUseCase: SendConversationMessageUseCase,
+    private val chatWithMcpToolsUseCase: ChatWithMcpToolsUseCase,
     private val getSelectedProviderUseCase: GetSelectedProviderUseCase,
     private val saveSelectedProviderUseCase: SaveSelectedProviderUseCase,
     private val getMessagesWithExpertOpinionsUseCase: GetMessagesWithExpertOpinionsUseCase,
@@ -51,15 +51,12 @@ class ConversationViewModel(
     private val summarizeHistoryUseCase: SummarizeHistoryUseCase,
     private val getSummarizationInfoUseCase: GetSummarizationInfoUseCase,
     private val exportConversationUseCase: ExportConversationUseCase,
-    private val getMcpToolsUseCase: GetMcpToolsUseCase,
-    private val interactYaGptWithMcpService: InteractYaGptWithMcpService,
-    private val chatWithMcpToolsUseCase: ChatWithMcpToolsUseCase,
-    private val monitorBoardSummaryUseCase: MonitorBoardSummaryUseCase,
     private val appSettings: AppSettings,
     private val indexTextUseCase: ru.llm.agent.usecase.rag.IndexTextUseCase,
     private val askWithRagUseCase: ru.llm.agent.usecase.rag.AskWithRagUseCase,
     private val getRagIndexStatsUseCase: ru.llm.agent.usecase.rag.GetRagIndexStatsUseCase,
-    private val clearRagIndexUseCase: ru.llm.agent.usecase.rag.ClearRagIndexUseCase
+    private val clearRagIndexUseCase: ru.llm.agent.usecase.rag.ClearRagIndexUseCase,
+    private val mcpViewModel: McpViewModel
 ) : ViewModel() {
 
     private val fileManager = getFileManager()
@@ -70,20 +67,37 @@ class ConversationViewModel(
     private val _events = MutableSharedFlow<ConversationUIState.Event>()
     val conversationId = "default_conversation"
 
-    // Job для мониторинга Trello доски
-    private var monitoringJob: Job? = null
-
     init {
-        viewModelScope.launch {
-            val availableTools = getMcpToolsUseCase.invoke()
-            _screeState.update { it.copy(availableTools = availableTools) }
-        }
-
         viewModelScope.launch {
             _events.collect {
                 handleEvent(it)
             }
         }
+
+        // Подписка на изменения состояния MCP для логирования и синхронизации
+        viewModelScope.launch {
+            mcpViewModel.state.collect { mcpState ->
+                handleMcpStateChange(mcpState)
+            }
+        }
+    }
+
+    /**
+     * Обработка изменений состояния MCP модуля
+     */
+    private fun handleMcpStateChange(mcpState: ru.llm.agent.mcp.presentation.state.McpState) {
+        // Логируем изменения для отладки
+        val currentExecution = mcpState.currentExecution
+        if (currentExecution != null) {
+            Logger.getLogger("MCP-Integration")
+                .info("Tool execution status: ${currentExecution.toolName}, " +
+                        "executing: ${currentExecution.isExecuting}")
+        }
+
+        // Можно добавить дополнительную логику реакции на изменения MCP:
+        // - Обновление UI индикаторов
+        // - Синхронизация с другими компонентами
+        // - Логика зависящая от статуса выполнения инструментов
     }
 
     fun start(){
@@ -103,11 +117,6 @@ class ConversationViewModel(
 
             // Загружаем информацию о суммаризации
             loadSummarizationInfo()
-
-            // Запускаем мониторинг Trello доски только если MCP инструменты включены
-//            if (_screeState.value.isUsedMcpTools) {
-//                startBoardMonitoring()
-//            }
         }
     }
 
@@ -189,7 +198,6 @@ class ConversationViewModel(
             is ConversationUIState.Event.SelectMode -> selectMode(event.mode)
             is ConversationUIState.Event.ToggleExpert -> toggleExpert(event.expert)
             is ConversationUIState.Event.ExportConversation -> exportConversation(event.format)
-            is ConversationUIState.Event.SwitchNeedMcpTools -> switchNeedMcpTools(event.useTools)
             is ConversationUIState.Event.SetTrelloBoardId -> setTrelloBoardId(event.boardId)
             is ConversationUIState.Event.ToggleRag -> toggleRag(event.enabled)
             ConversationUIState.Event.ShowKnowledgeBaseDialog -> showKnowledgeBaseDialog()
@@ -219,19 +227,6 @@ class ConversationViewModel(
         }
     }
 
-    /**
-     * Переключить использование MCP инструментов
-     */
-    private fun switchNeedMcpTools(useTools: Boolean) {
-        _screeState.update { it.copy(isUsedMcpTools = useTools) }
-
-        // Управляем мониторингом доски в зависимости от флага
-//        if (useTools) {
-//            startBoardMonitoring()
-//        } else {
-//            stopBoardMonitoring()
-//        }
-    }
 
     /**
      * Отправка сообщения
@@ -242,7 +237,8 @@ class ConversationViewModel(
 
         when (_screeState.value.selectedMode) {
             ConversationMode.SINGLE -> {
-                if(_screeState.value.isUsedMcpTools){
+                // TODO: Этап 3 - интеграция с McpViewModel
+                if(mcpViewModel.state.value.isEnabled){
                     sendMessageWithMcpTools(message)
                 } else{
                     sendMessageToSingleAi(message)
@@ -254,7 +250,7 @@ class ConversationViewModel(
 
     /**
      * Отправка сообщения с полным циклом MCP tool calling
-     * Использует новый ChatWithMcpToolsUseCase для автоматической обработки tool calls
+     * Использует ChatWithMcpToolsUseCase и интегрируется с McpViewModel для отображения статуса
      */
     private fun sendMessageWithMcpTools(message: String, needAddToHistory: Boolean = true) {
         viewModelScope.launch {
@@ -263,45 +259,51 @@ class ConversationViewModel(
                 message = message,
                 provider = _screeState.value.selectedProvider,
                 needAddToHistory = needAddToHistory,
-                availableTools = _screeState.value.availableTools
+                availableTools = mcpViewModel.getAvailableTools()
             ).collect { result ->
                 result.doActionIfLoading {
                     _screeState.update { it.copy(isLoading = true, error = "") }
                 }
                 result.doActionIfSuccess { conversationMessage ->
-                    // Если это промежуточный результат tool call, обновляем статус выполнения
+                    // Если это промежуточный результат tool call, обновляем статус выполнения через McpViewModel
                     if (conversationMessage.isContinue) {
                         Logger.getLogger("MCP").info("Tool execution: ${conversationMessage.text}")
 
                         // Извлекаем название инструмента из текста сообщения
-                        val toolName = extractToolNameFromMessage(conversationMessage.text)
-                        val result = extractToolResultFromMessage(conversationMessage.text)
+                        val toolName = conversationMessage.text.extractToolName()
+                        val toolResult = conversationMessage.text.extractToolResult()
+
+                        // Обновляем статус через McpViewModel
+                        mcpViewModel.updateToolExecution(
+                            toolName = toolName,
+                            description = "Обработка запроса...\n$toolResult",
+                            isExecuting = true
+                        )
 
                         _screeState.update { state ->
                             state.copy(
                                 isLoading = false,
                                 isConversationComplete = false,
-                                requestTokens = null,
-                                currentToolExecution = ConversationUIState.ToolExecutionStatus(
-                                    toolName = toolName,
-                                    description = "Обработка запроса...\n$result",
-                                    isExecuting = true
-                                )
+                                requestTokens = null
                             )
                         }
                     } else {
-                        // Финальный ответ - очищаем статус выполнения инструмента
+                        // Финальный ответ - очищаем статус выполнения инструмента через McpViewModel
+                        mcpViewModel.clearCurrentExecution()
+
                         _screeState.update { state ->
                             state.copy(
                                 isLoading = false,
                                 isConversationComplete = false,
-                                requestTokens = null,
-                                currentToolExecution = null
+                                requestTokens = null
                             )
                         }
                     }
                 }
                 result.doActionIfError { domainError ->
+                    // При ошибке очищаем статус выполнения
+                    mcpViewModel.clearCurrentExecution()
+
                     _screeState.update {
                         it.copy(
                             isLoading = false,
@@ -577,135 +579,6 @@ class ConversationViewModel(
         }
     }
 
-    /**
-     * Запустить мониторинг Trello доски
-     * Каждые 5 минут получает саммари и отправляет агенту для анализа
-     */
-    private fun startBoardMonitoring() {
-        // Останавливаем предыдущий мониторинг, если он был запущен
-        monitoringJob?.cancel()
-
-        // ID доски Trello (можно сделать настраиваемым позже)
-        val boardId = "691da04e5be13a45aeb63b0a"
-
-        monitoringJob = viewModelScope.launch {
-
-            // Показываем индикатор загрузки
-            _screeState.update {
-                it.copy(boardSummary = ConversationUIState.BoardSummary(
-                    text = "Загрузка саммари доски...",
-                    isLoading = true
-                ))
-            }
-
-            monitorBoardSummaryUseCase.invoke(
-                boardId = boardId,
-                intervalMinutes = 5
-            ).collect { summary ->
-                // Обновляем state с полученным саммари
-                _screeState.update {
-                    it.copy(boardSummary = ConversationUIState.BoardSummary(
-                        text = summary,
-                        timestamp = System.currentTimeMillis(),
-                        isLoading = false,
-                        isAnalysisLoading = true
-                    ))
-                }
-
-                // Отправляем саммари агенту для анализа
-                analyzeBoardSummary(summary)
-            }
-        }
-    }
-
-    /**
-     * Отправить саммари агенту для анализа
-     * Ответ сохраняется в BoardSummary, а не добавляется в чат
-     */
-    private fun analyzeBoardSummary(summary: String) {
-        viewModelScope.launch {
-            val agentPrompt = buildString {
-                appendLine("📊 Периодический отчёт по доске Trello:")
-                appendLine()
-                appendLine(summary)
-                appendLine()
-                appendLine("Пожалуйста, проанализируй изменения и предоставь краткий обзор.")
-            }
-
-            chatWithMcpToolsUseCase.invoke(
-                conversationId = conversationId,
-                message = agentPrompt,
-                provider = _screeState.value.selectedProvider,
-                needAddToHistory = false,
-                availableTools = _screeState.value.availableTools
-            ).collect { result ->
-                result.doActionIfSuccess { conversationMessage ->
-                    // Игнорируем промежуточные результаты tool calls
-                    if (!conversationMessage.isContinue) {
-                        Logger.getLogger("BoardMonitoring").info("Получен анализ от ассистента: ${conversationMessage.text}")
-
-                        // Сохраняем анализ в BoardSummary
-                        _screeState.update { state ->
-                            state.copy(
-                                boardSummary = state.boardSummary?.copy(
-                                    assistantAnalysis = conversationMessage.text,
-                                    isAnalysisLoading = false
-                                )
-                            )
-                        }
-                    }
-                }
-                result.doActionIfError { domainError ->
-                    Logger.getLogger("BoardMonitoring").warning("Ошибка анализа саммари: ${domainError.toUserMessage()}")
-
-                    // Убираем индикатор загрузки при ошибке
-                    _screeState.update { state ->
-                        state.copy(
-                            boardSummary = state.boardSummary?.copy(
-                                assistantAnalysis = "Ошибка анализа: ${domainError.toUserMessage()}",
-                                isAnalysisLoading = false
-                            )
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Остановить мониторинг доски
-     */
-    private fun stopBoardMonitoring() {
-        monitoringJob?.cancel()
-        monitoringJob = null
-        Logger.getLogger("BoardMonitoring").info("Мониторинг доски остановлен")
-    }
-
-    /**
-     * Извлечь название инструмента из текста сообщения
-     * Формат: "Выполнение инструмента: tool_name\nРезультат: ..."
-     */
-    private fun extractToolNameFromMessage(messageText: String): String {
-        return try {
-            // Пытаемся найти паттерн "Выполнение инструмента: название"
-            val pattern = "Выполнение инструмента: ([^\\n]+)".toRegex()
-            val match = pattern.find(messageText)
-            match?.groupValues?.getOrNull(1)?.trim() ?: "Инструмент"
-        } catch (e: Exception) {
-            "Инструмент"
-        }
-    }
-
-    private fun extractToolResultFromMessage(messageText: String): String {
-        return try {
-            // Пытаемся найти паттерн "Выполнение инструмента: название"
-            val pattern = "Результат: ([^\\n]+)".toRegex()
-            val match = pattern.find(messageText)
-            match?.groupValues?.getOrNull(1)?.trim() ?: ""
-        } catch (e: Exception) {
-            ""
-        }
-    }
 
     /**
      * Преобразование DomainError в пользовательское сообщение

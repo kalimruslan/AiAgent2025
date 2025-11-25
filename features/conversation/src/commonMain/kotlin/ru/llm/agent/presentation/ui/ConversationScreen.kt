@@ -27,8 +27,9 @@ import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.presentation.ui.components.InputBar
 import ru.llm.agent.presentation.ui.components.MessageItem
 import ru.llm.agent.presentation.ui.components.TokenUsageProgressBar
-import ru.llm.agent.presentation.ui.components.ToolExecutionIndicator
 import ru.llm.agent.presentation.ui.components.BoardSummaryCard
+import ru.llm.agent.mcp.presentation.ui.McpToolsPanel
+import ru.llm.agent.mcp.presentation.viewmodel.McpViewModel
 import ru.llm.agent.presentation.ui.components.SmartPromptsBar
 import ru.llm.agent.presentation.ui.components.RagControlPanel
 import ru.llm.agent.presentation.ui.components.KnowledgeBaseDialog
@@ -50,8 +51,10 @@ fun ConversationScreen(
             listOf(conversationKoinModule())
         }
         val viewModel = koinViewModel() as ConversationViewModel
+        val mcpViewModel = koinViewModel<McpViewModel>()
         viewModel.start()
         val state by viewModel.screeState.collectAsStateWithLifecycle()
+        val mcpState by mcpViewModel.state.collectAsStateWithLifecycle()
 
         Scaffold(
             modifier = Modifier.fillMaxSize().imePadding(),
@@ -123,22 +126,6 @@ fun ConversationScreen(
                         )
                     }
 
-                    McpToolsCheckbox(
-                        isUsedMcpTools = state.isUsedMcpTools,
-                        onToggle = { useTools ->
-                            viewModel.setEvent(
-                                ConversationUIState.Event.SwitchNeedMcpTools(useTools)
-                            )
-                        },
-                        enabled = !state.isLoading,
-                        boardId = state.trelloBoardId,
-                        onSetBoardId = { newBoardId ->
-                            viewModel.setEvent(
-                                ConversationUIState.Event.SetTrelloBoardId(newBoardId)
-                            )
-                        }
-                    )
-
                     // RAG панель управления
                     RagControlPanel(
                         isRagEnabled = state.isRagEnabled,
@@ -177,20 +164,6 @@ fun ConversationScreen(
                         )
                     }
 
-                    // Умные промпты для Trello (показываем только когда MCP инструменты включены)
-                    if (state.isUsedMcpTools) {
-                        SmartPromptsBar(
-                            onPromptClick = { prompt ->
-                                viewModel.setEvent(
-                                    ConversationUIState.Event.SendMessage(prompt)
-                                )
-                            },
-                            enabled = !state.isLoading,
-                            boardId = state.trelloBoardId,
-                            text = text
-                        )
-                    }
-
                     InputBar(
                         isLoading = state.isLoading,
                         onSendMessage = {
@@ -212,21 +185,17 @@ fun ConversationScreen(
                     .padding(paddingValues)
             ) {
                 // Progress bar для токенов
-                if (!state.isUsedMcpTools) {
-                    TokenUsageProgressBar(
-                        usedTokens = state.usedTokens,
-                        maxTokens = state.maxTokens,
-                        requestTokens = state.requestTokens,
-                        summarizationInfo = state.summarizationInfo,
-                        isSummarizing = state.isSummarizing
-                    )
-                }
+                TokenUsageProgressBar(
+                    usedTokens = state.usedTokens,
+                    maxTokens = state.maxTokens,
+                    requestTokens = state.requestTokens,
+                    summarizationInfo = state.summarizationInfo,
+                    isSummarizing = state.isSummarizing
+                )
 
-                // Карточка с саммари доски Trello (если есть и MCP инструменты включены)
-                if (state.isUsedMcpTools) {
-                    state.boardSummary?.let { summary ->
-                        BoardSummaryCard(boardSummary = summary)
-                    }
+                // Карточка с саммари доски Trello
+                state.boardSummary?.let { summary ->
+                    BoardSummaryCard(boardSummary = summary)
                 }
 
                 // Показываем выбор экспертов только в режиме Committee
@@ -243,6 +212,16 @@ fun ConversationScreen(
                     )
                 }
 
+                // MCP панель управления инструментами (показываем только если есть инструменты или MCP включен)
+                if (mcpState.availableTools.isNotEmpty() || mcpState.isEnabled) {
+                    McpToolsPanel(
+                        viewModel = mcpViewModel,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -254,7 +233,6 @@ fun ConversationScreen(
                         messages = state.messages,
                         error = state.error,
                         isLoading = state.isLoading,
-                        currentToolExecution = state.currentToolExecution,
                         onClearError = {
                             viewModel.setEvent(
                                 ConversationUIState.Event.ClearError
@@ -300,129 +278,6 @@ private fun ConversationCompleteCard(onRestart: () -> Unit) {
 }
 
 /**
- * Чекбокс для переключения использования MCP инструментов
- */
-@Composable
-private fun McpToolsCheckbox(
-    isUsedMcpTools: Boolean,
-    onToggle: (Boolean) -> Unit,
-    enabled: Boolean = true,
-    boardId: String? = null,
-    onSetBoardId: (String?) -> Unit = {},
-) {
-    var showBoardIdDialog by remember { mutableStateOf(false) }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Использовать инструменты MCP",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Checkbox(
-                    checked = isUsedMcpTools,
-                    onCheckedChange = { if (enabled) onToggle(it) },
-                    enabled = enabled
-                )
-            }
-
-            // Кнопка для настройки Board ID (показываем только когда MCP включен)
-            if (isUsedMcpTools) {
-                TextButton(
-                    onClick = { showBoardIdDialog = true },
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    Text(
-                        text = if (boardId != null) {
-                            "Board ID: ${boardId.take(12)}..."
-                        } else {
-                            "⚙️ Настроить Board ID"
-                        },
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
-            }
-        }
-    }
-
-    // Диалог для ввода Board ID
-    if (showBoardIdDialog) {
-        BoardIdDialog(
-            currentBoardId = boardId,
-            onDismiss = { showBoardIdDialog = false },
-            onConfirm = { newBoardId ->
-                onSetBoardId(newBoardId)
-                showBoardIdDialog = false
-            }
-        )
-    }
-}
-
-/**
- * Диалог для настройки Board ID Trello
- */
-@Composable
-private fun BoardIdDialog(
-    currentBoardId: String?,
-    onDismiss: () -> Unit,
-    onConfirm: (String?) -> Unit,
-) {
-    var boardId by remember { mutableStateOf(currentBoardId ?: "") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Настройка Trello Board ID") },
-        text = {
-            Column {
-                Text(
-                    text = "Введите ID вашей доски Trello для автоматической подстановки в промпты:",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = boardId,
-                    onValueChange = { boardId = it },
-                    label = { Text("Board ID") },
-                    placeholder = { Text("например: 5f8a1b2c3d4e5f6g7h8i9j0k") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Найти Board ID можно в URL доски Trello после /b/",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(boardId.ifBlank { null }) }) {
-                Text("Сохранить")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Отмена")
-            }
-        }
-    )
-}
-
-/**
  * Контент со списком сообщений
  */
 @Composable
@@ -432,7 +287,6 @@ private fun BoxScope.MessagesContent(
     onClearError: () -> Unit,
     error: String,
     isLoading: Boolean,
-    currentToolExecution: ConversationUIState.ToolExecutionStatus? = null,
 ) {
     val messagesListState = rememberLazyListState()
 
@@ -454,16 +308,6 @@ private fun BoxScope.MessagesContent(
             key = { index -> messages[index].id }
         ) { index ->
             MessageItem(messages[index])
-        }
-
-        // Показываем индикатор выполнения tool (если есть)
-        if (currentToolExecution != null) {
-            item {
-                ToolExecutionIndicator(
-                    toolStatus = currentToolExecution,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-            }
         }
 
         if (isLoading) {

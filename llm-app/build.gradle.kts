@@ -30,6 +30,7 @@ kotlin {
             implementation(compose.components.resources)
             implementation(libs.navigation.compose)
             implementation(projects.features.conversation)
+            implementation(projects.features.mcp)
             implementation(projects.features.addoptions)
         }
 

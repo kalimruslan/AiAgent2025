@@ -16,7 +16,6 @@ import ru.llm.agent.usecase.GetMessageTokenCountUseCase
 import ru.llm.agent.usecase.GetSelectedProviderUseCase
 import ru.llm.agent.usecase.GetSummarizationInfoUseCase
 import ru.llm.agent.usecase.GetTokenUsageUseCase
-import ru.llm.agent.usecase.MonitorBoardSummaryUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 import ru.llm.agent.usecase.SummarizeHistoryUseCase
@@ -32,6 +31,7 @@ internal fun conversationKoinModule(): Module {
             ConversationViewModel(
                 conversationUseCase = get<ConversationUseCase>(),
                 sendConversationMessageUseCase = get<SendConversationMessageUseCase>(),
+                chatWithMcpToolsUseCase = get<ChatWithMcpToolsUseCase>(),
                 getSelectedProviderUseCase = get<GetSelectedProviderUseCase>(),
                 saveSelectedProviderUseCase = get<SaveSelectedProviderUseCase>(),
                 getMessagesWithExpertOpinionsUseCase = get<GetMessagesWithExpertOpinionsUseCase>(),
@@ -41,15 +41,12 @@ internal fun conversationKoinModule(): Module {
                 summarizeHistoryUseCase = get<SummarizeHistoryUseCase>(),
                 getSummarizationInfoUseCase = get<GetSummarizationInfoUseCase>(),
                 exportConversationUseCase = get<ExportConversationUseCase>(),
-                getMcpToolsUseCase = get<GetMcpToolsUseCase>(),
-                interactYaGptWithMcpService = get<InteractYaGptWithMcpService>(),
-                chatWithMcpToolsUseCase = get<ChatWithMcpToolsUseCase>(),
-                monitorBoardSummaryUseCase = get<MonitorBoardSummaryUseCase>(),
                 appSettings = get<AppSettings>(),
                 indexTextUseCase = get<IndexTextUseCase>(),
                 askWithRagUseCase = get<AskWithRagUseCase>(),
                 getRagIndexStatsUseCase = get<GetRagIndexStatsUseCase>(),
-                clearRagIndexUseCase = get<ClearRagIndexUseCase>()
+                clearRagIndexUseCase = get<ClearRagIndexUseCase>(),
+                mcpViewModel = get<ru.llm.agent.mcp.presentation.viewmodel.McpViewModel>()
             )
         }
     }

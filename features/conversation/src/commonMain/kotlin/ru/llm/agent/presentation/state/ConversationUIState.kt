@@ -6,7 +6,6 @@ import ru.llm.agent.model.ExportFormat
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.SummarizationInfo
 import ru.llm.agent.model.conversation.ConversationMessage
-import ru.llm.agent.model.mcp.McpToolInfo
 
 internal class ConversationUIState {
     data class State(
@@ -32,12 +31,6 @@ internal class ConversationUIState {
         val summarizationInfo: SummarizationInfo? = null,
         /** Флаг процесса суммаризации */
         val isSummarizing: Boolean = false,
-        val isUsedMcpTools: Boolean = false,
-
-        val availableTools: List<McpToolInfo>,
-
-        /** Текущий выполняемый MCP tool (null если не выполняется) */
-        val currentToolExecution: ToolExecutionStatus? = null,
 
         /** Последнее саммари доски Trello */
         val boardSummary: BoardSummary? = null,
@@ -63,9 +56,7 @@ internal class ConversationUIState {
                 selectedProvider = LlmProvider.default(),
                 selectedMode = ConversationMode.default(),
                 selectedExperts = Expert.getPredefinedExperts().take(3),
-                availableExperts = Expert.getPredefinedExperts(),
-                availableTools = emptyList(),
-                currentToolExecution = null
+                availableExperts = Expert.getPredefinedExperts()
             )
         }
     }
@@ -83,8 +74,6 @@ internal class ConversationUIState {
         data class ToggleExpert(val expert: Expert) : Event
         /** Экспортировать диалог в указанном формате */
         data class ExportConversation(val format: ExportFormat) : Event
-        /** Используем ли инструменты MCP */
-        data class SwitchNeedMcpTools(val useTools: Boolean) : Event
         /** Установить ID доски Trello для умных промптов */
         data class SetTrelloBoardId(val boardId: String?) : Event
         /** Переключить использование RAG */
@@ -98,15 +87,6 @@ internal class ConversationUIState {
         /** Очистить базу знаний */
         data object ClearKnowledgeBase : Event
     }
-
-    /**
-     * Статус выполнения MCP tool
-     */
-    data class ToolExecutionStatus(
-        val toolName: String,
-        val description: String,
-        val isExecuting: Boolean = true
-    )
 
     /**
      * Саммари доски Trello

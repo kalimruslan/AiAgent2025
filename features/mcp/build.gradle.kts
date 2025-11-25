@@ -8,21 +8,17 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(libs.kotlinx.serialization.json)
-            implementation(libs.kotlinx.datetime)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.jetbrains.lifecycle.viewmodel.compose)
             implementation(libs.koin.compose.viewmodel)
-            implementation(libs.jetbrains.compose.ui.backhandler)
             implementation(projects.llmDomain)
             implementation(projects.core.utils)
-            implementation(projects.features.mcp)
 
             implementation(libs.compose.material.icons.extended)
-
         }
     }
 }
 
 android {
-    namespace = "ru.llm.agent.features.conversation"
+    namespace = "ru.llm.agent.features.mcp"
 }

@@ -15,6 +15,7 @@ import ru.llm.agent.di.platformDatabaseModule
 import ru.llm.agent.di.settingsModule
 import ru.llm.agent.di.platformSettingsModule
 import ru.llm.agent.di.ragModule
+import ru.llm.agent.mcp.di.mcpModule
 
 internal expect fun defaultKoinLogger(level: Level): Logger
 
@@ -40,6 +41,7 @@ fun KoinApplication.initKoinApp(
         ragModule,
         exportersModule,
         domainKoinModule,
+        mcpModule,
     )
 }
 
