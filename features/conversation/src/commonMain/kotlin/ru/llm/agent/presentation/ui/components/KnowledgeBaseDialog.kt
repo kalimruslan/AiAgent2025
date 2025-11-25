@@ -5,10 +5,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import ru.llm.agent.core.utils.*
 import java.io.File
 
 /**
@@ -22,14 +25,77 @@ fun KnowledgeBaseDialog(
     var text by remember { mutableStateOf("") }
     var sourceId by remember { mutableStateOf("") }
     var selectedFile by remember { mutableStateOf<File?>(null) }
+    var selectedFileName by remember { mutableStateOf<String?>(null) }
     var inputMode by remember { mutableStateOf(InputMode.TEXT) }
-
     var fileError by remember { mutableStateOf<String?>(null) }
+    var isLoadingFile by remember { mutableStateOf(false) }
 
-    // Поддерживаемые расширения текстовых файлов
-    val supportedExtensions = setOf("txt", "md", "json", "xml", "log", "csv", "kt", "java", "py", "js", "ts", "html", "css")
+    val scope = rememberCoroutineScope()
+    val fileManager = remember { getFileManager() }
+    val documentParser = remember { getDocumentParser() }
 
-    // Загружаем текст из файла при его выборе
+    // Поддерживаемые расширения файлов
+    val supportedTextExtensions = setOf("txt", "md", "json", "xml", "log", "csv", "kt", "java", "py", "js", "ts", "html", "css")
+    val supportedDocExtensions = setOf("pdf", "doc", "docx")
+    val allSupportedExtensions = supportedTextExtensions + supportedDocExtensions
+
+    // Функция для выбора файла
+    val pickFile = {
+        scope.launch {
+            isLoadingFile = true
+            fileError = null
+
+            when (val result = fileManager.pickFile(allSupportedExtensions.toList())) {
+                is FilePickResult.Success -> {
+                    selectedFileName = result.fileName
+                    val extension = result.fileName.substringAfterLast('.', "").lowercase()
+
+                    // Если это документ, парсим его
+                    if (extension in supportedDocExtensions) {
+                        when (val parseResult = documentParser.extractText(result.content, result.fileName)) {
+                            is DocumentParseResult.Success -> {
+                                text = parseResult.text
+                                if (sourceId.isBlank()) {
+                                    sourceId = result.fileName.substringBeforeLast('.')
+                                }
+                                fileError = null
+                            }
+                            is DocumentParseResult.Error -> {
+                                fileError = parseResult.message
+                                text = ""
+                            }
+                            is DocumentParseResult.UnsupportedFormat -> {
+                                fileError = "Неподдерживаемый формат: ${parseResult.extension}"
+                                text = ""
+                            }
+                        }
+                    } else {
+                        // Текстовый файл - читаем напрямую
+                        try {
+                            text = result.content.decodeToString()
+                            if (sourceId.isBlank()) {
+                                sourceId = result.fileName.substringBeforeLast('.')
+                            }
+                        } catch (e: Exception) {
+                            fileError = "Ошибка чтения файла: ${e.message}"
+                            text = ""
+                        }
+                    }
+                }
+                is FilePickResult.Cancelled -> {
+                    // Пользователь отменил выбор
+                }
+                is FilePickResult.Error -> {
+                    fileError = result.message
+                    text = ""
+                }
+            }
+
+            isLoadingFile = false
+        }
+    }
+
+    // Загружаем текст из файла при его выборе (для ручного ввода пути - Desktop legacy)
     LaunchedEffect(selectedFile) {
         selectedFile?.let { file ->
             fileError = null
@@ -48,19 +114,41 @@ fun KnowledgeBaseDialog(
 
             // Проверяем расширение файла
             val extension = file.extension.lowercase()
-            if (extension !in supportedExtensions) {
-                fileError = "Неподдерживаемый формат файла: .$extension\nПоддерживаются: ${supportedExtensions.joinToString(", ")}"
+            if (extension !in allSupportedExtensions) {
+                fileError = "Неподдерживаемый формат файла: .$extension"
                 text = ""
                 return@LaunchedEffect
             }
 
             try {
-                text = file.readText()
-                if (sourceId.isBlank()) {
-                    sourceId = file.nameWithoutExtension
+                val content = file.readBytes()
+                selectedFileName = file.name
+
+                // Если это документ, парсим его
+                if (extension in supportedDocExtensions) {
+                    when (val parseResult = documentParser.extractText(content, file.name)) {
+                        is DocumentParseResult.Success -> {
+                            text = parseResult.text
+                            if (sourceId.isBlank()) {
+                                sourceId = file.nameWithoutExtension
+                            }
+                        }
+                        is DocumentParseResult.Error -> {
+                            fileError = parseResult.message
+                            text = ""
+                        }
+                        is DocumentParseResult.UnsupportedFormat -> {
+                            fileError = "Неподдерживаемый формат: ${parseResult.extension}"
+                            text = ""
+                        }
+                    }
+                } else {
+                    text = file.readText()
+                    if (sourceId.isBlank()) {
+                        sourceId = file.nameWithoutExtension
+                    }
                 }
             } catch (e: Exception) {
-                // Ошибка чтения файла
                 fileError = "Ошибка чтения файла: ${e.message}"
                 text = ""
             }
@@ -126,7 +214,40 @@ fun KnowledgeBaseDialog(
                         )
                     }
                     InputMode.FILE -> {
-                        // Поле для пути к файлу
+                        // Кнопка выбора файла
+                        OutlinedButton(
+                            onClick = { pickFile() },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isLoadingFile
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AttachFile,
+                                contentDescription = "Выбрать файл",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            if (isLoadingFile) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("Загрузка...")
+                            } else {
+                                Text(selectedFileName ?: "Выбрать файл")
+                            }
+                        }
+
+                        // Показываем ошибку если есть
+                        fileError?.let { error ->
+                            Text(
+                                text = error,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+
+                        // Альтернативно: ввод пути вручную (для Desktop)
                         OutlinedTextField(
                             value = selectedFile?.absolutePath ?: "",
                             onValueChange = { path ->
@@ -134,20 +255,11 @@ fun KnowledgeBaseDialog(
                                     selectedFile = File(path)
                                 }
                             },
-                            label = { Text("Путь к файлу") },
-                            placeholder = { Text("/path/to/document.txt") },
+                            label = { Text("Или укажите путь к файлу") },
+                            placeholder = { Text("/path/to/document.pdf") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
-                            isError = fileError != null,
-                            trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Upload,
-                                    contentDescription = "Выбрать файл"
-                                )
-                            },
-                            supportingText = fileError?.let {
-                                { Text(it, color = MaterialTheme.colorScheme.error) }
-                            }
+                            enabled = !isLoadingFile
                         )
 
                         // Превью текста из файла
@@ -178,7 +290,10 @@ fun KnowledgeBaseDialog(
                 Text(
                     text = when (inputMode) {
                         InputMode.TEXT -> "Текст будет разбит на фрагменты и проиндексирован"
-                        InputMode.FILE -> "Поддерживаемые форматы: txt, md, json, xml, log, csv, kt, java, py, js, ts, html, css"
+                        InputMode.FILE -> "Поддерживаемые форматы:\n" +
+                                "• Документы: PDF, DOC, DOCX\n" +
+                                "• Текстовые: TXT, MD, JSON, XML, LOG, CSV\n" +
+                                "• Код: KT, JAVA, PY, JS, TS, HTML, CSS"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

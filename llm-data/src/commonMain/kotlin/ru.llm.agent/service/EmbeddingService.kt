@@ -32,9 +32,9 @@ public class EmbeddingService(
                 metadata = mapOf(
                     "source" to sourceId,
                     "chunk_index" to index.toString(),
-                    "model" to embeddingResponse.model
+                    "model" to embeddingResponse.getModelName()
                 )
-            ) to embeddingResponse.model
+            ) to embeddingResponse.getModelName()
         }
 
         // Сохраняем все документы одним батчем
