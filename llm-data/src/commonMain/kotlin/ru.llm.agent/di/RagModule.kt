@@ -25,8 +25,8 @@ public val ragModule: Module = module {
     // Text Chunker - сервис разбиения текста
     single {
         TextChunker(
-            chunkSize = 500,
-            overlap = 50
+            chunkSize = 500,  // Увеличили размер для mxbai-embed-large (поддерживает до 512 токенов)
+            overlap = 100
         )
     }
 

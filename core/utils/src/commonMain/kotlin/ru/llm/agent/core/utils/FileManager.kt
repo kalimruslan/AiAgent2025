@@ -15,6 +15,24 @@ public sealed class FileSaveResult {
 }
 
 /**
+ * Результат выбора файла
+ */
+public sealed class FilePickResult {
+    /** Файл успешно выбран */
+    public data class Success(
+        val filePath: String,
+        val fileName: String,
+        val content: ByteArray
+    ) : FilePickResult()
+
+    /** Пользователь отменил выбор */
+    public object Cancelled : FilePickResult()
+
+    /** Ошибка при выборе */
+    public data class Error(val message: String) : FilePickResult()
+}
+
+/**
  * Платформозависимый менеджер для работы с файлами
  */
 public interface FileManager {
@@ -31,6 +49,16 @@ public interface FileManager {
         content: String,
         mimeType: String
     ): FileSaveResult
+
+    /**
+     * Выбрать файл с диалогом выбора
+     *
+     * @param allowedExtensions Список разрешенных расширений файлов (например: ["pdf", "txt", "doc"])
+     * @return Результат выбора файла
+     */
+    public suspend fun pickFile(
+        allowedExtensions: List<String> = emptyList()
+    ): FilePickResult
 }
 
 /**

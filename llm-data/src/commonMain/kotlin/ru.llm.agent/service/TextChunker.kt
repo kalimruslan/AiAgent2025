@@ -5,7 +5,7 @@ package ru.llm.agent.service
  * Используется для подготовки текста к эмбеддингу в RAG системе
  */
 public class TextChunker(
-    private val chunkSize: Int = 500,
+    private val chunkSize: Int = 200,
     private val overlap: Int = 50
 ) {
     /**
