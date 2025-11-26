@@ -9,6 +9,7 @@ import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.repository.ConversationRepository
 import ru.llm.agent.repository.RagRepository
 import ru.llm.agent.service.MessageSendingService
+import java.util.logging.Logger
 
 /**
  * Use case для отправки сообщения с использованием RAG контекста
@@ -28,6 +29,8 @@ public class AskWithRagUseCase(
         provider: LlmProvider,
         topK: Int = 3,
         threshold: Double = 0.3,
+        useMmr: Boolean = true,
+        mmrLambda: Double = 0.5,
         temperature: Double? = null,
         maxTokens: Int? = null
     ): Flow<NetworkResult<ConversationMessage>> = flow {
@@ -54,7 +57,9 @@ public class AskWithRagUseCase(
             val relevantDocs = ragRepository.search(
                 query = userMessage,
                 topK = topK,
-                threshold = threshold
+                threshold = threshold,
+                useMmr = useMmr,
+                mmrLambda = mmrLambda
             )
 
             // 3. Формируем дополнительный контекст из найденных документов
@@ -75,6 +80,10 @@ public class AskWithRagUseCase(
                 ""
             }
 
+            Logger.getLogger("RAG").info(
+                ragContext
+            )
+
             // 4. Получаем всю историю диалога
             val allMessages = conversationRepository.getMessagesByConversationSync(conversationId)
 
@@ -93,6 +102,8 @@ public class AskWithRagUseCase(
             } else {
                 allMessages
             }
+
+            messagesWithRag.forEach { Logger.getLogger("RAG").info(it.text) }
 
             // 6. Отправляем расширенное сообщение в LLM
             messageSendingService.sendMessages(

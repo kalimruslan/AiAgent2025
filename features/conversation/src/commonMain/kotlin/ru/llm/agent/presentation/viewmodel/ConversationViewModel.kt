@@ -207,6 +207,11 @@ class ConversationViewModel(
             ConversationUIState.Event.HideKnowledgeBaseDialog -> hideKnowledgeBaseDialog()
             is ConversationUIState.Event.AddToKnowledgeBase -> addToKnowledgeBase(event.text, event.sourceId)
             ConversationUIState.Event.ClearKnowledgeBase -> clearKnowledgeBase()
+            // RAG настройки
+            is ConversationUIState.Event.SetRagThreshold -> setRagThreshold(event.threshold)
+            is ConversationUIState.Event.SetRagTopK -> setRagTopK(event.topK)
+            is ConversationUIState.Event.ToggleRagMmr -> toggleRagMmr(event.enabled)
+            is ConversationUIState.Event.SetRagMmrLambda -> setRagMmrLambda(event.lambda)
         }
     }
 
@@ -391,14 +396,20 @@ class ConversationViewModel(
             checkAndSummarizeIfNeeded()
 
             // Выбираем UseCase в зависимости от того, включен ли RAG
-            val useCaseFlow = if (_screeState.value.isRagEnabled) {
-                Logger.getLogger("RAG").info("Используем RAG для поиска релевантного контекста")
+            val state = _screeState.value
+            val useCaseFlow = if (state.isRagEnabled) {
+                Logger.getLogger("RAG").info(
+                    "Используем RAG: topK=${state.ragTopK}, threshold=${state.ragThreshold}, " +
+                    "MMR=${state.ragUseMmr}, lambda=${state.ragMmrLambda}"
+                )
                 askWithRagUseCase.invoke(
                     conversationId = conversationId,
                     userMessage = message,
-                    provider = _screeState.value.selectedProvider,
-                    topK = 3,
-                    threshold = 0.3
+                    provider = state.selectedProvider,
+                    topK = state.ragTopK,
+                    threshold = state.ragThreshold,
+                    useMmr = state.ragUseMmr,
+                    mmrLambda = state.ragMmrLambda
                 )
             } else {
                 sendConversationMessageUseCase.invoke(
@@ -691,6 +702,40 @@ class ConversationViewModel(
                 }
             }
         }
+    }
+
+    // === RAG настройки ===
+
+    /**
+     * Установить порог релевантности для RAG
+     */
+    private fun setRagThreshold(threshold: Double) {
+        _screeState.update { it.copy(ragThreshold = threshold.coerceIn(0.0, 1.0)) }
+        Logger.getLogger("RAG").info("RAG threshold установлен: $threshold")
+    }
+
+    /**
+     * Установить количество возвращаемых документов
+     */
+    private fun setRagTopK(topK: Int) {
+        _screeState.update { it.copy(ragTopK = topK.coerceIn(1, 10)) }
+        Logger.getLogger("RAG").info("RAG topK установлен: $topK")
+    }
+
+    /**
+     * Переключить использование MMR
+     */
+    private fun toggleRagMmr(enabled: Boolean) {
+        _screeState.update { it.copy(ragUseMmr = enabled) }
+        Logger.getLogger("RAG").info("RAG MMR ${if (enabled) "включен" else "выключен"}")
+    }
+
+    /**
+     * Установить lambda параметр MMR
+     */
+    private fun setRagMmrLambda(lambda: Double) {
+        _screeState.update { it.copy(ragMmrLambda = lambda.coerceIn(0.0, 1.0)) }
+        Logger.getLogger("RAG").info("RAG MMR lambda установлена: $lambda")
     }
 
     // === MCP функции ===

@@ -33,6 +33,7 @@ import ru.llm.agent.mcp.presentation.ui.McpToolsPanel
 import ru.llm.agent.mcp.presentation.viewmodel.McpViewModel
 import ru.llm.agent.presentation.ui.components.SmartPromptsBar
 import ru.llm.agent.presentation.ui.components.RagControlPanel
+import ru.llm.agent.presentation.ui.components.RagSettings
 import ru.llm.agent.presentation.ui.components.KnowledgeBaseDialog
 import ru.llm.agent.presentation.ui.dropdowns.ConversationModeDropdown
 import ru.llm.agent.presentation.ui.dropdowns.LlmProviderDropdown
@@ -148,6 +149,12 @@ fun ConversationScreen(
                         RagControlPanel(
                             isRagEnabled = state.isRagEnabled,
                             indexedCount = state.ragIndexedCount,
+                            settings = RagSettings(
+                                threshold = state.ragThreshold,
+                                topK = state.ragTopK,
+                                useMmr = state.ragUseMmr,
+                                mmrLambda = state.ragMmrLambda
+                            ),
                             onToggleRag = { enabled ->
                                 viewModel.setEvent(
                                     ConversationUIState.Event.ToggleRag(enabled)
@@ -161,6 +168,26 @@ fun ConversationScreen(
                             onClearKnowledge = {
                                 viewModel.setEvent(
                                     ConversationUIState.Event.ClearKnowledgeBase
+                                )
+                            },
+                            onThresholdChange = { threshold ->
+                                viewModel.setEvent(
+                                    ConversationUIState.Event.SetRagThreshold(threshold)
+                                )
+                            },
+                            onTopKChange = { topK ->
+                                viewModel.setEvent(
+                                    ConversationUIState.Event.SetRagTopK(topK)
+                                )
+                            },
+                            onToggleMmr = { enabled ->
+                                viewModel.setEvent(
+                                    ConversationUIState.Event.ToggleRagMmr(enabled)
+                                )
+                            },
+                            onMmrLambdaChange = { lambda ->
+                                viewModel.setEvent(
+                                    ConversationUIState.Event.SetRagMmrLambda(lambda)
                                 )
                             },
                             enabled = !state.isLoading

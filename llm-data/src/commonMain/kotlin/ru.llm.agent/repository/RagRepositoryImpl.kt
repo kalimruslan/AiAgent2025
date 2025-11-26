@@ -22,9 +22,15 @@ public class RagRepositoryImpl(
     override suspend fun search(
         query: String,
         topK: Int,
-        threshold: Double
+        threshold: Double,
+        useMmr: Boolean,
+        mmrLambda: Double
     ): List<RagDocument> {
-        val searchResults = embeddingService.search(query, topK, threshold)
+        val searchResults = if (useMmr) {
+            embeddingService.searchWithMmr(query, topK, threshold, mmrLambda)
+        } else {
+            embeddingService.search(query, topK, threshold)
+        }
 
         return searchResults.map { result ->
             RagDocument(

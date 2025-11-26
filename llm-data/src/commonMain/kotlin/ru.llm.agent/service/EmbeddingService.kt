@@ -66,9 +66,37 @@ public class EmbeddingService(
 
         // Ищем похожие документы
         return vectorStore.search(
-            queryEmbedding = queryEmbedding.getEmbedding(), // Используем метод getEmbedding()
+            queryEmbedding = queryEmbedding.getEmbedding(),
             topK = topK,
             threshold = threshold
+        )
+    }
+
+    /**
+     * Поиск с использованием MMR (Maximum Marginal Relevance)
+     * Обеспечивает баланс между релевантностью и разнообразием результатов
+     *
+     * @param query текст запроса
+     * @param topK количество результатов
+     * @param threshold минимальный порог схожести
+     * @param lambda параметр баланса (0.0 = разнообразие, 1.0 = релевантность)
+     * @return список найденных документов с MMR-ранжированием
+     */
+    public suspend fun searchWithMmr(
+        query: String,
+        topK: Int = 5,
+        threshold: Double = 0.3,
+        lambda: Double = 0.5
+    ): List<SearchResult> {
+        // Генерируем эмбеддинг для запроса
+        val queryEmbedding = ollamaApi.getEmbedding(query)
+
+        // Ищем с использованием MMR
+        return vectorStore.searchWithMMR(
+            queryEmbedding = queryEmbedding.getEmbedding(),
+            topK = topK,
+            threshold = threshold,
+            lambda = lambda
         )
     }
 
