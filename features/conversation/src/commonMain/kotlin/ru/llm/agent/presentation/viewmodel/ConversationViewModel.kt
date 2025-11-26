@@ -59,6 +59,7 @@ class ConversationViewModel(
     private val mcpViewModel: McpViewModel
 ) : ViewModel() {
 
+
     private val fileManager = getFileManager()
 
     private val _screeState = MutableStateFlow(ConversationUIState.State.empty())
@@ -139,6 +140,7 @@ class ConversationViewModel(
     private fun loadTokenUsage() {
         viewModelScope.launch {
             getTokenUsageUseCase(conversationId).collect { tokenUsage ->
+                Logger.getLogger("TokenUsage").info("Token usage updated: used=${tokenUsage.usedTokens}, max=${tokenUsage.maxTokens}")
                 _screeState.update {
                     it.copy(
                         usedTokens = tokenUsage.usedTokens,
@@ -237,10 +239,14 @@ class ConversationViewModel(
 
         when (_screeState.value.selectedMode) {
             ConversationMode.SINGLE -> {
-                // TODO: Этап 3 - интеграция с McpViewModel
-                if(mcpViewModel.state.value.isEnabled){
+                val mcpState = mcpViewModel.state.value
+                val shouldUseMcp = mcpState.isEnabled && mcpState.availableTools.isNotEmpty()
+
+                Logger.getLogger("MCP").info("Отправка сообщения: MCP enabled=${mcpState.isEnabled}, tools=${mcpState.availableTools.size}, shouldUseMcp=$shouldUseMcp")
+
+                if (shouldUseMcp) {
                     sendMessageWithMcpTools(message)
-                } else{
+                } else {
                     sendMessageToSingleAi(message)
                 }
             }
@@ -702,6 +708,98 @@ class ConversationViewModel(
                 Logger.getLogger("RAG").warning("Ошибка очистки: ${e.message}")
                 _screeState.update {
                     it.copy(error = "Ошибка очистки базы знаний: ${e.message}")
+                }
+            }
+        }
+    }
+
+    // === MCP функции ===
+
+    /**
+     * Выполнить MCP инструмент через LLM
+     *
+     * Когда пользователь вручную выбирает инструмент из UI,
+     * создаём сообщение для LLM с просьбой использовать этот инструмент.
+     * LLM получит контекст разговора и сам решит, как использовать инструмент.
+     *
+     * Для Trello инструментов использует SmartPromptTemplate для создания осмысленных промптов.
+     */
+    fun executeToolWithLlm(toolName: String, description: String) {
+        if (_screeState.value.isLoading) {
+            Logger.getLogger("MCP").info("Игнорируем вызов инструмента - уже идёт обработка")
+            return
+        }
+
+        Logger.getLogger("MCP").info("Ручной вызов инструмента через LLM: $toolName")
+
+        // Формируем промпт для LLM
+        val prompt = if (toolName.startsWith("trello_")) {
+            // Для Trello инструментов создаём осмысленный промпт с контекстом
+            createTrelloPrompt(toolName, description)
+        } else {
+            // Для других инструментов используем простой формат
+            buildString {
+                append("Используй инструмент \"$toolName\"")
+                if (description.isNotBlank()) {
+                    append(" для следующей задачи: $description")
+                }
+            }
+        }
+
+        Logger.getLogger("MCP").info("Сформирован промпт: $prompt")
+
+        // Вызываем обычный flow с MCP
+        sendMessageWithMcpTools(message = prompt, needAddToHistory = true)
+    }
+
+    /**
+     * Создаёт осмысленный промпт для Trello инструмента
+     */
+    private fun createTrelloPrompt(toolName: String, description: String): String {
+        val boardId = _screeState.value.trelloBoardId
+
+        return when (toolName) {
+            "trello_getSummary" -> {
+                if (boardId != null) {
+                    "Покажи статистику по Trello доске $boardId"
+                } else {
+                    "Покажи статистику по моей Trello доске"
+                }
+            }
+            "trello_getCards" -> {
+                if (boardId != null) {
+                    "Покажи все задачи из Trello доски $boardId"
+                } else {
+                    "Покажи все мои задачи из Trello"
+                }
+            }
+            "trello_searchCards" -> {
+                if (boardId != null) {
+                    "Найди задачи в Trello на доске $boardId"
+                } else {
+                    "Найди задачи в моей Trello доске"
+                }
+            }
+            "trello_quickTask" -> {
+                if (boardId != null) {
+                    "Создай быструю задачу в Trello на доске $boardId"
+                } else {
+                    "Создай быструю задачу в моей Trello доске"
+                }
+            }
+            "trello_createCard" -> {
+                if (boardId != null) {
+                    "Создай новую карточку в Trello на доске $boardId"
+                } else {
+                    "Создай новую карточку в моей Trello доске"
+                }
+            }
+            else -> {
+                // Для остальных Trello инструментов используем описание
+                if (boardId != null) {
+                    "Используй Trello доску $boardId: $description"
+                } else {
+                    description
                 }
             }
         }

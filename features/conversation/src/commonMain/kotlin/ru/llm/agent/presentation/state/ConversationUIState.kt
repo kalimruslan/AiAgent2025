@@ -32,9 +32,6 @@ internal class ConversationUIState {
         /** Флаг процесса суммаризации */
         val isSummarizing: Boolean = false,
 
-        /** Последнее саммари доски Trello */
-        val boardSummary: BoardSummary? = null,
-
         /** ID доски Trello для умных промптов (null если не настроен) */
         val trelloBoardId: String? = null,
 

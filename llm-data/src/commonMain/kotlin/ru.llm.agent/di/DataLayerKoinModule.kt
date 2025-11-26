@@ -156,15 +156,9 @@ public val networkModule: Module = module {
         )
     }
 
-    // MCP клиент
-    // Для Android эмулятора: 10.0.2.2 = localhost хост-машины
-    // Для Desktop: localhost или 127.0.0.1
-    // Для физического устройства: IP хост-машины в локальной сети
     single<McpClient> {
         McpClient(
             serverUrl = "https://kalimruslan-rt.ru/mcp",
-            //serverUrl = "http://0.0.0.0:8080/mcp", // Не работает из эмулятора
-//            serverUrl = "http://127.0.0.1:8080/mcp", // Для Desktop
             client = get(HttpClientQualifier.Yandex)
         )
     }

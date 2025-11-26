@@ -28,6 +28,10 @@ public sealed class MessageModel(public open val role: Role, public open val tex
         val duration: String = "",
         val toolCallList: ToolCallList? = null,
         val toolResultList: ToolResultList? = null,
+        // Добавлены поля для точного учёта токенов
+        val inputTokens: Int? = null,
+        val completionTokens: Int? = null,
+        val totalTokens: Int? = null
     ) : MessageModel(role, content)
 
     public data class ToolsMessage(

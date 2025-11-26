@@ -60,10 +60,12 @@ class McpViewModel(
             _state.update { it.copy(isLoadingTools = true, error = null) }
             try {
                 val tools = getMcpToolsUseCase.invoke()
-                _state.update {
-                    it.copy(
+                _state.update { currentState ->
+                    // Не включаем MCP автоматически - пользователь должен сам включить
+                    currentState.copy(
                         availableTools = tools,
                         isLoadingTools = false,
+                        // isEnabled остаётся без изменений (по умолчанию false)
                         error = null
                     )
                 }
@@ -79,7 +81,9 @@ class McpViewModel(
     }
 
     private fun toggleEnabled(enabled: Boolean) {
+        println("MCP toggleEnabled: $enabled")
         _state.update { it.copy(isEnabled = enabled) }
+        println("MCP state after toggle: isEnabled=${_state.value.isEnabled}")
     }
 
     private fun executeTool(toolName: String, arguments: Map<String, Any>) {

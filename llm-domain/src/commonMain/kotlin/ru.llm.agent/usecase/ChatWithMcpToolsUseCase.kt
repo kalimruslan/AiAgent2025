@@ -336,7 +336,10 @@ public class ChatWithMcpToolsUseCase(
             model = provider.displayName,
             originalResponse = responseMessage.content,
             isContinue = isToolCall, // Используем isContinue для обозначения промежуточного результата tool
-            isComplete = !isToolCall
+            isComplete = !isToolCall,
+            inputTokens = responseMessage.inputTokens,
+            completionTokens = responseMessage.completionTokens,
+            totalTokens = responseMessage.totalTokens
         )
     }
 }

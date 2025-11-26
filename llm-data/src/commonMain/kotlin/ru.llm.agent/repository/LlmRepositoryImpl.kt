@@ -241,7 +241,12 @@ public class LlmRepositoryImpl(
 
         return result.mapNetworkResult { response: YandexGPTResponse ->
             Logger.getLogger("McpClient").info("Response sendMessagesToYandexGptWithMcp: ${response}")
-            response.result.alternatives.firstOrNull()?.message?.toModel()
+            val usage = response.result.usage
+            response.result.alternatives.firstOrNull()?.message?.toModel(
+                inputTokens = usage?.inputTextTokens?.toIntOrNull(),
+                completionTokens = usage?.completionTokens?.toIntOrNull(),
+                totalTokens = usage?.totalTokens?.toIntOrNull()
+            )
         }
     }
 }

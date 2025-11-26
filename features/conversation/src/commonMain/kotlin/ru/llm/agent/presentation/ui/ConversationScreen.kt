@@ -15,6 +15,7 @@ import kotlinx.coroutines.delay
 import org.koin.compose.module.rememberKoinModules
 import org.koin.compose.scope.KoinScope
 import org.koin.compose.viewmodel.koinViewModel
+import org.koin.compose.koinInject
 import ru.llm.agent.presentation.di.CONVERSATION_CHAT_SCOPE_ID
 import ru.llm.agent.presentation.di.conversationChatScopeQualifier
 import ru.llm.agent.presentation.viewmodel.ConversationViewModel
@@ -26,7 +27,7 @@ import ru.llm.agent.model.ExportFormat
 import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.presentation.ui.components.InputBar
 import ru.llm.agent.presentation.ui.components.MessageItem
-import ru.llm.agent.presentation.ui.components.TokenUsageProgressBar
+import ru.llm.agent.presentation.ui.components.TokenUsageChip
 import ru.llm.agent.presentation.ui.components.BoardSummaryCard
 import ru.llm.agent.mcp.presentation.ui.McpToolsPanel
 import ru.llm.agent.mcp.presentation.viewmodel.McpViewModel
@@ -51,7 +52,8 @@ fun ConversationScreen(
             listOf(conversationKoinModule())
         }
         val viewModel = koinViewModel() as ConversationViewModel
-        val mcpViewModel = koinViewModel<McpViewModel>()
+        // Используем koinInject вместо koinViewModel для singleton
+        val mcpViewModel = koinInject<McpViewModel>()
         viewModel.start()
         val state by viewModel.screeState.collectAsStateWithLifecycle()
         val mcpState by mcpViewModel.state.collectAsStateWithLifecycle()
@@ -92,6 +94,16 @@ fun ConversationScreen(
                         titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     ),
                     actions = {
+                        // Компактный чип использования токенов
+                        TokenUsageChip(
+                            usedTokens = state.usedTokens,
+                            maxTokens = state.maxTokens,
+                            requestTokens = state.requestTokens,
+                            summarizationInfo = state.summarizationInfo,
+                            isSummarizing = state.isSummarizing,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+
                         TopBarMenu(
                             onClearAll = {
                                 viewModel.setEvent(
@@ -184,19 +196,6 @@ fun ConversationScreen(
                     .background(LlmAgentTheme.colors.background)
                     .padding(paddingValues)
             ) {
-                // Progress bar для токенов
-                TokenUsageProgressBar(
-                    usedTokens = state.usedTokens,
-                    maxTokens = state.maxTokens,
-                    requestTokens = state.requestTokens,
-                    summarizationInfo = state.summarizationInfo,
-                    isSummarizing = state.isSummarizing
-                )
-
-                // Карточка с саммари доски Trello
-                state.boardSummary?.let { summary ->
-                    BoardSummaryCard(boardSummary = summary)
-                }
 
                 // Показываем выбор экспертов только в режиме Committee
                 if (state.selectedMode == ConversationMode.COMMITTEE) {
@@ -218,7 +217,11 @@ fun ConversationScreen(
                         viewModel = mcpViewModel,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        onToolExecute = { toolName, description ->
+                            // Вызываем выполнение инструмента через LLM
+                            viewModel.executeToolWithLlm(toolName, description)
+                        }
                     )
                 }
 
@@ -233,6 +236,7 @@ fun ConversationScreen(
                         messages = state.messages,
                         error = state.error,
                         isLoading = state.isLoading,
+                        mcpToolExecution = mcpState.currentExecution,
                         onClearError = {
                             viewModel.setEvent(
                                 ConversationUIState.Event.ClearError
@@ -287,6 +291,7 @@ private fun BoxScope.MessagesContent(
     onClearError: () -> Unit,
     error: String,
     isLoading: Boolean,
+    mcpToolExecution: ru.llm.agent.mcp.model.McpToolExecutionStatus? = null
 ) {
     val messagesListState = rememberLazyListState()
 
@@ -308,6 +313,16 @@ private fun BoxScope.MessagesContent(
             key = { index -> messages[index].id }
         ) { index ->
             MessageItem(messages[index])
+        }
+
+        // Индикатор выполнения MCP инструмента
+        if (mcpToolExecution != null) {
+            item(key = "mcp_execution_${mcpToolExecution.toolName}") {
+                ru.llm.agent.mcp.presentation.ui.McpToolExecutionStatusIndicator(
+                    status = mcpToolExecution,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
         }
 
         if (isLoading) {

@@ -12,7 +12,13 @@ import ru.llm.agent.model.ConversationContext
 import ru.llm.agent.model.ExpertOpinion
 import ru.llm.agent.model.conversation.ConversationMessage
 
-public fun YaMessageResponse.toModel(usedTokens: String? = null, outputFormat: PromtFormat = PromtFormat.TEXT): MessageModel =
+public fun YaMessageResponse.toModel(
+    usedTokens: String? = null,
+    outputFormat: PromtFormat = PromtFormat.TEXT,
+    inputTokens: Int? = null,
+    completionTokens: Int? = null,
+    totalTokens: Int? = null
+): MessageModel =
     MessageModel.ResponseMessage(
         role = Role.valueOf(role.uppercase()),
         content = if (outputFormat == PromtFormat.JSON) {
@@ -24,7 +30,10 @@ public fun YaMessageResponse.toModel(usedTokens: String? = null, outputFormat: P
         textFormat = outputFormat,
         parsedContent = null,
         toolCallList = this.toolCallList,
-        toolResultList = this.toolResultList
+        toolResultList = this.toolResultList,
+        inputTokens = inputTokens,
+        completionTokens = completionTokens,
+        totalTokens = totalTokens
     )
 
 public fun ProxyMessageResponse.toModel(usedTokens: String?): MessageModel = MessageModel.ResponseMessage(

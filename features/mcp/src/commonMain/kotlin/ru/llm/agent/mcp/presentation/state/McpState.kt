@@ -20,7 +20,7 @@ data class McpState(
     /** Ошибка загрузки инструментов */
     val error: String? = null,
     /** Развёрнута ли панель инструментов */
-    val isPanelExpanded: Boolean = true
+    val isPanelExpanded: Boolean = false
 ) {
     companion object {
         fun empty() = McpState()

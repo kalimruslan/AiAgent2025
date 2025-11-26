@@ -26,11 +26,16 @@ import ru.llm.agent.mcp.presentation.viewmodel.McpViewModel
  * Панель управления MCP инструментами
  *
  * Основной UI компонент модуля MCP, который можно встраивать в другие экраны
+ *
+ * @param viewModel ViewModel для управления состоянием MCP
+ * @param onToolExecute Callback для выполнения инструмента через LLM. Принимает (toolName, description)
+ * @param modifier Модификатор для UI
  */
 @Composable
 fun McpToolsPanel(
     viewModel: McpViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onToolExecute: ((String, String) -> Unit)? = null
 ) {
     val state by viewModel.state.collectAsState()
 
@@ -172,12 +177,18 @@ fun McpToolsPanel(
                                     McpToolCard(
                                         tool = tool,
                                         onExecute = { toolName ->
-                                            viewModel.onEvent(
-                                                McpEvent.ExecuteTool(
-                                                    toolName = toolName,
-                                                    arguments = emptyMap()
+                                            // Если передан callback, используем его для выполнения через LLM
+                                            if (onToolExecute != null) {
+                                                onToolExecute(toolName, tool.description)
+                                            } else {
+                                                // Fallback: старый способ через McpEvent (для совместимости)
+                                                viewModel.onEvent(
+                                                    McpEvent.ExecuteTool(
+                                                        toolName = toolName,
+                                                        arguments = emptyMap()
+                                                    )
                                                 )
-                                            )
+                                            }
                                         }
                                     )
                                 }
