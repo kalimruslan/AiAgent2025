@@ -258,6 +258,12 @@ fun ConversationScreen(
                         onToolExecute = { toolName, description ->
                             // Вызываем выполнение инструмента через LLM
                             viewModel.executeToolWithLlm(toolName, description)
+                        },
+                        trelloBoardId = state.trelloBoardId,
+                        onTrelloBoardIdChange = { boardId ->
+                            viewModel.setEvent(
+                                ConversationUIState.Event.SetTrelloBoardId(boardId)
+                            )
                         }
                     )
                 }

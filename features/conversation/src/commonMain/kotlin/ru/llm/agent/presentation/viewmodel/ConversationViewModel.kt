@@ -12,7 +12,6 @@ import ru.llm.agent.doActionIfLoading
 import ru.llm.agent.doActionIfSuccess
 import ru.llm.agent.error.DomainError
 import ru.llm.agent.model.ConversationMode
-import ru.llm.agent.model.Expert
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.Role
 import ru.llm.agent.presentation.state.ConversationUIState
@@ -37,6 +36,7 @@ import java.util.logging.Logger
 import ru.llm.agent.mcp.presentation.viewmodel.McpViewModel
 import ru.llm.agent.mcp.utils.extractToolName
 import ru.llm.agent.mcp.utils.extractToolResult
+import ru.llm.agent.mcp.prompts.TrelloPrompts
 import ru.llm.agent.committee.presentation.viewmodel.CommitteeViewModel
 
 class ConversationViewModel(
@@ -76,31 +76,6 @@ class ConversationViewModel(
                 handleEvent(it)
             }
         }
-
-        // Подписка на изменения состояния MCP для логирования и синхронизации
-        viewModelScope.launch {
-            mcpViewModel.state.collect { mcpState ->
-                handleMcpStateChange(mcpState)
-            }
-        }
-    }
-
-    /**
-     * Обработка изменений состояния MCP модуля
-     */
-    private fun handleMcpStateChange(mcpState: ru.llm.agent.mcp.presentation.state.McpState) {
-        // Логируем изменения для отладки
-        val currentExecution = mcpState.currentExecution
-        if (currentExecution != null) {
-            Logger.getLogger("MCP-Integration")
-                .info("Tool execution status: ${currentExecution.toolName}, " +
-                        "executing: ${currentExecution.isExecuting}")
-        }
-
-        // Можно добавить дополнительную логику реакции на изменения MCP:
-        // - Обновление UI индикаторов
-        // - Синхронизация с другими компонентами
-        // - Логика зависящая от статуса выполнения инструментов
     }
 
     fun start(){
@@ -175,8 +150,6 @@ class ConversationViewModel(
                 ConversationMode.COMMITTEE -> {
                     // В режиме Committee загружаем сообщения вместе с мнениями экспертов
                     getMessagesWithExpertOpinionsUseCase(conversationId).collect { messages ->
-                        Logger.getLogger("Committe").info("messages - $messages")
-
                         _screeState.update {
                             it.copy(
                                 messages = messages.filter { msg -> msg.role != Role.SYSTEM }
@@ -279,7 +252,6 @@ class ConversationViewModel(
                 result.doActionIfSuccess { conversationMessage ->
                     // Если это промежуточный результат tool call, обновляем статус выполнения через McpViewModel
                     if (conversationMessage.isContinue) {
-                        Logger.getLogger("MCP").info("Tool execution: ${conversationMessage.text}")
 
                         // Извлекаем название инструмента из текста сообщения
                         val toolName = conversationMessage.text.extractToolName()
@@ -300,7 +272,6 @@ class ConversationViewModel(
                             )
                         }
                     } else {
-                        // Финальный ответ - очищаем статус выполнения инструмента через McpViewModel
                         mcpViewModel.clearCurrentExecution()
 
                         _screeState.update { state ->
@@ -313,7 +284,6 @@ class ConversationViewModel(
                     }
                 }
                 result.doActionIfError { domainError ->
-                    // При ошибке очищаем статус выполнения
                     mcpViewModel.clearCurrentExecution()
 
                     _screeState.update {
@@ -343,7 +313,6 @@ class ConversationViewModel(
 
         // Порог 75% для суммаризации
         if (usageRatio >= 0.75) {
-            Logger.getLogger("Summarization").info("Превышен порог использования токенов: ${(usageRatio * 100).toInt()}%. Начинаем суммаризацию...")
 
             _screeState.update { it.copy(isSummarizing = true) }
 
@@ -355,13 +324,9 @@ class ConversationViewModel(
                 provider = _screeState.value.selectedProvider
             ).collect { result ->
                 result.doActionIfSuccess { wasSummarized ->
-                    if (wasSummarized) {
-                        Logger.getLogger("Summarization").info("Суммаризация выполнена успешно")
-                    }
                     _screeState.update { it.copy(isSummarizing = false) }
                 }
                 result.doActionIfError { error ->
-                    Logger.getLogger("Summarization").warning("Ошибка при суммаризации: ${error.toUserMessage()}")
                     _screeState.update { it.copy(isSummarizing = false) }
                 }
             }
@@ -374,20 +339,15 @@ class ConversationViewModel(
     private fun sendMessageToSingleAi(message: String) {
         viewModelScope.launch {
             // Подсчитываем токены ПЕРЕД отправкой
-            Logger.getLogger("TokenCount").info("Подсчёт токенов для сообщения: $message")
             getMessageTokenCountUseCase(
                 conversationId = conversationId,
                 newMessage = message,
                 modelUri = _screeState.value.selectedProvider.modelId
             ).collect { tokenResult ->
                 tokenResult.doActionIfSuccess { tokenCount ->
-                    Logger.getLogger("TokenCount").info("Токенов в запросе: $tokenCount")
-                    // Сохраняем количество токенов в state для отображения в UI
                     _screeState.update { it.copy(requestTokens = tokenCount) }
                 }
                 tokenResult.doActionIfError { domainError ->
-                    Logger.getLogger("TokenCount").warning("Ошибка подсчёта токенов: ${domainError.toUserMessage()}")
-                    // Сбрасываем токены при ошибке
                     _screeState.update { it.copy(requestTokens = null) }
                 }
             }
@@ -398,10 +358,6 @@ class ConversationViewModel(
             // Выбираем UseCase в зависимости от того, включен ли RAG
             val state = _screeState.value
             val useCaseFlow = if (state.isRagEnabled) {
-                Logger.getLogger("RAG").info(
-                    "Используем RAG: topK=${state.ragTopK}, threshold=${state.ragThreshold}, " +
-                    "MMR=${state.ragUseMmr}, lambda=${state.ragMmrLambda}"
-                )
                 askWithRagUseCase.invoke(
                     conversationId = conversationId,
                     userMessage = message,
@@ -463,8 +419,6 @@ class ConversationViewModel(
                 result.doActionIfSuccess { committeeResult ->
                     when (committeeResult) {
                         is CommitteeResult.ExpertOpinion -> {
-                            // Мнение эксперта получено
-                            // UI обновится через Flow из БД
                             _screeState.update { it.copy(isLoading = true) }
                         }
                         is CommitteeResult.FinalSynthesis -> {
@@ -616,7 +570,6 @@ class ConversationViewModel(
     }
 
     // === RAG функции ===
-
     /**
      * Переключить использование RAG
      */
@@ -747,7 +700,7 @@ class ConversationViewModel(
      * создаём сообщение для LLM с просьбой использовать этот инструмент.
      * LLM получит контекст разговора и сам решит, как использовать инструмент.
      *
-     * Для Trello инструментов использует SmartPromptTemplate для создания осмысленных промптов.
+     * Для Trello инструментов использует TrelloPrompts для создания осмысленных промптов.
      */
     fun executeToolWithLlm(toolName: String, description: String) {
         if (_screeState.value.isLoading) {
@@ -758,9 +711,13 @@ class ConversationViewModel(
         Logger.getLogger("MCP").info("Ручной вызов инструмента через LLM: $toolName")
 
         // Формируем промпт для LLM
-        val prompt = if (toolName.startsWith("trello_")) {
-            // Для Trello инструментов создаём осмысленный промпт с контекстом
-            createTrelloPrompt(toolName, description)
+        val prompt = if (TrelloPrompts.isTrelloTool(toolName)) {
+            // Для Trello инструментов используем TrelloPrompts
+            TrelloPrompts.createPrompt(
+                toolName = toolName,
+                boardId = _screeState.value.trelloBoardId,
+                fallbackDescription = description
+            )
         } else {
             // Для других инструментов используем простой формат
             buildString {
@@ -775,58 +732,5 @@ class ConversationViewModel(
 
         // Вызываем обычный flow с MCP
         sendMessageWithMcpTools(message = prompt, needAddToHistory = true)
-    }
-
-    /**
-     * Создаёт осмысленный промпт для Trello инструмента
-     */
-    private fun createTrelloPrompt(toolName: String, description: String): String {
-        val boardId = _screeState.value.trelloBoardId
-
-        return when (toolName) {
-            "trello_getSummary" -> {
-                if (boardId != null) {
-                    "Покажи статистику по Trello доске $boardId"
-                } else {
-                    "Покажи статистику по моей Trello доске"
-                }
-            }
-            "trello_getCards" -> {
-                if (boardId != null) {
-                    "Покажи все задачи из Trello доски $boardId"
-                } else {
-                    "Покажи все мои задачи из Trello"
-                }
-            }
-            "trello_searchCards" -> {
-                if (boardId != null) {
-                    "Найди задачи в Trello на доске $boardId"
-                } else {
-                    "Найди задачи в моей Trello доске"
-                }
-            }
-            "trello_quickTask" -> {
-                if (boardId != null) {
-                    "Создай быструю задачу в Trello на доске $boardId"
-                } else {
-                    "Создай быструю задачу в моей Trello доске"
-                }
-            }
-            "trello_createCard" -> {
-                if (boardId != null) {
-                    "Создай новую карточку в Trello на доске $boardId"
-                } else {
-                    "Создай новую карточку в моей Trello доске"
-                }
-            }
-            else -> {
-                // Для остальных Trello инструментов используем описание
-                if (boardId != null) {
-                    "Используй Trello доску $boardId: $description"
-                } else {
-                    description
-                }
-            }
-        }
     }
 }

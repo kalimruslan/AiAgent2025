@@ -12,15 +12,14 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ru.llm.agent.mcp.presentation.state.McpEvent
 import ru.llm.agent.mcp.presentation.viewmodel.McpViewModel
+import ru.llm.agent.mcp.prompts.TrelloPrompts
 
 /**
  * Панель управления MCP инструментами
@@ -29,15 +28,24 @@ import ru.llm.agent.mcp.presentation.viewmodel.McpViewModel
  *
  * @param viewModel ViewModel для управления состоянием MCP
  * @param onToolExecute Callback для выполнения инструмента через LLM. Принимает (toolName, description)
+ * @param trelloBoardId Текущий ID доски Trello (null если не задан)
+ * @param onTrelloBoardIdChange Callback для изменения ID доски Trello
  * @param modifier Модификатор для UI
  */
 @Composable
 fun McpToolsPanel(
     viewModel: McpViewModel,
     modifier: Modifier = Modifier,
-    onToolExecute: ((String, String) -> Unit)? = null
+    onToolExecute: ((String, String) -> Unit)? = null,
+    trelloBoardId: String? = null,
+    onTrelloBoardIdChange: ((String?) -> Unit)? = null
 ) {
     val state by viewModel.state.collectAsState()
+
+    // Проверяем, есть ли Trello инструменты
+    val hasTrelloTools = remember(state.availableTools) {
+        state.availableTools.any { TrelloPrompts.isTrelloTool(it.name) }
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -168,6 +176,14 @@ fun McpToolsPanel(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 
+                            // Поле Trello Board ID (показываем только если есть Trello инструменты)
+                            if (hasTrelloTools && onTrelloBoardIdChange != null) {
+                                TrelloBoardIdField(
+                                    boardId = trelloBoardId,
+                                    onBoardIdChange = onTrelloBoardIdChange
+                                )
+                            }
+
                             // Список инструментов
                             LazyColumn(
                                 modifier = Modifier.heightIn(max = 400.dp),
@@ -238,5 +254,52 @@ fun McpToolsPanel(
                 }
             }
         }
+    }
+}
+
+/**
+ * Поле ввода ID доски Trello
+ */
+@Composable
+private fun TrelloBoardIdField(
+    boardId: String?,
+    onBoardIdChange: (String?) -> Unit
+) {
+    var textValue by remember(boardId) { mutableStateOf(boardId ?: "") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = "Trello настройки",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+
+        OutlinedTextField(
+            value = textValue,
+            onValueChange = { newValue ->
+                textValue = newValue
+                // Сохраняем null если поле пустое, иначе значение
+                onBoardIdChange(newValue.ifBlank { null })
+            },
+            label = { Text("ID доски Trello") },
+            placeholder = { Text("Например: abc123def456") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            supportingText = {
+                Text(
+                    text = if (textValue.isNotBlank()) {
+                        "Доска: $textValue"
+                    } else {
+                        "Укажите ID для работы с конкретной доской"
+                    },
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+        )
     }
 }
