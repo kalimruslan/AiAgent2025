@@ -36,7 +36,9 @@ import ru.llm.agent.presentation.ui.components.RagControlPanel
 import ru.llm.agent.presentation.ui.components.KnowledgeBaseDialog
 import ru.llm.agent.presentation.ui.dropdowns.ConversationModeDropdown
 import ru.llm.agent.presentation.ui.dropdowns.LlmProviderDropdown
-import ru.llm.agent.presentation.ui.experts.ExpertsSelectionPanel
+import ru.llm.agent.committee.presentation.ui.ExpertsSelectionPanel
+import ru.llm.agent.committee.presentation.viewmodel.CommitteeViewModel
+import ru.llm.agent.committee.presentation.state.CommitteeEvent
 import ru.llm.agent.presentation.ui.menu.TopBarMenu
 
 /**
@@ -54,9 +56,11 @@ fun ConversationScreen(
         val viewModel = koinViewModel() as ConversationViewModel
         // Используем koinInject вместо koinViewModel для singleton
         val mcpViewModel = koinInject<McpViewModel>()
+        val committeeViewModel = koinInject<CommitteeViewModel>()
         viewModel.start()
         val state by viewModel.screeState.collectAsStateWithLifecycle()
         val mcpState by mcpViewModel.state.collectAsStateWithLifecycle()
+        val committeeState by committeeViewModel.state.collectAsStateWithLifecycle()
 
         Scaffold(
             modifier = Modifier.fillMaxSize().imePadding(),
@@ -139,26 +143,29 @@ fun ConversationScreen(
                     }
 
                     // RAG панель управления
-                    RagControlPanel(
-                        isRagEnabled = state.isRagEnabled,
-                        indexedCount = state.ragIndexedCount,
-                        onToggleRag = { enabled ->
-                            viewModel.setEvent(
-                                ConversationUIState.Event.ToggleRag(enabled)
-                            )
-                        },
-                        onAddKnowledge = {
-                            viewModel.setEvent(
-                                ConversationUIState.Event.ShowKnowledgeBaseDialog
-                            )
-                        },
-                        onClearKnowledge = {
-                            viewModel.setEvent(
-                                ConversationUIState.Event.ClearKnowledgeBase
-                            )
-                        },
-                        enabled = !state.isLoading
-                    )
+                    // Показываем только если НЕ в режиме Committee
+                    if (state.selectedMode != ConversationMode.COMMITTEE) {
+                        RagControlPanel(
+                            isRagEnabled = state.isRagEnabled,
+                            indexedCount = state.ragIndexedCount,
+                            onToggleRag = { enabled ->
+                                viewModel.setEvent(
+                                    ConversationUIState.Event.ToggleRag(enabled)
+                                )
+                            },
+                            onAddKnowledge = {
+                                viewModel.setEvent(
+                                    ConversationUIState.Event.ShowKnowledgeBaseDialog
+                                )
+                            },
+                            onClearKnowledge = {
+                                viewModel.setEvent(
+                                    ConversationUIState.Event.ClearKnowledgeBase
+                                )
+                            },
+                            enabled = !state.isLoading
+                        )
+                    }
 
                     // Диалог добавления знаний
                     if (state.showKnowledgeBaseDialog) {
@@ -200,19 +207,22 @@ fun ConversationScreen(
                 // Показываем выбор экспертов только в режиме Committee
                 if (state.selectedMode == ConversationMode.COMMITTEE) {
                     ExpertsSelectionPanel(
-                        selectedExperts = state.selectedExperts,
-                        availableExperts = state.availableExperts,
+                        selectedExperts = committeeState.selectedExperts,
+                        availableExperts = committeeState.availableExperts,
                         onToggleExpert = { expert ->
-                            viewModel.setEvent(
-                                ConversationUIState.Event.ToggleExpert(expert)
+                            committeeViewModel.onEvent(
+                                CommitteeEvent.ToggleExpert(expert)
                             )
                         },
                         enabled = !state.isLoading
                     )
                 }
 
-                // MCP панель управления инструментами (показываем только если есть инструменты или MCP включен)
-                if (mcpState.availableTools.isNotEmpty() || mcpState.isEnabled) {
+                // MCP панель управления инструментами
+                // Показываем только если есть инструменты или MCP включен
+                // И НЕ в режиме Committee (в Committee режиме MCP не используется)
+                if ((mcpState.availableTools.isNotEmpty() || mcpState.isEnabled)
+                    && state.selectedMode != ConversationMode.COMMITTEE) {
                     McpToolsPanel(
                         viewModel = mcpViewModel,
                         modifier = Modifier

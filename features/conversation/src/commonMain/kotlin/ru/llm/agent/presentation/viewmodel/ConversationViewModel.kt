@@ -37,6 +37,7 @@ import java.util.logging.Logger
 import ru.llm.agent.mcp.presentation.viewmodel.McpViewModel
 import ru.llm.agent.mcp.utils.extractToolName
 import ru.llm.agent.mcp.utils.extractToolResult
+import ru.llm.agent.committee.presentation.viewmodel.CommitteeViewModel
 
 class ConversationViewModel(
     private val conversationUseCase: ConversationUseCase,
@@ -56,7 +57,8 @@ class ConversationViewModel(
     private val askWithRagUseCase: ru.llm.agent.usecase.rag.AskWithRagUseCase,
     private val getRagIndexStatsUseCase: ru.llm.agent.usecase.rag.GetRagIndexStatsUseCase,
     private val clearRagIndexUseCase: ru.llm.agent.usecase.rag.ClearRagIndexUseCase,
-    private val mcpViewModel: McpViewModel
+    private val mcpViewModel: McpViewModel,
+    private val committeeViewModel: CommitteeViewModel
 ) : ViewModel() {
 
 
@@ -198,7 +200,6 @@ class ConversationViewModel(
             ConversationUIState.Event.OpenSettings -> {}
             is ConversationUIState.Event.SelectProvider -> selectProvider(event.provider)
             is ConversationUIState.Event.SelectMode -> selectMode(event.mode)
-            is ConversationUIState.Event.ToggleExpert -> toggleExpert(event.expert)
             is ConversationUIState.Event.ExportConversation -> exportConversation(event.format)
             is ConversationUIState.Event.SetTrelloBoardId -> setTrelloBoardId(event.boardId)
             is ConversationUIState.Event.ToggleRag -> toggleRag(event.enabled)
@@ -442,7 +443,7 @@ class ConversationViewModel(
             executeCommitteeUseCase.invoke(
                 conversationId = conversationId,
                 userMessage = message,
-                experts = _screeState.value.selectedExperts,
+                experts = committeeViewModel.getSelectedExperts(),
                 provider = _screeState.value.selectedProvider
             ).collect { result ->
                 result.doActionIfLoading {
@@ -495,27 +496,6 @@ class ConversationViewModel(
         _screeState.update { it.copy(selectedMode = mode) }
         // Перезагружаем сообщения при смене режима
         loadMessages()
-    }
-
-    /**
-     * Переключить эксперта (добавить/убрать из выбранных)
-     */
-    private fun toggleExpert(expert: Expert) {
-        _screeState.update { state ->
-            val currentExperts = state.selectedExperts
-            val updatedExperts = if (currentExperts.contains(expert)) {
-                // Убрать эксперта (но минимум 1 должен остаться)
-                if (currentExperts.size > 1) {
-                    currentExperts - expert
-                } else {
-                    currentExperts // Не даем удалить последнего
-                }
-            } else {
-                // Добавить эксперта
-                currentExperts + expert
-            }
-            state.copy(selectedExperts = updatedExperts)
-        }
     }
 
     private fun resetConversation() {

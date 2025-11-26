@@ -1,7 +1,6 @@
 package ru.llm.agent.presentation.state
 
 import ru.llm.agent.model.ConversationMode
-import ru.llm.agent.model.Expert
 import ru.llm.agent.model.ExportFormat
 import ru.llm.agent.model.LlmProvider
 import ru.llm.agent.model.SummarizationInfo
@@ -17,10 +16,6 @@ internal class ConversationUIState {
         val selectedProvider: LlmProvider = LlmProvider.default(),
         /** Выбранный режим работы (Single AI или Committee) */
         val selectedMode: ConversationMode = ConversationMode.default(),
-        /** Список выбранных экспертов для режима Committee */
-        val selectedExperts: List<Expert> = Expert.getPredefinedExperts().take(3), // По умолчанию первые 3
-        /** Список всех доступных экспертов */
-        val availableExperts: List<Expert> = Expert.getPredefinedExperts(),
         /** Использованные токены (сумма из всех сообщений) */
         val usedTokens: Int = 0,
         /** Максимальное количество токенов */
@@ -51,9 +46,7 @@ internal class ConversationUIState {
                 error = "",
                 isConversationComplete = false,
                 selectedProvider = LlmProvider.default(),
-                selectedMode = ConversationMode.default(),
-                selectedExperts = Expert.getPredefinedExperts().take(3),
-                availableExperts = Expert.getPredefinedExperts()
+                selectedMode = ConversationMode.default()
             )
         }
     }
@@ -67,8 +60,6 @@ internal class ConversationUIState {
         data class SelectProvider(val provider: LlmProvider) : Event
         /** Выбор режима работы */
         data class SelectMode(val mode: ConversationMode) : Event
-        /** Переключить эксперта (добавить/убрать из выбранных) */
-        data class ToggleExpert(val expert: Expert) : Event
         /** Экспортировать диалог в указанном формате */
         data class ExportConversation(val format: ExportFormat) : Event
         /** Установить ID доски Trello для умных промптов */

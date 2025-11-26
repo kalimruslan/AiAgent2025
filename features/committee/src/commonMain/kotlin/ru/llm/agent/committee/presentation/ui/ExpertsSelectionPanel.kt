@@ -1,4 +1,4 @@
-package ru.llm.agent.presentation.ui.experts
+package ru.llm.agent.committee.presentation.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow

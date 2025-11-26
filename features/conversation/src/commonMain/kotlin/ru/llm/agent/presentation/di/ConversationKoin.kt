@@ -46,7 +46,8 @@ internal fun conversationKoinModule(): Module {
                 askWithRagUseCase = get<AskWithRagUseCase>(),
                 getRagIndexStatsUseCase = get<GetRagIndexStatsUseCase>(),
                 clearRagIndexUseCase = get<ClearRagIndexUseCase>(),
-                mcpViewModel = get<ru.llm.agent.mcp.presentation.viewmodel.McpViewModel>()
+                mcpViewModel = get<ru.llm.agent.mcp.presentation.viewmodel.McpViewModel>(),
+                committeeViewModel = get<ru.llm.agent.committee.presentation.viewmodel.CommitteeViewModel>()
             )
         }
     }

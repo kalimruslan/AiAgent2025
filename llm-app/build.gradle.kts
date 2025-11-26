@@ -31,6 +31,7 @@ kotlin {
             implementation(libs.navigation.compose)
             implementation(projects.features.conversation)
             implementation(projects.features.mcp)
+            implementation(projects.features.committee)
             implementation(projects.features.addoptions)
         }
 
