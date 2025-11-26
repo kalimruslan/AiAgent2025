@@ -12,12 +12,16 @@ public class SearchRagDocumentsUseCase(
     public suspend operator fun invoke(
         query: String,
         topK: Int = 5,
-        threshold: Double = 0.3
+        threshold: Double = 0.3,
+        useMmr: Boolean = true,
+        mmrLambda: Double = 0.5
     ): List<RagDocument> {
         return ragRepository.search(
             query = query,
             topK = topK,
-            threshold = threshold
+            threshold = threshold,
+            useMmr = useMmr,
+            mmrLambda = mmrLambda
         )
     }
 }

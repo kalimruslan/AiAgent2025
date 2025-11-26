@@ -21,7 +21,9 @@ public data class Document(
  */
 public data class SearchResult(
     val document: Document,
-    val similarity: Double
+    val similarity: Double,
+    /** MMR score (если использовался MMR алгоритм) */
+    val mmrScore: Double? = null
 )
 
 /**
@@ -110,6 +112,107 @@ public class VectorStore(
             .filter { it.similarity >= threshold }
             .sortedByDescending { it.similarity }
             .take(topK)
+    }
+
+    /**
+     * Поиск с использованием MMR (Maximum Marginal Relevance)
+     * Обеспечивает баланс между релевантностью и разнообразием результатов
+     *
+     * MMR = λ * similarity(doc, query) - (1-λ) * max(similarity(doc, selected_docs))
+     *
+     * @param queryEmbedding эмбеддинг запроса
+     * @param topK количество результатов
+     * @param threshold минимальный порог схожести (0.0 - 1.0)
+     * @param lambda параметр баланса (0.0 = только разнообразие, 1.0 = только релевантность)
+     * @param candidateMultiplier множитель для предварительной выборки кандидатов (topK * multiplier)
+     * @return список найденных документов с оценкой MMR
+     */
+    public suspend fun searchWithMMR(
+        queryEmbedding: List<Double>,
+        topK: Int = 5,
+        threshold: Double = 0.0,
+        lambda: Double = 0.5,
+        candidateMultiplier: Int = 3
+    ): List<SearchResult> {
+        // Загружаем все документы из БД
+        val entities = ragDocumentDao.getAllDocuments()
+
+        if (entities.isEmpty()) return emptyList()
+
+        // Конвертируем в Document с предвычисленной схожестью к запросу
+        val documentsWithSimilarity = entities.map { entity ->
+            val embedding = json.decodeFromString<List<Double>>(entity.embedding)
+            val doc = Document(
+                id = entity.id,
+                text = entity.text,
+                embedding = embedding,
+                metadata = mapOf(
+                    "sourceId" to entity.sourceId,
+                    "chunkIndex" to entity.chunkIndex.toString(),
+                    "model" to entity.model
+                )
+            )
+            doc to cosineSimilarity(queryEmbedding, embedding)
+        }
+            .filter { it.second >= threshold }
+            .sortedByDescending { it.second }
+
+        if (documentsWithSimilarity.isEmpty()) return emptyList()
+
+        // Берём топ-N кандидатов для MMR (для эффективности)
+        val candidates = documentsWithSimilarity
+            .take(topK * candidateMultiplier)
+            .toMutableList()
+
+        val selected = mutableListOf<SearchResult>()
+
+        // Выбираем первый документ — с наивысшей релевантностью
+        val first = candidates.removeAt(0)
+        selected.add(
+            SearchResult(
+                document = first.first,
+                similarity = first.second,
+                mmrScore = first.second // Для первого документа MMR = similarity
+            )
+        )
+
+        // Итеративно выбираем остальные документы по MMR
+        while (selected.size < topK && candidates.isNotEmpty()) {
+            var bestMmrScore = Double.MIN_VALUE
+            var bestIndex = -1
+
+            for (i in candidates.indices) {
+                val (candidateDoc, querySimilarity) = candidates[i]
+
+                // Находим максимальную схожесть с уже выбранными документами
+                val maxSimilarityToSelected = selected.maxOf { selectedResult ->
+                    cosineSimilarity(candidateDoc.embedding, selectedResult.document.embedding)
+                }
+
+                // Вычисляем MMR score
+                val mmrScore = lambda * querySimilarity - (1 - lambda) * maxSimilarityToSelected
+
+                if (mmrScore > bestMmrScore) {
+                    bestMmrScore = mmrScore
+                    bestIndex = i
+                }
+            }
+
+            if (bestIndex >= 0) {
+                val (bestDoc, bestSimilarity) = candidates.removeAt(bestIndex)
+                selected.add(
+                    SearchResult(
+                        document = bestDoc,
+                        similarity = bestSimilarity,
+                        mmrScore = bestMmrScore
+                    )
+                )
+            } else {
+                break
+            }
+        }
+
+        return selected
     }
 
     /**

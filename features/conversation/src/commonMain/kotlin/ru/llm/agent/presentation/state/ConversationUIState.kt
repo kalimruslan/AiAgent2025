@@ -37,7 +37,21 @@ internal class ConversationUIState {
         val ragIndexedCount: Int = 0,
 
         /** Диалог для добавления текста в knowledge base */
-        val showKnowledgeBaseDialog: Boolean = false
+        val showKnowledgeBaseDialog: Boolean = false,
+
+        // === Настройки RAG ===
+
+        /** Минимальный порог схожести (0.0 - 1.0) */
+        val ragThreshold: Double = 0.3,
+
+        /** Количество возвращаемых документов */
+        val ragTopK: Int = 3,
+
+        /** Использовать MMR (Maximum Marginal Relevance) для разнообразия результатов */
+        val ragUseMmr: Boolean = true,
+
+        /** Lambda параметр MMR (0.0 = только разнообразие, 1.0 = только релевантность) */
+        val ragMmrLambda: Double = 0.5
     ) {
         companion object {
             fun empty() = State(
@@ -74,6 +88,17 @@ internal class ConversationUIState {
         data class AddToKnowledgeBase(val text: String, val sourceId: String) : Event
         /** Очистить базу знаний */
         data object ClearKnowledgeBase : Event
+
+        // === События настроек RAG ===
+
+        /** Изменить порог схожести */
+        data class SetRagThreshold(val threshold: Double) : Event
+        /** Изменить количество документов */
+        data class SetRagTopK(val topK: Int) : Event
+        /** Переключить использование MMR */
+        data class ToggleRagMmr(val enabled: Boolean) : Event
+        /** Изменить lambda параметр MMR */
+        data class SetRagMmrLambda(val lambda: Double) : Event
     }
 
     /**
