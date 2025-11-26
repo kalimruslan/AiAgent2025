@@ -17,6 +17,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.stringResource
+import ru.llm.agent.core.uikit.resources.Res
+import ru.llm.agent.core.uikit.resources.*
 import ru.llm.agent.mcp.presentation.state.McpEvent
 import ru.llm.agent.mcp.presentation.viewmodel.McpViewModel
 import ru.llm.agent.mcp.prompts.TrelloPrompts
@@ -73,7 +76,7 @@ fun McpToolsPanel(
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "MCP Инструменты",
+                        text = stringResource(Res.string.mcp_tools),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -90,7 +93,7 @@ fun McpToolsPanel(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Обновить инструменты"
+                            contentDescription = stringResource(Res.string.refresh)
                         )
                     }
 
@@ -113,9 +116,9 @@ fun McpToolsPanel(
                                 Icons.Default.ExpandMore
                             },
                             contentDescription = if (state.isPanelExpanded) {
-                                "Свернуть"
+                                stringResource(Res.string.mcp_collapse)
                             } else {
-                                "Развернуть"
+                                stringResource(Res.string.mcp_expand)
                             }
                         )
                     }
@@ -164,14 +167,14 @@ fun McpToolsPanel(
                     if (state.isEnabled) {
                         if (state.availableTools.isEmpty()) {
                             Text(
-                                text = "Нет доступных инструментов",
+                                text = stringResource(Res.string.mcp_no_tools),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(8.dp)
                             )
                         } else {
                             Text(
-                                text = "Доступно инструментов: ${state.availableTools.size}",
+                                text = stringResource(Res.string.mcp_tools_count, state.availableTools.size),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -212,7 +215,7 @@ fun McpToolsPanel(
                         }
                     } else {
                         Text(
-                            text = "MCP инструменты отключены. Включите переключатель для использования.",
+                            text = stringResource(Res.string.mcp_tools_disabled),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(8.dp)
@@ -228,14 +231,14 @@ fun McpToolsPanel(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "История выполнений",
+                                text = stringResource(Res.string.mcp_execution_history),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
                             TextButton(
                                 onClick = { viewModel.onEvent(McpEvent.ClearHistory) }
                             ) {
-                                Text("Очистить")
+                                Text(stringResource(Res.string.clear))
                             }
                         }
 
@@ -273,7 +276,7 @@ private fun TrelloBoardIdField(
             .padding(vertical = 8.dp)
     ) {
         Text(
-            text = "Trello настройки",
+            text = stringResource(Res.string.trello_settings),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = 4.dp)
@@ -286,16 +289,16 @@ private fun TrelloBoardIdField(
                 // Сохраняем null если поле пустое, иначе значение
                 onBoardIdChange(newValue.ifBlank { null })
             },
-            label = { Text("ID доски Trello") },
-            placeholder = { Text("Например: abc123def456") },
+            label = { Text(stringResource(Res.string.trello_board_id)) },
+            placeholder = { Text(stringResource(Res.string.trello_board_id_placeholder)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             supportingText = {
                 Text(
                     text = if (textValue.isNotBlank()) {
-                        "Доска: $textValue"
+                        stringResource(Res.string.trello_board_current, textValue)
                     } else {
-                        "Укажите ID для работы с конкретной доской"
+                        stringResource(Res.string.trello_board_hint)
                     },
                     style = MaterialTheme.typography.labelSmall
                 )

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+    <!-- Общие -->
+    <string name="app_name">AI Консультант</string>
+    <string name="loading">Думаю...</string>
+    <string name="error">Ошибка</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Отмена</string>
+    <string name="save">Сохранить</string>
+    <string name="clear">Очистить</string>
+    <string name="settings">Настройки</string>
+    <string name="refresh">Обновить</string>
+
+    <!-- Conversation -->
+    <string name="conversation_complete">Диалог завершен!</string>
+    <string name="conversation_restart">Начать заново</string>
+    <string name="send_message">Отправить сообщение</string>
+    <string name="type_message">Введите сообщение...</string>
+
+    <!-- MCP -->
+    <string name="mcp_tools">MCP Инструменты</string>
+    <string name="mcp_tools_disabled">MCP инструменты отключены. Включите переключатель для использования.</string>
+    <string name="mcp_no_tools">Нет доступных инструментов</string>
+    <string name="mcp_tools_count">Доступно инструментов: %1$d</string>
+    <string name="mcp_execution_history">История выполнений</string>
+    <string name="mcp_expand">Развернуть</string>
+    <string name="mcp_collapse">Свернуть</string>
+
+    <!-- Trello -->
+    <string name="trello_settings">Trello настройки</string>
+    <string name="trello_board_id">ID доски Trello</string>
+    <string name="trello_board_id_placeholder">Например: abc123def456</string>
+    <string name="trello_board_hint">Укажите ID для работы с конкретной доской</string>
+    <string name="trello_board_current">Доска: %1$s</string>
+
+    <!-- RAG -->
+    <string name="rag_title">База знаний (RAG)</string>
+    <string name="rag_add_knowledge">Добавить знания</string>
+    <string name="rag_clear_knowledge">Очистить базу знаний</string>
+    <string name="rag_indexed_count">Проиндексировано: %1$d</string>
+    <string name="rag_settings">Настройки поиска</string>
+    <string name="rag_threshold">Порог релевантности</string>
+    <string name="rag_threshold_hint">Чем выше значение, тем строже фильтрация нерелевантных документов</string>
+    <string name="rag_top_k">Количество документов</string>
+    <string name="rag_mmr">MMR (разнообразие)</string>
+    <string name="rag_mmr_hint">Избегает дублирования похожих фрагментов</string>
+    <string name="rag_mmr_balance">Баланс релевантность/разнообразие</string>
+    <string name="rag_diversity">Разнообразие</string>
+    <string name="rag_relevance">Релевантность</string>
+
+    <!-- Committee -->
+    <string name="committee_experts">Эксперты</string>
+    <string name="committee_select_experts">Выберите экспертов</string>
+
+    <!-- Providers -->
+    <string name="provider_yandex">YandexGPT</string>
+    <string name="provider_openrouter">OpenRouter</string>
+    <string name="provider_proxy">ProxyAPI</string>
+
+    <!-- Export -->
+    <string name="export_json">Экспорт в JSON</string>
+    <string name="export_pdf">Экспорт в PDF</string>
+    <string name="export_success">Диалог экспортирован: %1$s</string>
+
+    <!-- Errors -->
+    <string name="error_network">Ошибка сети: %1$s</string>
+    <string name="error_auth">Ошибка авторизации. Проверьте API ключ.</string>
+    <string name="error_forbidden">Доступ запрещен. Проверьте права доступа.</string>
+    <string name="error_not_found">Сервис не найден. Проверьте настройки.</string>
+    <string name="error_rate_limit">Слишком много запросов. Попробуйте позже.</string>
+    <string name="error_server">Сервер временно недоступен. Попробуйте позже.</string>
+</resources>
