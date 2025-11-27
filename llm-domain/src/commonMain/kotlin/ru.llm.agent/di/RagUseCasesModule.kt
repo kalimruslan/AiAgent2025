@@ -4,6 +4,7 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 import ru.llm.agent.usecase.rag.AskWithRagUseCase
 import ru.llm.agent.usecase.rag.ClearRagIndexUseCase
+import ru.llm.agent.usecase.rag.GetMessagesWithRagSourcesUseCase
 import ru.llm.agent.usecase.rag.GetRagIndexStatsUseCase
 import ru.llm.agent.usecase.rag.IndexTextUseCase
 import ru.llm.agent.usecase.rag.SearchRagDocumentsUseCase
@@ -29,7 +30,16 @@ public val ragUseCasesModule: Module = module {
         AskWithRagUseCase(
             ragRepository = get(),
             conversationRepository = get(),
-            messageSendingService = get()
+            messageSendingService = get(),
+            ragSourceRepository = get()
+        )
+    }
+
+    // Получение сообщений с источниками RAG
+    factory {
+        GetMessagesWithRagSourcesUseCase(
+            conversationRepository = get(),
+            ragSourceRepository = get()
         )
     }
 }

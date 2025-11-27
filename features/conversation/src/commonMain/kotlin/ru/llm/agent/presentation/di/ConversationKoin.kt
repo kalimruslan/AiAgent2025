@@ -23,6 +23,7 @@ import ru.llm.agent.usecase.rag.IndexTextUseCase
 import ru.llm.agent.usecase.rag.AskWithRagUseCase
 import ru.llm.agent.usecase.rag.GetRagIndexStatsUseCase
 import ru.llm.agent.usecase.rag.ClearRagIndexUseCase
+import ru.llm.agent.usecase.rag.GetMessagesWithRagSourcesUseCase
 import ru.llm.agent.utils.settings.AppSettings
 
 internal fun conversationKoinModule(): Module {
@@ -46,6 +47,7 @@ internal fun conversationKoinModule(): Module {
                 askWithRagUseCase = get<AskWithRagUseCase>(),
                 getRagIndexStatsUseCase = get<GetRagIndexStatsUseCase>(),
                 clearRagIndexUseCase = get<ClearRagIndexUseCase>(),
+                getMessagesWithRagSourcesUseCase = get<GetMessagesWithRagSourcesUseCase>(),
                 mcpViewModel = get<ru.llm.agent.mcp.presentation.viewmodel.McpViewModel>(),
                 committeeViewModel = get<ru.llm.agent.committee.presentation.viewmodel.CommitteeViewModel>()
             )

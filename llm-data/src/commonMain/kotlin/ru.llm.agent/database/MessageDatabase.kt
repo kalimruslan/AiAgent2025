@@ -21,15 +21,18 @@ import ru.llm.agent.database.expert.ExpertOpinionWriteDao
 import ru.llm.agent.database.expert.ExpertOpinionEntity
 import ru.llm.agent.database.rag.RagDocumentEntity
 import ru.llm.agent.database.rag.RagDocumentDao
+import ru.llm.agent.database.rag.RagSourceEntity
+import ru.llm.agent.database.rag.RagSourceDao
 
 @Database(
     entities = [
         MessageEntity::class,
         ContextEntity::class,
         ExpertOpinionEntity::class,
-        RagDocumentEntity::class
+        RagDocumentEntity::class,
+        RagSourceEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 @ConstructedBy(MessageDatabaseConstructor::class)
@@ -49,6 +52,7 @@ public abstract class MessageDatabase : RoomDatabase() {
 
     // RAG DAO
     public abstract fun ragDocumentDao(): RagDocumentDao
+    public abstract fun ragSourceDao(): RagSourceDao
 
     public companion object {
         public const val DATABASE_NAME: String = "messages.db"
@@ -122,6 +126,27 @@ public abstract class MessageDatabase : RoomDatabase() {
                         sourceId TEXT NOT NULL,
                         chunkIndex INTEGER NOT NULL,
                         model TEXT NOT NULL,
+                        timestamp INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        /** Миграция 6 -> 7: Добавление таблицы rag_sources для хранения источников RAG ответов */
+        public val MIGRATION_6_7: Migration = object : Migration(6, 7) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS rag_sources (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        messageId INTEGER NOT NULL,
+                        conversationId TEXT NOT NULL,
+                        `index` INTEGER NOT NULL,
+                        text TEXT NOT NULL,
+                        sourceId TEXT NOT NULL,
+                        chunkIndex INTEGER NOT NULL,
+                        similarity REAL NOT NULL,
                         timestamp INTEGER NOT NULL
                     )
                     """.trimIndent()

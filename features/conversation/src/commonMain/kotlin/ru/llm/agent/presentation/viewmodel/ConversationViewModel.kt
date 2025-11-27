@@ -57,6 +57,7 @@ class ConversationViewModel(
     private val askWithRagUseCase: ru.llm.agent.usecase.rag.AskWithRagUseCase,
     private val getRagIndexStatsUseCase: ru.llm.agent.usecase.rag.GetRagIndexStatsUseCase,
     private val clearRagIndexUseCase: ru.llm.agent.usecase.rag.ClearRagIndexUseCase,
+    private val getMessagesWithRagSourcesUseCase: ru.llm.agent.usecase.rag.GetMessagesWithRagSourcesUseCase,
     private val mcpViewModel: McpViewModel,
     private val committeeViewModel: CommitteeViewModel
 ) : ViewModel() {
@@ -134,15 +135,27 @@ class ConversationViewModel(
     private fun loadMessages() {
         viewModelScope.launch {
             val currentMode = _screeState.value.selectedMode
+            val isRagEnabled = _screeState.value.isRagEnabled
 
             when (currentMode) {
                 ConversationMode.SINGLE -> {
-                    // В режиме Single загружаем только обычные сообщения
-                    conversationUseCase.invoke(conversationId).collect { messages ->
-                        _screeState.update {
-                            it.copy(
-                                messages = messages.filter { msg -> msg.role != Role.SYSTEM }
-                            )
+                    if (isRagEnabled) {
+                        // При включенном RAG загружаем сообщения с источниками
+                        getMessagesWithRagSourcesUseCase(conversationId).collect { messages ->
+                            _screeState.update {
+                                it.copy(
+                                    messages = messages.filter { msg -> msg.role != Role.SYSTEM }
+                                )
+                            }
+                        }
+                    } else {
+                        // В режиме Single загружаем только обычные сообщения
+                        conversationUseCase.invoke(conversationId).collect { messages ->
+                            _screeState.update {
+                                it.copy(
+                                    messages = messages.filter { msg -> msg.role != Role.SYSTEM }
+                                )
+                            }
                         }
                     }
                 }
@@ -583,6 +596,9 @@ class ConversationViewModel(
                 _screeState.update { it.copy(ragIndexedCount = count) }
             }
         }
+
+        // Перезагружаем сообщения для обновления источников RAG
+        loadMessages()
     }
 
     /**
