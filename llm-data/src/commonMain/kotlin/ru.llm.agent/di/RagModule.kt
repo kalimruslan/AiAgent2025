@@ -6,6 +6,8 @@ import org.koin.dsl.module
 import ru.llm.agent.api.OllamaApi
 import ru.llm.agent.repository.RagRepository
 import ru.llm.agent.repository.RagRepositoryImpl
+import ru.llm.agent.repository.RagSourceRepository
+import ru.llm.agent.repository.RagSourceRepositoryImpl
 import ru.llm.agent.service.EmbeddingService
 import ru.llm.agent.service.TextChunker
 import ru.llm.agent.service.VectorStore
@@ -50,6 +52,13 @@ public val ragModule: Module = module {
     single<RagRepository> {
         RagRepositoryImpl(
             embeddingService = get()
+        )
+    }
+
+    // RAG Source Repository (для хранения источников ответов)
+    single<RagSourceRepository> {
+        RagSourceRepositoryImpl(
+            ragSourceDao = get<ru.llm.agent.database.MessageDatabase>().ragSourceDao()
         )
     }
 }

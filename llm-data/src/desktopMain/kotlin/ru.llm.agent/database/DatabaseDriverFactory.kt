@@ -21,7 +21,8 @@ public actual class DatabaseDriverFactory {
                 MessageDatabase.MIGRATION_2_3,
                 MessageDatabase.MIGRATION_3_4,
                 MessageDatabase.MIGRATION_4_5,
-                MessageDatabase.MIGRATION_5_6
+                MessageDatabase.MIGRATION_5_6,
+                MessageDatabase.MIGRATION_6_7
             )
             .build()
     }

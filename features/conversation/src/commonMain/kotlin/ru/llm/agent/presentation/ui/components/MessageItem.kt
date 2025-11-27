@@ -175,6 +175,25 @@ public fun MessageItem(message: ConversationMessage) {
             }
         }
 
+        // Отображаем источники RAG (для сообщений ассистента)
+        if (!isUser && message.ragSources.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Использованные источники:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 24.dp, bottom = 4.dp)
+            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                message.ragSources.forEach { source ->
+                    RagSourceCard(source)
+                }
+            }
+        }
+
         // Отображаем мнения экспертов (если есть)
         if (isUser && message.expertOpinions.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
