@@ -36,6 +36,7 @@ import ru.llm.agent.model.Role
 import ru.llm.agent.model.conversation.ConversationMessage
 import ru.llm.agent.presentation.ui.formatResponseTime
 import ru.llm.agent.presentation.ui.formatTimestamp
+import ru.llm.agent.rag.presentation.ui.RagSourceCard
 
 /**
  * Компонент для отображения одного сообщения в диалоге

@@ -38,6 +38,7 @@ import ru.llm.agent.mcp.utils.extractToolName
 import ru.llm.agent.mcp.utils.extractToolResult
 import ru.llm.agent.mcp.prompts.TrelloPrompts
 import ru.llm.agent.committee.presentation.viewmodel.CommitteeViewModel
+import ru.llm.agent.rag.presentation.viewmodel.RagViewModel
 
 class ConversationViewModel(
     private val conversationUseCase: ConversationUseCase,
@@ -53,13 +54,11 @@ class ConversationViewModel(
     private val getSummarizationInfoUseCase: GetSummarizationInfoUseCase,
     private val exportConversationUseCase: ExportConversationUseCase,
     private val appSettings: AppSettings,
-    private val indexTextUseCase: ru.llm.agent.usecase.rag.IndexTextUseCase,
     private val askWithRagUseCase: ru.llm.agent.usecase.rag.AskWithRagUseCase,
-    private val getRagIndexStatsUseCase: ru.llm.agent.usecase.rag.GetRagIndexStatsUseCase,
-    private val clearRagIndexUseCase: ru.llm.agent.usecase.rag.ClearRagIndexUseCase,
     private val getMessagesWithRagSourcesUseCase: ru.llm.agent.usecase.rag.GetMessagesWithRagSourcesUseCase,
     private val mcpViewModel: McpViewModel,
-    private val committeeViewModel: CommitteeViewModel
+    private val committeeViewModel: CommitteeViewModel,
+    private val ragViewModel: RagViewModel
 ) : ViewModel() {
 
 
@@ -75,6 +74,16 @@ class ConversationViewModel(
         viewModelScope.launch {
             _events.collect {
                 handleEvent(it)
+            }
+        }
+        // Подписка на изменение RAG для перезагрузки сообщений
+        viewModelScope.launch {
+            var previousRagEnabled = ragViewModel.isRagEnabled()
+            ragViewModel.state.collect { ragState ->
+                if (ragState.isEnabled != previousRagEnabled) {
+                    previousRagEnabled = ragState.isEnabled
+                    loadMessages()
+                }
             }
         }
     }
@@ -135,7 +144,7 @@ class ConversationViewModel(
     private fun loadMessages() {
         viewModelScope.launch {
             val currentMode = _screeState.value.selectedMode
-            val isRagEnabled = _screeState.value.isRagEnabled
+            val isRagEnabled = ragViewModel.isRagEnabled()
 
             when (currentMode) {
                 ConversationMode.SINGLE -> {
@@ -188,16 +197,6 @@ class ConversationViewModel(
             is ConversationUIState.Event.SelectMode -> selectMode(event.mode)
             is ConversationUIState.Event.ExportConversation -> exportConversation(event.format)
             is ConversationUIState.Event.SetTrelloBoardId -> setTrelloBoardId(event.boardId)
-            is ConversationUIState.Event.ToggleRag -> toggleRag(event.enabled)
-            ConversationUIState.Event.ShowKnowledgeBaseDialog -> showKnowledgeBaseDialog()
-            ConversationUIState.Event.HideKnowledgeBaseDialog -> hideKnowledgeBaseDialog()
-            is ConversationUIState.Event.AddToKnowledgeBase -> addToKnowledgeBase(event.text, event.sourceId)
-            ConversationUIState.Event.ClearKnowledgeBase -> clearKnowledgeBase()
-            // RAG настройки
-            is ConversationUIState.Event.SetRagThreshold -> setRagThreshold(event.threshold)
-            is ConversationUIState.Event.SetRagTopK -> setRagTopK(event.topK)
-            is ConversationUIState.Event.ToggleRagMmr -> toggleRagMmr(event.enabled)
-            is ConversationUIState.Event.SetRagMmrLambda -> setRagMmrLambda(event.lambda)
         }
     }
 
@@ -369,16 +368,16 @@ class ConversationViewModel(
             checkAndSummarizeIfNeeded()
 
             // Выбираем UseCase в зависимости от того, включен ли RAG
-            val state = _screeState.value
-            val useCaseFlow = if (state.isRagEnabled) {
+            val ragSettings = ragViewModel.getRagSettings()
+            val useCaseFlow = if (ragViewModel.isRagEnabled()) {
                 askWithRagUseCase.invoke(
                     conversationId = conversationId,
                     userMessage = message,
-                    provider = state.selectedProvider,
-                    topK = state.ragTopK,
-                    threshold = state.ragThreshold,
-                    useMmr = state.ragUseMmr,
-                    mmrLambda = state.ragMmrLambda
+                    provider = _screeState.value.selectedProvider,
+                    topK = ragSettings.topK,
+                    threshold = ragSettings.threshold,
+                    useMmr = ragSettings.useMmr,
+                    mmrLambda = ragSettings.mmrLambda
                 )
             } else {
                 sendConversationMessageUseCase.invoke(
@@ -580,131 +579,6 @@ class ConversationViewModel(
                 "Произошла неизвестная ошибка: ${error.message}"
             }
         }
-    }
-
-    // === RAG функции ===
-    /**
-     * Переключить использование RAG
-     */
-    private fun toggleRag(enabled: Boolean) {
-        _screeState.update { it.copy(isRagEnabled = enabled) }
-
-        // Загружаем статистику индекса при включении
-        if (enabled) {
-            viewModelScope.launch {
-                val count = getRagIndexStatsUseCase()
-                _screeState.update { it.copy(ragIndexedCount = count) }
-            }
-        }
-
-        // Перезагружаем сообщения для обновления источников RAG
-        loadMessages()
-    }
-
-    /**
-     * Показать диалог добавления знаний
-     */
-    private fun showKnowledgeBaseDialog() {
-        _screeState.update { it.copy(showKnowledgeBaseDialog = true) }
-    }
-
-    /**
-     * Скрыть диалог добавления знаний
-     */
-    private fun hideKnowledgeBaseDialog() {
-        _screeState.update { it.copy(showKnowledgeBaseDialog = false) }
-    }
-
-    /**
-     * Добавить текст в базу знаний
-     */
-    private fun addToKnowledgeBase(text: String, sourceId: String) {
-        viewModelScope.launch {
-            try {
-                Logger.getLogger("RAG").info("Индексация текста: $sourceId")
-                _screeState.update { it.copy(isLoading = true, error = "") }
-
-                val result = indexTextUseCase.invoke(text, sourceId)
-
-                Logger.getLogger("RAG").info("Проиндексировано ${result.chunksIndexed} чанков")
-
-                // Обновляем счетчик документов
-                val count = getRagIndexStatsUseCase()
-                _screeState.update {
-                    it.copy(
-                        isLoading = false,
-                        ragIndexedCount = count,
-                        showKnowledgeBaseDialog = false,
-                        error = "✓ Добавлено ${result.chunksIndexed} фрагментов в базу знаний"
-                    )
-                }
-            } catch (e: Exception) {
-                Logger.getLogger("RAG").warning("Ошибка индексации: ${e.message}")
-                _screeState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = "Ошибка добавления в базу знаний: ${e.message}"
-                    )
-                }
-            }
-        }
-    }
-
-    /**
-     * Очистить базу знаний
-     */
-    private fun clearKnowledgeBase() {
-        viewModelScope.launch {
-            try {
-                Logger.getLogger("RAG").info("Очистка базы знаний")
-                clearRagIndexUseCase()
-                _screeState.update {
-                    it.copy(
-                        ragIndexedCount = 0,
-                        error = "✓ База знаний очищена"
-                    )
-                }
-            } catch (e: Exception) {
-                Logger.getLogger("RAG").warning("Ошибка очистки: ${e.message}")
-                _screeState.update {
-                    it.copy(error = "Ошибка очистки базы знаний: ${e.message}")
-                }
-            }
-        }
-    }
-
-    // === RAG настройки ===
-
-    /**
-     * Установить порог релевантности для RAG
-     */
-    private fun setRagThreshold(threshold: Double) {
-        _screeState.update { it.copy(ragThreshold = threshold.coerceIn(0.0, 1.0)) }
-        Logger.getLogger("RAG").info("RAG threshold установлен: $threshold")
-    }
-
-    /**
-     * Установить количество возвращаемых документов
-     */
-    private fun setRagTopK(topK: Int) {
-        _screeState.update { it.copy(ragTopK = topK.coerceIn(1, 10)) }
-        Logger.getLogger("RAG").info("RAG topK установлен: $topK")
-    }
-
-    /**
-     * Переключить использование MMR
-     */
-    private fun toggleRagMmr(enabled: Boolean) {
-        _screeState.update { it.copy(ragUseMmr = enabled) }
-        Logger.getLogger("RAG").info("RAG MMR ${if (enabled) "включен" else "выключен"}")
-    }
-
-    /**
-     * Установить lambda параметр MMR
-     */
-    private fun setRagMmrLambda(lambda: Double) {
-        _screeState.update { it.copy(ragMmrLambda = lambda.coerceIn(0.0, 1.0)) }
-        Logger.getLogger("RAG").info("RAG MMR lambda установлена: $lambda")
     }
 
     // === MCP функции ===

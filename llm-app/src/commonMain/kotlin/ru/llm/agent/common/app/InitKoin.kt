@@ -17,6 +17,7 @@ import ru.llm.agent.di.platformSettingsModule
 import ru.llm.agent.di.ragModule
 import ru.llm.agent.mcp.di.mcpModule
 import ru.llm.agent.committee.di.committeeModule
+import ru.llm.agent.rag.di.ragFeatureModule
 
 internal expect fun defaultKoinLogger(level: Level): Logger
 
@@ -44,6 +45,7 @@ fun KoinApplication.initKoinApp(
         domainKoinModule,
         mcpModule,
         committeeModule,
+        ragFeatureModule,
     )
 }
 

@@ -19,12 +19,10 @@ import ru.llm.agent.usecase.GetTokenUsageUseCase
 import ru.llm.agent.usecase.SaveSelectedProviderUseCase
 import ru.llm.agent.usecase.SendConversationMessageUseCase
 import ru.llm.agent.usecase.SummarizeHistoryUseCase
-import ru.llm.agent.usecase.rag.IndexTextUseCase
 import ru.llm.agent.usecase.rag.AskWithRagUseCase
-import ru.llm.agent.usecase.rag.GetRagIndexStatsUseCase
-import ru.llm.agent.usecase.rag.ClearRagIndexUseCase
 import ru.llm.agent.usecase.rag.GetMessagesWithRagSourcesUseCase
 import ru.llm.agent.utils.settings.AppSettings
+import ru.llm.agent.rag.presentation.viewmodel.RagViewModel
 
 internal fun conversationKoinModule(): Module {
     return module {
@@ -43,13 +41,11 @@ internal fun conversationKoinModule(): Module {
                 getSummarizationInfoUseCase = get<GetSummarizationInfoUseCase>(),
                 exportConversationUseCase = get<ExportConversationUseCase>(),
                 appSettings = get<AppSettings>(),
-                indexTextUseCase = get<IndexTextUseCase>(),
                 askWithRagUseCase = get<AskWithRagUseCase>(),
-                getRagIndexStatsUseCase = get<GetRagIndexStatsUseCase>(),
-                clearRagIndexUseCase = get<ClearRagIndexUseCase>(),
                 getMessagesWithRagSourcesUseCase = get<GetMessagesWithRagSourcesUseCase>(),
                 mcpViewModel = get<ru.llm.agent.mcp.presentation.viewmodel.McpViewModel>(),
-                committeeViewModel = get<ru.llm.agent.committee.presentation.viewmodel.CommitteeViewModel>()
+                committeeViewModel = get<ru.llm.agent.committee.presentation.viewmodel.CommitteeViewModel>(),
+                ragViewModel = get<RagViewModel>()
             )
         }
     }

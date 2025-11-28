@@ -1,4 +1,4 @@
-package ru.llm.agent.presentation.ui.components
+package ru.llm.agent.rag.presentation.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -35,9 +35,11 @@ import ru.llm.agent.model.rag.RagSource
 /**
  * Карточка источника RAG с цитатой и метаданными.
  * Показывает номер источника, ID документа, релевантность и текст цитаты.
+ *
+ * Публичный компонент - экспортируется для использования в ConversationScreen
  */
 @Composable
-public fun RagSourceCard(source: RagSource) {
+fun RagSourceCard(source: RagSource) {
     var isExpanded by remember { mutableStateOf(false) }
     val maxPreviewLength = 150
 
