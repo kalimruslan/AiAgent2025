@@ -32,10 +32,11 @@ import ru.llm.agent.presentation.ui.components.BoardSummaryCard
 import ru.llm.agent.mcp.presentation.ui.McpToolsPanel
 import ru.llm.agent.mcp.presentation.viewmodel.McpViewModel
 import ru.llm.agent.presentation.ui.components.SmartPromptsBar
-import ru.llm.agent.presentation.ui.components.RagControlPanel
-import ru.llm.agent.presentation.ui.components.RagSettings
-import ru.llm.agent.presentation.ui.components.KnowledgeBaseDialog
 import ru.llm.agent.presentation.ui.dropdowns.ConversationModeDropdown
+import ru.llm.agent.rag.presentation.ui.RagControlPanel
+import ru.llm.agent.rag.presentation.ui.KnowledgeBaseDialog
+import ru.llm.agent.rag.presentation.viewmodel.RagViewModel
+import ru.llm.agent.rag.presentation.state.RagEvent
 import ru.llm.agent.presentation.ui.dropdowns.LlmProviderDropdown
 import ru.llm.agent.committee.presentation.ui.ExpertsSelectionPanel
 import ru.llm.agent.committee.presentation.viewmodel.CommitteeViewModel
@@ -58,10 +59,12 @@ fun ConversationScreen(
         // Используем koinInject вместо koinViewModel для singleton
         val mcpViewModel = koinInject<McpViewModel>()
         val committeeViewModel = koinInject<CommitteeViewModel>()
+        val ragViewModel = koinInject<RagViewModel>()
         viewModel.start()
         val state by viewModel.screeState.collectAsStateWithLifecycle()
         val mcpState by mcpViewModel.state.collectAsStateWithLifecycle()
         val committeeState by committeeViewModel.state.collectAsStateWithLifecycle()
+        val ragState by ragViewModel.state.collectAsStateWithLifecycle()
 
         Scaffold(
             modifier = Modifier.fillMaxSize().imePadding(),
@@ -147,65 +150,19 @@ fun ConversationScreen(
                     // Показываем только если НЕ в режиме Committee
                     if (state.selectedMode != ConversationMode.COMMITTEE) {
                         RagControlPanel(
-                            isRagEnabled = state.isRagEnabled,
-                            indexedCount = state.ragIndexedCount,
-                            settings = RagSettings(
-                                threshold = state.ragThreshold,
-                                topK = state.ragTopK,
-                                useMmr = state.ragUseMmr,
-                                mmrLambda = state.ragMmrLambda
-                            ),
-                            onToggleRag = { enabled ->
-                                viewModel.setEvent(
-                                    ConversationUIState.Event.ToggleRag(enabled)
-                                )
-                            },
-                            onAddKnowledge = {
-                                viewModel.setEvent(
-                                    ConversationUIState.Event.ShowKnowledgeBaseDialog
-                                )
-                            },
-                            onClearKnowledge = {
-                                viewModel.setEvent(
-                                    ConversationUIState.Event.ClearKnowledgeBase
-                                )
-                            },
-                            onThresholdChange = { threshold ->
-                                viewModel.setEvent(
-                                    ConversationUIState.Event.SetRagThreshold(threshold)
-                                )
-                            },
-                            onTopKChange = { topK ->
-                                viewModel.setEvent(
-                                    ConversationUIState.Event.SetRagTopK(topK)
-                                )
-                            },
-                            onToggleMmr = { enabled ->
-                                viewModel.setEvent(
-                                    ConversationUIState.Event.ToggleRagMmr(enabled)
-                                )
-                            },
-                            onMmrLambdaChange = { lambda ->
-                                viewModel.setEvent(
-                                    ConversationUIState.Event.SetRagMmrLambda(lambda)
-                                )
-                            },
+                            viewModel = ragViewModel,
                             enabled = !state.isLoading
                         )
                     }
 
                     // Диалог добавления знаний
-                    if (state.showKnowledgeBaseDialog) {
+                    if (ragState.showKnowledgeBaseDialog) {
                         KnowledgeBaseDialog(
                             onDismiss = {
-                                viewModel.setEvent(
-                                    ConversationUIState.Event.HideKnowledgeBaseDialog
-                                )
+                                ragViewModel.onEvent(RagEvent.HideKnowledgeBaseDialog)
                             },
                             onAddKnowledge = { text, sourceId ->
-                                viewModel.setEvent(
-                                    ConversationUIState.Event.AddToKnowledgeBase(text, sourceId)
-                                )
+                                ragViewModel.onEvent(RagEvent.AddToKnowledgeBase(text, sourceId))
                             }
                         )
                     }
